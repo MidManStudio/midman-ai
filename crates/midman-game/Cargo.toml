@@ -1,0 +1,15 @@
+[package]
+name        = "midman-game"
+version     = "0.0.1"
+edition     = "2021"
+description = "Game-development workflows, Mid Engine integration, scene and entity context, asset tooling and simulation-related tools."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_game"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

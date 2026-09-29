@@ -1,0 +1,15 @@
+[package]
+name        = "midman-data"
+version     = "0.0.1"
+edition     = "2021"
+description = "Dataset ingestion, source manifests, filtering, deduplication, packing, sampling and batch construction."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_data"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

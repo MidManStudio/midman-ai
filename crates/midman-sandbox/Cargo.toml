@@ -1,0 +1,15 @@
+[package]
+name        = "midman-sandbox"
+version     = "0.0.1"
+edition     = "2021"
+description = "Restricted execution, permissions, resource quotas, filesystem isolation, process supervision and audit events."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_sandbox"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

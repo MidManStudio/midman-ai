@@ -1,0 +1,15 @@
+[package]
+name        = "midman-tokenizer"
+version     = "0.0.1"
+edition     = "2021"
+description = "Tokenization, vocabulary construction, special tokens, encoding and decoding, and Ubel-aware token handling."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_tokenizer"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

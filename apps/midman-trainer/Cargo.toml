@@ -1,0 +1,11 @@
+[package]
+name        = "midman-trainer"
+version     = "0.0.1"
+edition     = "2021"
+description = "Training entry point for MidMan model runs."
+
+[lints]
+workspace = true
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

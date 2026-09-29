@@ -1,0 +1,15 @@
+[package]
+name        = "midman-training"
+version     = "0.0.1"
+edition     = "2021"
+description = "Training loop, loss computation, gradient accumulation, evaluation, distributed-training interfaces and run management."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_training"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

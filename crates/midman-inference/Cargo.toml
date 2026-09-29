@@ -1,0 +1,15 @@
+[package]
+name        = "midman-inference"
+version     = "0.0.1"
+edition     = "2021"
+description = "Text generation, sampling, KV cache, batching, streaming output and inference sessions."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_inference"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

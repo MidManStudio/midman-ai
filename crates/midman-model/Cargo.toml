@@ -1,0 +1,15 @@
+[package]
+name        = "midman-model"
+version     = "0.0.1"
+edition     = "2021"
+description = "MidMan model definition, forward pass, parameter registration and model construction."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_model"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

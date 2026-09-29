@@ -1,0 +1,15 @@
+[package]
+name        = "midman-tensor"
+version     = "0.0.1"
+edition     = "2021"
+description = "Tensor representations, shapes, strides, dtype abstractions and numerical operations."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_tensor"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

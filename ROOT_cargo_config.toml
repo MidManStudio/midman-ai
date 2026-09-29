@@ -1,0 +1,5 @@
+# .cargo/config.toml
+
+# Workspace-level Cargo configuration. Intentionally empty for now.
+# Target-specific rustflags and backend settings go here once a compute
+# backend exists that needs them.

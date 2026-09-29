@@ -1,0 +1,15 @@
+[package]
+name        = "midman-tools"
+version     = "0.0.1"
+edition     = "2021"
+description = "Typed tool interfaces, tool registry, schemas, validation, dispatch and results."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_tools"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

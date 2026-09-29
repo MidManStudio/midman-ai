@@ -1,0 +1,15 @@
+[package]
+name        = "midman-agent"
+version     = "0.0.1"
+edition     = "2021"
+description = "Conversation state, task planning, context assembly, tool orchestration and the agent loop."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_agent"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

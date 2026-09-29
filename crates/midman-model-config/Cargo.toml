@@ -1,0 +1,15 @@
+[package]
+name        = "midman-model-config"
+version     = "0.0.1"
+edition     = "2021"
+description = "Serializable architecture configurations, model dimensions, attention settings and validation."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_model_config"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

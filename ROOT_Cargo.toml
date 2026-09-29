@@ -1,0 +1,51 @@
+[workspace]
+# Rationale for every section in this file: see docs/workspace-cargo.md.
+members = [
+    "crates/midman-foundation",
+    "crates/midman-model-config",
+    "crates/midman-tensor",
+    "crates/midman-nn",
+    "crates/midman-model",
+    "crates/midman-optim",
+    "crates/midman-tokenizer",
+    "crates/midman-quant",
+    "crates/midman-data",
+    "crates/midman-training",
+    "crates/midman-checkpoint",
+    "crates/midman-inference",
+    "crates/midman-agent",
+    "crates/midman-tools",
+    "crates/midman-sandbox",
+    "crates/midman-ubel",
+    "crates/midman-game",
+    "crates/midman-api",
+    "apps/midman-cli",
+    "apps/midman-server",
+    "apps/midman-trainer",
+]
+resolver = "2"
+
+# See docs/workspace-cargo.md, "[workspace.lints] and [workspace.dependencies]."
+[workspace.lints.rust]
+unsafe_code  = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"
+
+[workspace.dependencies]
+# Intentionally empty.
+
+[profile.release]
+opt-level     = 3
+lto           = true
+codegen-units = 1
+strip         = true
+debug         = false
+
+# cargo bench does NOT inherit [profile.release].
+[profile.bench]
+opt-level     = 3
+lto           = true
+codegen-units = 1
+debug         = true

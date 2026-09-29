@@ -1,0 +1,15 @@
+[package]
+name        = "midman-checkpoint"
+version     = "0.0.1"
+edition     = "2021"
+description = "Saving and loading model weights, optimizer state, training progress, metadata and checkpoint version migrations."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_checkpoint"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.

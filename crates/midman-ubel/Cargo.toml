@@ -1,0 +1,15 @@
+[package]
+name        = "midman-ubel"
+version     = "0.0.1"
+edition     = "2021"
+description = "Ubel Stratum integration: parsing, diagnostics, compiler interfaces, language-aware context and execution adapters."
+
+[lints]
+workspace = true
+
+[lib]
+name       = "midman_ubel"
+crate-type = ["lib"]
+
+[dependencies]
+# Intentionally empty. The crate dependency graph is not settled yet.
