@@ -1,1 +1,29 @@
-@data(target_root = '.')
+// Brought to u by MidManStudio
+
+@CONFIG(
+  version    -> "1.0.0"
+  features   -> "quickfuncs,data"
+  debug_mode -> "off"
+)
+
+@QUICKFUNCS(
+  ~target<object>(_name, _path) {
+    return { name = _name, path = _path }
+  }
+)
+
+@DATA(
+  target_root = "."
+
+  overrides::
+    target("ROOT_Cargo.toml", "Cargo.toml")
+    target("ROOT_cargo_config.toml", ".cargo/config.toml")
+    target("Cargo.lock", "Cargo.lock")
+    target("rust-toolchain.toml", "rust-toolchain.toml")
+    target("rustfmt.toml", "rustfmt.toml")
+    target("ROOT_gitignore", ".gitignore")
+    target("github_pull_request_template.md", ".github/pull_request_template.md")
+    target("github_issue_bug_report.md", ".github/ISSUE_TEMPLATE/bug_report.md")
+    target("github_issue_feature_request.md", ".github/ISSUE_TEMPLATE/feature_request.md")
+    target("github_issue_data_source_review.md", ".github/ISSUE_TEMPLATE/data_source_review.md")
+)
