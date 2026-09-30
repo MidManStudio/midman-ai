@@ -1,0 +1,150 @@
+# .github/workflows/benchmarks.yml
+#
+# midman-ai benchmarks: runs `cargo bench` for the whole workspace or one package.
+#
+# Manual only (workflow_dispatch). Nothing in the workspace has a [[bench]] target yet,
+# so until one exists this run finishes green and says so in the summary.
+#
+# Numbers from a shared GitHub runner are noisy. Compare runs of the same package on the
+# same runner type, and use baseline_note to label what changed. There is no ISA matrix
+# here on purpose: add one when a crate gets dispatched SIMD or GPU backends that need
+# separate numbers.
+#
+# Helper script: scripts/bench_summary.py (parses criterion output into
+# bench-results.json and the job summary). Notes: docs/ci-and-workflows.md.
+#
+# Keep the package list in step with ci.yml.
+
+name: midman-ai Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'What to benchmark (workspace = every crate and app)'
+        type: choice
+        default: workspace
+        options:
+          - workspace
+          - midman-foundation
+          - midman-model-config
+          - midman-tensor
+          - midman-nn
+          - midman-model
+          - midman-optim
+          - midman-tokenizer
+          - midman-quant
+          - midman-data
+          - midman-training
+          - midman-checkpoint
+          - midman-inference
+          - midman-agent
+          - midman-tools
+          - midman-sandbox
+          - midman-ubel
+          - midman-game
+          - midman-api
+          - midman-cli
+          - midman-server
+          - midman-trainer
+      bench_filter:
+        description: 'Optional benchmark name filter (regex), passed to cargo bench after --'
+        type: string
+        default: ''
+      baseline_note:
+        description: 'Free-text label for this run, shown in the summary'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  bench:
+    name: cargo bench
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PACKAGE: ${{ inputs.package }}
+      BENCH_FILTER: ${{ inputs.bench_filter }}
+      BASELINE_NOTE: ${{ inputs.baseline_note }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Toolchain info
+        id: toolchain
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          echo "version=$(rustc --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-bench-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-bench-${{ runner.os }}-
+
+      - name: Run benchmarks
+        id: bench
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          if [ "$PACKAGE" = "workspace" ]; then
+            sel=(--workspace)
+          else
+            sel=(--package "$PACKAGE")
+          fi
+          filter=()
+          if [ -n "$BENCH_FILTER" ]; then
+            filter=(-- "$BENCH_FILTER")
+          fi
+          cargo bench "${sel[@]}" "${filter[@]}" 2>&1 | tee bench-raw.txt
+
+      - name: Summarize
+        if: always()
+        env:
+          BUILD_NUM: ${{ github.run_number }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          RUST_VERSION: ${{ steps.toolchain.outputs.version }}
+          BENCH_OUTCOME: ${{ steps.bench.outcome }}
+        run: |
+          python3 scripts/bench_summary.py \
+            --log bench-raw.txt --outcome "$BENCH_OUTCOME" \
+            --json bench-results.json --md "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload raw log and results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench-results-${{ github.run_number }}
+          path: |
+            bench-raw.txt
+            bench-results.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Fail if the benchmarks failed
+        if: steps.bench.outcome != 'success'
+        env:
+          BENCH_OUTCOME: ${{ steps.bench.outcome }}
+        run: |
+          echo "::error title=midman-ai Benchmarks::cargo bench finished with outcome: $BENCH_OUTCOME"
+          exit 1

@@ -1,0 +1,177 @@
+# .github/workflows/security.yml
+#
+# midman-ai security: dependency advisories, secret scan, repository hygiene.
+#
+# Manual only (workflow_dispatch). Three independent jobs, so one failing does not hide
+# the others.
+#
+#   audit    cargo audit against Cargo.lock (RustSec advisory database). Known
+#            vulnerabilities fail the job. Unmaintained, unsound and yanked warnings are
+#            listed in the summary but do not fail it.
+#   secrets  gitleaks over the full git history, values redacted. The gitleaks CLI is
+#            downloaded at a pinned version and checked against a pinned SHA-256. (The
+#            gitleaks GitHub Action needs a license key for organization repositories;
+#            the CLI does not.)
+#   hygiene  scripts/repo_hygiene.py: no model weights, bulk data, archives, build output
+#            or credential-looking files tracked; every crate opts in to the workspace
+#            lints; lists any `unsafe`.
+#
+# No cargo-deny yet: it needs a license policy, and the workspace license is not decided.
+#
+# Helper scripts: scripts/security_summary.py, scripts/repo_hygiene.py.
+# Notes: docs/ci-and-workflows.md.
+
+name: midman-ai Security
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+
+jobs:
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Audit Cargo.lock
+        id: audit
+        continue-on-error: true
+        run: |
+          # Exit code 1 means known vulnerabilities were found. The JSON report goes to
+          # stdout, progress and errors to stderr.
+          cargo audit --json > audit.json 2> audit-stderr.txt
+
+      - name: Summarize
+        if: always()
+        env:
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+        run: |
+          python3 scripts/security_summary.py \
+            --audit audit.json --audit-outcome "$AUDIT_OUTCOME" --md "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: audit-${{ github.run_number }}
+          path: |
+            audit.json
+            audit-stderr.txt
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Fail if the audit failed
+        if: steps.audit.outcome != 'success'
+        env:
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+        run: |
+          echo "::error title=cargo audit::finished with outcome: $AUDIT_OUTCOME"
+          exit 1
+
+  secrets:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GITLEAKS_VERSION: '8.30.1'
+      GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks
+        run: |
+          set -eu
+          curl -fsSL -o "$RUNNER_TEMP/gitleaks.tgz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/gitleaks-bin"
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP/gitleaks-bin" gitleaks
+          echo "$RUNNER_TEMP/gitleaks-bin" >> "$GITHUB_PATH"
+
+      - name: Scan history
+        id: scan
+        continue-on-error: true
+        run: |
+          gitleaks version
+          gitleaks git --no-banner --redact --report-format json \
+            --report-path gitleaks.json --exit-code 1 .
+
+      - name: Summarize
+        if: always()
+        env:
+          SCAN_OUTCOME: ${{ steps.scan.outcome }}
+        run: |
+          python3 scripts/security_summary.py \
+            --gitleaks gitleaks.json --gitleaks-outcome "$SCAN_OUTCOME" --md "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitleaks-${{ github.run_number }}
+          path: gitleaks.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Fail if the scan failed
+        if: steps.scan.outcome != 'success'
+        env:
+          SCAN_OUTCOME: ${{ steps.scan.outcome }}
+        run: |
+          echo "::error title=gitleaks::finished with outcome: $SCAN_OUTCOME"
+          exit 1
+
+  hygiene:
+    name: repository hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check repository
+        id: hygiene
+        continue-on-error: true
+        run: |
+          python3 scripts/repo_hygiene.py --json hygiene.json --md "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: hygiene-${{ github.run_number }}
+          path: hygiene.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Fail if hygiene checks failed
+        if: steps.hygiene.outcome != 'success'
+        env:
+          HYGIENE_OUTCOME: ${{ steps.hygiene.outcome }}
+        run: |
+          echo "::error title=repo hygiene::finished with outcome: $HYGIENE_OUTCOME"
+          exit 1

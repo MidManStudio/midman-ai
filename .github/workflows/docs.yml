@@ -1,0 +1,137 @@
+# .github/workflows/docs.yml
+#
+# midman-ai docs: checks that the docs and the source agree, then builds rustdoc.
+#
+# Manual only (workflow_dispatch).
+#
+# 1. scripts/check_docs.py: every workspace member has a docs/<package>.md, every
+#    NOTICE header in a .rs file points at a real doc section, and each crate doc ends
+#    with "Fixes and Problems". Files without a NOTICE header are counted but only fail
+#    the run when require_notice_headers is on.
+# 2. cargo doc --workspace --no-deps with rustdoc warnings treated as errors.
+#
+# The rustdoc HTML is uploaded as a run artifact. It is not deployed anywhere yet:
+# there is no docs hosting target for this repo.
+#
+# Notes: docs/ci-and-workflows.md.
+
+name: midman-ai Docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      require_notice_headers:
+        description: 'Fail when a .rs file has no NOTICE header'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+  RUSTDOCFLAGS: '-D warnings'
+
+jobs:
+  docs:
+    name: conformance and rustdoc
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-docs-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-docs-${{ runner.os }}-
+
+      - name: Docs conformance
+        id: conformance
+        continue-on-error: true
+        env:
+          REQUIRE_HEADERS: ${{ inputs.require_notice_headers }}
+        run: |
+          args=()
+          if [ "$REQUIRE_HEADERS" = "true" ]; then
+            args+=(--require-headers)
+          fi
+          python3 scripts/check_docs.py "${args[@]}" --json docs-conformance.json --md "$GITHUB_STEP_SUMMARY"
+
+      - name: Build rustdoc
+        id: rustdoc
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          cargo doc --workspace --no-deps 2>&1 | tee rustdoc-raw.txt
+
+      - name: Summarize rustdoc
+        if: always()
+        env:
+          RUSTDOC_OUTCOME: ${{ steps.rustdoc.outcome }}
+        run: |
+          # shellcheck disable=SC2016  # backticks in single quotes are literal Markdown here
+          {
+            echo "## midman-ai rustdoc"
+            echo
+            if [ "$RUSTDOC_OUTCOME" = "success" ]; then
+              echo '✅ `cargo doc --workspace --no-deps` built with warnings treated as errors.'
+            else
+              echo "❌ cargo doc failed (outcome: $RUSTDOC_OUTCOME). First diagnostics:"
+              echo
+              echo '```'
+              grep -E -A6 '^(warning|error)' rustdoc-raw.txt 2>/dev/null | head -c 20000 || true
+              echo '```'
+            fi
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload rustdoc HTML
+        if: steps.rustdoc.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: rustdoc-html-${{ github.run_number }}
+          path: target/doc
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload logs and results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs-results-${{ github.run_number }}
+          path: |
+            rustdoc-raw.txt
+            docs-conformance.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Fail if any check failed
+        if: always()
+        env:
+          CONFORMANCE_OUTCOME: ${{ steps.conformance.outcome }}
+          RUSTDOC_OUTCOME: ${{ steps.rustdoc.outcome }}
+        run: |
+          failed=0
+          for pair in "conformance:$CONFORMANCE_OUTCOME" "rustdoc:$RUSTDOC_OUTCOME"; do
+            name="${pair%%:*}"
+            outcome="${pair#*:}"
+            if [ "$outcome" != "success" ]; then
+              echo "::error title=midman-ai Docs::$name finished with outcome: $outcome"
+              failed=1
+            fi
+          done
+          exit "$failed"

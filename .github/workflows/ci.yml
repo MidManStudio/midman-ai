@@ -1,0 +1,190 @@
+# .github/workflows/ci.yml
+#
+# midman-ai CI: format, clippy, build and test, for the whole workspace or one package.
+#
+# Manual only (workflow_dispatch). There are deliberately no push or pull_request
+# triggers, so every run is one you chose to start.
+#
+# Every check runs even if an earlier one fails, so one run shows all the problems.
+# The last step fails the job if any check failed.
+#
+# Helper script: scripts/ci_summary.py (parses the raw logs into ci-results.json and
+# the job summary). Notes: docs/ci-and-workflows.md.
+#
+# The package list below is a fixed dropdown. When a crate is added to the workspace,
+# add it here and in benchmarks.yml.
+
+name: midman-ai CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'What to check (workspace = every crate and app)'
+        type: choice
+        default: workspace
+        options:
+          - workspace
+          - midman-foundation
+          - midman-model-config
+          - midman-tensor
+          - midman-nn
+          - midman-model
+          - midman-optim
+          - midman-tokenizer
+          - midman-quant
+          - midman-data
+          - midman-training
+          - midman-checkpoint
+          - midman-inference
+          - midman-agent
+          - midman-tools
+          - midman-sandbox
+          - midman-ubel
+          - midman-game
+          - midman-api
+          - midman-cli
+          - midman-server
+          - midman-trainer
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  ci:
+    name: fmt, clippy, build, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PACKAGE: ${{ inputs.package }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Toolchain info
+        id: toolchain
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          echo "version=$(rustc --version)" >> "$GITHUB_OUTPUT"
+
+      # Registry only. ~/.cargo/bin is never cached, and target/ is left out until the
+      # workspace has dependencies whose compile time is worth the cache quota.
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-ci-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-ci-${{ runner.os }}-
+
+      - name: Resolve package selection
+        run: |
+          set -eu
+          if [ "$PACKAGE" = "workspace" ]; then
+            echo "PKG_FLAGS=--workspace" >> "$GITHUB_ENV"
+            echo "FMT_FLAGS=--all" >> "$GITHUB_ENV"
+          else
+            echo "PKG_FLAGS=--package $PACKAGE" >> "$GITHUB_ENV"
+            echo "FMT_FLAGS=--package $PACKAGE" >> "$GITHUB_ENV"
+          fi
+
+      - name: Format
+        id: fmt
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          read -r -a sel <<< "$FMT_FLAGS"
+          cargo fmt "${sel[@]}" -- --check 2>&1 | tee fmt-raw.txt
+
+      - name: Clippy
+        id: clippy
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          read -r -a sel <<< "$PKG_FLAGS"
+          cargo clippy "${sel[@]}" --all-targets -- -D warnings 2>&1 | tee clippy-raw.txt
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          read -r -a sel <<< "$PKG_FLAGS"
+          cargo build "${sel[@]}" --all-targets 2>&1 | tee build-raw.txt
+
+      - name: Test
+        id: test
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          read -r -a sel <<< "$PKG_FLAGS"
+          cargo test "${sel[@]}" --no-fail-fast 2>&1 | tee test-raw.txt
+
+      - name: Summarize
+        if: always()
+        env:
+          BUILD_NUM: ${{ github.run_number }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          RUST_VERSION: ${{ steps.toolchain.outputs.version }}
+          FMT_OUTCOME: ${{ steps.fmt.outcome }}
+          CLIPPY_OUTCOME: ${{ steps.clippy.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          python3 scripts/ci_summary.py \
+            --fmt-log fmt-raw.txt --clippy-log clippy-raw.txt \
+            --build-log build-raw.txt --test-log test-raw.txt \
+            --fmt-outcome "$FMT_OUTCOME" --clippy-outcome "$CLIPPY_OUTCOME" \
+            --build-outcome "$BUILD_OUTCOME" --test-outcome "$TEST_OUTCOME" \
+            --json ci-results.json --md "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload logs and results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-results-${{ github.run_number }}
+          path: |
+            fmt-raw.txt
+            clippy-raw.txt
+            build-raw.txt
+            test-raw.txt
+            ci-results.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Fail if any check failed
+        if: always()
+        env:
+          FMT_OUTCOME: ${{ steps.fmt.outcome }}
+          CLIPPY_OUTCOME: ${{ steps.clippy.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          failed=0
+          for pair in "fmt:$FMT_OUTCOME" "clippy:$CLIPPY_OUTCOME" "build:$BUILD_OUTCOME" "test:$TEST_OUTCOME"; do
+            name="${pair%%:*}"
+            outcome="${pair#*:}"
+            if [ "$outcome" != "success" ]; then
+              echo "::error title=midman-ai CI::$name finished with outcome: $outcome"
+              failed=1
+            fi
+          done
+          exit "$failed"
