@@ -1,0 +1,30 @@
+# Build output
+target/
+dist/
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.enc
+
+# Logs and OS noise
+*.log
+.DS_Store
+**/.DS_Store
+
+# Model weights, checkpoints and bulk training data are never committed (see data/README.md).
+# Manifests and READMEs under data/ are fine.
+*.safetensors
+*.gguf
+*.ggml
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.parquet
+*.arrow
+runs/
+checkpoints/
