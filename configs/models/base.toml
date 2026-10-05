@@ -1,0 +1,13 @@
+# MidMan model config preset: base
+# Parameters at vocab_size 32000: 109529856
+schema_version = 1
+vocab_size = 32000
+d_model = 768
+n_layers = 12
+n_heads = 12
+n_kv_heads = 12
+d_ff = 2048
+max_seq_len = 1024
+rope_theta = 10000.0
+norm_eps = 1e-5
+tie_embeddings = true

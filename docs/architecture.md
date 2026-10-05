@@ -53,16 +53,24 @@ The workspace keeps three systems separate but interoperable:
 | `midman-server` | Server entry point for MidMan. |
 | `midman-trainer` | Training entry point for MidMan model runs. |
 
+## Status
+Real code exists in three crates. The rest are stubs.
+
+| Crate | State |
+| --- | --- |
+| `midman-foundation` | Errors, format-version check, deterministic RNG. |
+| `midman-model-config` | Architecture config, exact parameter counts, text format, six presets. |
+| `midman-tensor` | CPU tensors, reverse-mode autodiff, every operation a decoder block needs, gradient checker. |
+
+Dependencies so far: `midman-model-config` and `midman-tensor` depend on `midman-foundation`. Nothing else depends on anything.
+
+## Decisions
+- **Trained from scratch, in Rust.** No pretrained weights. Training data is public open-source code plus in-house data.
+- **Tensors, autograd and kernels are written in-house.** The model stack does not build on a framework such as Burn. A CPU reference implementation comes first, because it can be tested completely and every later backend has to match it. GPU access has not been arranged, and the GPU backend is not designed yet.
+- **v0 model architecture:** a Llama-style decoder (RMSNorm, rotary embeddings, grouped-query attention, SwiGLU MLP, no biases, tied embeddings). These are defaults to start from, set in `midman-model-config`, and can change.
+
 ## Not settled yet
-- The crate dependency graph. No crate depends on another one yet.
-- The compute backend strategy.
-- The final model architecture.
+- How the tensor storage is generalized for a GPU backend, and where the GPU kernels come from.
+- The rest of the crate dependency graph.
+- The final model architecture beyond the v0 defaults.
 - The sandbox execution approach.
-
-## Related projects
-- Ubel Stratum: https://github.com/MidManStudio/ubel_stratum
-- Mid Engine: https://github.com/Mid-D-Man/mid-engine
-- DixScript-Rust: https://github.com/Mid-D-Man/DixScript-Rust
-
-## Fixes and Problems
-None yet.

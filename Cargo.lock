@@ -41,6 +41,9 @@ version = "0.0.1"
 [[package]]
 name = "midman-model-config"
 version = "0.0.1"
+dependencies = [
+ "midman-foundation",
+]
 
 [[package]]
 name = "midman-nn"
@@ -65,6 +68,9 @@ version = "0.0.1"
 [[package]]
 name = "midman-tensor"
 version = "0.0.1"
+dependencies = [
+ "midman-foundation",
+]
 
 [[package]]
 name = "midman-tokenizer"

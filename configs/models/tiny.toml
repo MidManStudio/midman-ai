@@ -1,0 +1,13 @@
+# MidMan model config preset: tiny
+# Parameters at vocab_size 4096: 1315968
+schema_version = 1
+vocab_size = 4096
+d_model = 128
+n_layers = 4
+n_heads = 4
+n_kv_heads = 4
+d_ff = 344
+max_seq_len = 256
+rope_theta = 10000.0
+norm_eps = 1e-5
+tie_embeddings = true

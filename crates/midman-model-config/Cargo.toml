@@ -12,4 +12,4 @@ name       = "midman_model_config"
 crate-type = ["lib"]
 
 [dependencies]
-# Intentionally empty. The crate dependency graph is not settled yet.
+midman-foundation = { path = "../midman-foundation" }
