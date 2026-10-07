@@ -1,0 +1,97 @@
+# .github/workflows/train-smoke.yml
+#
+# midman-ai training smoke test: trains the 117K-parameter Smoke preset on a few random
+# token sequences in a release build and checks that it memorizes them.
+#
+# This is the ignored test in crates/midman-model/tests/overfit.rs. A smaller version of it
+# runs in every `cargo test` (ci.yml). This one is slower in a debug build, so it only runs
+# here, in release mode, and only when started by hand (workflow_dispatch).
+#
+# Helper script: scripts/train_smoke_summary.py. Notes: docs/ci-and-workflows.md.
+
+name: midman-ai Train Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  smoke:
+    name: memorize random sequences
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Toolchain info
+        id: toolchain
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          echo "version=$(rustc --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-smoke-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-smoke-${{ runner.os }}-
+
+      - name: Run the smoke test
+        id: smoke
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          cargo test --release -p midman-model --test overfit -- --ignored --nocapture 2>&1 | tee smoke-raw.txt
+
+      - name: Summarize
+        if: always()
+        env:
+          BUILD_NUM: ${{ github.run_number }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          RUST_VERSION: ${{ steps.toolchain.outputs.version }}
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+        run: |
+          python3 scripts/train_smoke_summary.py \
+            --log smoke-raw.txt --outcome "$SMOKE_OUTCOME" \
+            --build "$BUILD_NUM" --branch "$BRANCH" --commit "$COMMIT" \
+            --rust-version "$RUST_VERSION" \
+            --json train-smoke-results.json --md "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload raw log and results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: train-smoke-${{ github.run_number }}
+          path: |
+            smoke-raw.txt
+            train-smoke-results.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Fail if the smoke test failed
+        if: steps.smoke.outcome != 'success'
+        env:
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+        run: |
+          echo "::error title=midman-ai Train Smoke::the smoke test finished with outcome: $SMOKE_OUTCOME"
+          exit 1
