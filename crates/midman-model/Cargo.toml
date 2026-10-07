@@ -12,4 +12,12 @@ name       = "midman_model"
 crate-type = ["lib"]
 
 [dependencies]
-# Intentionally empty. The crate dependency graph is not settled yet.
+midman-foundation   = { path = "../midman-foundation" }
+midman-model-config = { path = "../midman-model-config" }
+midman-nn           = { path = "../midman-nn" }
+midman-tensor       = { path = "../midman-tensor" }
+
+[dev-dependencies]
+# Only the training smoke test uses the optimizer; it moves to midman-training
+# when that crate has a training loop.
+midman-optim = { path = "../midman-optim" }

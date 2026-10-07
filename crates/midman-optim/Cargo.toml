@@ -12,4 +12,5 @@ name       = "midman_optim"
 crate-type = ["lib"]
 
 [dependencies]
-# Intentionally empty. The crate dependency graph is not settled yet.
+midman-foundation = { path = "../midman-foundation" }
+midman-tensor     = { path = "../midman-tensor" }

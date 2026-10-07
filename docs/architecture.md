@@ -54,15 +54,20 @@ The workspace keeps three systems separate but interoperable:
 | `midman-trainer` | Training entry point for MidMan model runs. |
 
 ## Status
-Real code exists in three crates. The rest are stubs.
+Real code exists in six crates. The rest are stubs.
 
 | Crate | State |
 | --- | --- |
 | `midman-foundation` | Errors, format-version check, deterministic RNG. |
 | `midman-model-config` | Architecture config, exact parameter counts, text format, six presets. |
 | `midman-tensor` | CPU tensors, reverse-mode autodiff, every operation a decoder block needs, gradient checker. |
+| `midman-nn` | Linear, embedding, RMSNorm, rotary embeddings, causal grouped-query attention, SwiGLU MLP, decoder block. |
+| `midman-model` | `MidManModel`: the decoder-only transformer built from a `ModelConfig`, with the parameter total checked against the config. |
+| `midman-optim` | AdamW, warmup and cosine schedule, global-norm gradient clipping. |
 
-Dependencies so far: `midman-model-config` and `midman-tensor` depend on `midman-foundation`. Nothing else depends on anything.
+A small model trains end to end on the CPU: the smoke test in `midman-model` memorizes random sequences through the real forward pass, `backward`, clipping and AdamW.
+
+Dependencies so far: `midman-model-config`, `midman-tensor` and `midman-optim` (through `midman-tensor`) depend on `midman-foundation`. `midman-nn` depends on `midman-foundation` and `midman-tensor`. `midman-model` depends on `midman-foundation`, `midman-model-config`, `midman-nn` and `midman-tensor`, and has `midman-optim` as a dev-dependency for the smoke test. Nothing else depends on anything.
 
 ## Decisions
 - **Trained from scratch, in Rust.** No pretrained weights. Training data is public open-source code plus in-house data.

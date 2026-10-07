@@ -1,14 +1,14 @@
 # CI and workflows
 
 ## Overview
-Four GitHub Actions workflows and five helper scripts cover formatting, linting, tests, docs, security scans and benchmarks for the whole workspace.
+Five GitHub Actions workflows and six helper scripts cover formatting, linting, tests, docs, security scans, benchmarks and a training smoke test for the whole workspace.
 
 Every workflow is manual only (`workflow_dispatch`). There are no push or pull_request triggers, so every run is one you chose to start. Each run writes a job summary and uploads its raw logs and a JSON result as an artifact.
 
 The workflows call the scripts, so `scripts/` has to be in the repository before a workflow can pass. Apply the tarball first, then add the workflow files.
 
 ## Conventions
-- Manual dispatch only. Enum-like inputs are `choice` dropdowns. The package dropdown in `ci.yml` and `benchmarks.yml` is a fixed list, so a new crate has to be added to both.
+- Manual dispatch only. Enum-like inputs are `choice` dropdowns. The package dropdown in `ci.yml` and `benchmarks.yml` is a fixed list, so a new crate has to be added to both. `train-smoke.yml` has no dropdown.
 - Every step that pipes into `tee` starts with `set -o pipefail`, so a failing command is not hidden by the pipe.
 - Steps that can fail use `continue-on-error: true` and an `id`, so every check runs. The final step reads the step outcomes and fails the job if any check failed.
 - The job summary comes from a script that parses the raw log. Summaries stay well under GitHub's 1024 KiB limit.
@@ -55,6 +55,15 @@ The HTML is not deployed anywhere. There is no docs hosting target for this repo
 
 Nothing in the workspace has a `[[bench]]` target yet, so the run currently finishes green and says no results were found. Runs on shared runners are noisy, so compare like with like. There is no ISA matrix; add one when a crate gets dispatched SIMD or GPU backends that need separate numbers.
 
+### `train-smoke.yml`
+**What it does:** Runs the ignored test `the_smoke_preset_memorizes_random_sequences` from `crates/midman-model/tests/overfit.rs` in a release build: the 117K-parameter Smoke preset trains on 4 random sequences of 32 tokens for 300 steps and must memorize them (final loss under a tenth of the starting loss, next-token accuracy above 95%).
+
+**Inputs:** none.
+
+**Output:** job summary with the start and end loss and the accuracy, plus artifact `train-smoke-<run>` with the raw log and `train-smoke-results.json` (30 days).
+
+A smaller version of the same test runs in every `cargo test`, so ordinary CI covers the training path. This workflow exists because the larger one is too slow in a debug build. It uses the workspace release profile (fat LTO, one codegen unit), so most of its time is compiling. The workflow file was checked with actionlint 1.7.12 and shellcheck. The test itself was run on Rust 1.75 with LTO turned off, where it took about 5 seconds; the workflow itself has not been run on GitHub.
+
 ## Scripts
 All scripts use only the Python standard library. `check_docs.py` and `repo_hygiene.py` need Python 3.11 or newer for `tomllib`.
 
@@ -72,6 +81,9 @@ All scripts use only the Python standard library. `check_docs.py` and `repo_hygi
 
 ### `security_summary.py`
 **What it does:** Turns `cargo audit --json` and the gitleaks JSON report into markdown. It never prints secret values.
+
+### `train_smoke_summary.py`
+**What it does:** Reads the `loss A -> B, accuracy C` line and the `test result:` line from the train-smoke log and writes `train-smoke-results.json` and a markdown summary. If the line is missing or the run failed, the summary shows the end of the raw log. It never fails the job.
 
 ## Not decided yet
 - `cargo-deny` is not used. It needs a license policy, and the workspace license is not chosen.

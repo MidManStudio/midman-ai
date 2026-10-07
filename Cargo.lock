@@ -37,6 +37,13 @@ version = "0.0.1"
 [[package]]
 name = "midman-model"
 version = "0.0.1"
+dependencies = [
+ "midman-foundation",
+ "midman-model-config",
+ "midman-nn",
+ "midman-optim",
+ "midman-tensor",
+]
 
 [[package]]
 name = "midman-model-config"
@@ -48,10 +55,18 @@ dependencies = [
 [[package]]
 name = "midman-nn"
 version = "0.0.1"
+dependencies = [
+ "midman-foundation",
+ "midman-tensor",
+]
 
 [[package]]
 name = "midman-optim"
 version = "0.0.1"
+dependencies = [
+ "midman-foundation",
+ "midman-tensor",
+]
 
 [[package]]
 name = "midman-quant"
