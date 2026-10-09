@@ -4,15 +4,33 @@
 # token sequences in a release build and checks that it memorizes them.
 #
 # This is the ignored test in crates/midman-model/tests/overfit.rs. A smaller version of it
-# runs in every `cargo test` (ci.yml). This one is slower in a debug build, so it only runs
+# runs in every `cargo test` (ci.yml). This one is too slow in a debug build, so it only runs
 # here, in release mode, and only when started by hand (workflow_dispatch).
 #
-# Helper script: scripts/train_smoke_summary.py. Notes: docs/ci-and-workflows.md.
+# `platforms: all` runs it on macos-latest and ubuntu-24.04-arm as well. That is the check
+# worth making here: the random normal draws use the platform's ln/sin/cos, so the final
+# loss can differ in its last digits between platforms, and the summary of each leg shows
+# the numbers side by side. ubuntu-only is the fast default.
+#
+# Helper script: scripts/train_smoke_summary.py, tested by scripts/test_train_smoke_summary.py.
+# Notes: docs/ci-and-workflows.md.
 
 name: midman-ai Train Smoke
 
 on:
   workflow_dispatch:
+    inputs:
+      baseline_note:
+        description: 'Free-text label for this run, shown in the summary'
+        type: string
+        default: ''
+      platforms:
+        description: 'ubuntu-only is the fast default; all adds macos-latest and ubuntu-24.04-arm'
+        type: choice
+        default: ubuntu-only
+        options:
+          - ubuntu-only
+          - all
 
 permissions:
   contents: read
@@ -23,15 +41,24 @@ env:
 
 jobs:
   smoke:
-    name: memorize random sequences
-    runs-on: ubuntu-latest
+    name: memorize random sequences (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.platforms == 'all' && '["ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["ubuntu-latest"]') }}
+    env:
+      BASELINE_NOTE: ${{ inputs.baseline_note }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Parser self-test
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -51,9 +78,9 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-          key: cargo-registry-midman-smoke-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-registry-midman-smoke-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            cargo-registry-midman-smoke-${{ runner.os }}-
+            cargo-registry-midman-smoke-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Run the smoke test
         id: smoke
@@ -69,6 +96,7 @@ jobs:
           BRANCH: ${{ github.ref_name }}
           COMMIT: ${{ github.sha }}
           RUST_VERSION: ${{ steps.toolchain.outputs.version }}
+          RUNNER_LABEL: ${{ matrix.os }} (${{ runner.os }} ${{ runner.arch }})
           SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
         run: |
           python3 scripts/train_smoke_summary.py \
@@ -81,7 +109,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: train-smoke-${{ github.run_number }}
+          name: train-smoke-${{ github.run_number }}-${{ matrix.os }}
           path: |
             smoke-raw.txt
             train-smoke-results.json
