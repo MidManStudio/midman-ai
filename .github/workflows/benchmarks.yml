@@ -1,17 +1,26 @@
 # .github/workflows/benchmarks.yml
 #
-# midman-ai benchmarks: runs `cargo bench` for the whole workspace or one package.
+# midman-ai benchmarks: runs `cargo bench` for the criterion package (benches/midman-bench),
+# for one crate, or for the whole workspace.
 #
-# Manual only (workflow_dispatch). Nothing in the workspace has a [[bench]] target yet,
-# so until one exists this run finishes green and says so in the summary.
+# Manual only (workflow_dispatch). Benchmark ids are `group/variant`. A variant named
+# `baseline-*` is a reference implementation and is badged in the summary; a variant named
+# `unit-*` is a cost denominator (such as the forward pass) and gets a plain multiple.
+#
+# Toolchain: criterion pulls in clap_builder, which needs a Cargo that understands
+# edition2024 (about 1.85 or newer). This workflow uses the latest stable. The other crates
+# do not have that requirement; see docs/workspace-cargo.md.
 #
 # Numbers from a shared GitHub runner are noisy. Compare runs of the same package on the
-# same runner type, and use baseline_note to label what changed. There is no ISA matrix
-# here on purpose: add one when a crate gets dispatched SIMD or GPU backends that need
-# separate numbers.
+# same runner type, and use baseline_note to label what changed. `platforms: all` adds
+# macos-latest and ubuntu-24.04-arm; use it before trusting a cross-platform claim, not by
+# default. There is no ISA matrix here on purpose: the kernels are plain Rust that the
+# compiler vectorizes, with no dispatched SIMD backends to compare. Add one when a crate
+# gets those or a GPU backend.
 #
 # Helper script: scripts/bench_summary.py (parses criterion output into
-# bench-results.json and the job summary). Notes: docs/ci-and-workflows.md.
+# bench-results.json and the job summary), tested by scripts/test_bench_summary.py.
+# Notes: docs/ci-and-workflows.md.
 #
 # Keep the package list in step with ci.yml.
 
@@ -23,8 +32,9 @@ on:
       package:
         description: 'What to benchmark (workspace = every crate and app)'
         type: choice
-        default: workspace
+        default: midman-bench
         options:
+          - midman-bench
           - workspace
           - midman-foundation
           - midman-model-config
@@ -55,6 +65,13 @@ on:
         description: 'Free-text label for this run, shown in the summary'
         type: string
         default: ''
+      platforms:
+        description: 'ubuntu-only is the fast default; all adds macos-latest and ubuntu-24.04-arm'
+        type: choice
+        default: ubuntu-only
+        options:
+          - ubuntu-only
+          - all
 
 permissions:
   contents: read
@@ -65,9 +82,13 @@ env:
 
 jobs:
   bench:
-    name: cargo bench
-    runs-on: ubuntu-latest
+    name: cargo bench (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.platforms == 'all' && '["ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["ubuntu-latest"]') }}
     env:
       PACKAGE: ${{ inputs.package }}
       BENCH_FILTER: ${{ inputs.bench_filter }}
@@ -78,6 +99,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Parser self-test
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -97,9 +121,9 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-          key: cargo-registry-midman-bench-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-registry-midman-bench-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            cargo-registry-midman-bench-${{ runner.os }}-
+            cargo-registry-midman-bench-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Run benchmarks
         id: bench
@@ -124,6 +148,7 @@ jobs:
           BRANCH: ${{ github.ref_name }}
           COMMIT: ${{ github.sha }}
           RUST_VERSION: ${{ steps.toolchain.outputs.version }}
+          RUNNER_LABEL: ${{ matrix.os }} (${{ runner.os }} ${{ runner.arch }})
           BENCH_OUTCOME: ${{ steps.bench.outcome }}
         run: |
           python3 scripts/bench_summary.py \
@@ -134,7 +159,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: bench-results-${{ github.run_number }}
+          name: bench-results-${{ github.run_number }}-${{ matrix.os }}
           path: |
             bench-raw.txt
             bench-results.json
