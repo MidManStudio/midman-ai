@@ -46,6 +46,7 @@ on:
           - midman-cli
           - midman-server
           - midman-trainer
+          - midman-bench
 
 permissions:
   contents: read
