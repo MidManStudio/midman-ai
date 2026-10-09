@@ -272,6 +272,25 @@ mod tests {
     }
 
     #[test]
+    fn scaling_every_gradient_does_not_change_the_trajectory() {
+        // Adam normalizes by the gradient's own size, so with a negligible epsilon a
+        // gradient 1000 times larger moves the weights exactly as far.
+        let run = |scale: f32| -> Vec<f32> {
+            let mut w =
+                Parameter::new("w", Tensor::from_vec(vec![0.5, -0.5, 1.0, -1.0], &[2, 2]).unwrap());
+            let mut opt = AdamW::new(0.9, 0.99, 1e-20, 0.05).unwrap();
+            for step in 0..6u32 {
+                let g: Vec<f32> =
+                    (0..4).map(|i| scale * ((step * 4 + i) as f32 * 0.37).sin()).collect();
+                opt.step(&mut [&mut w], &[g], 0.05).unwrap();
+            }
+            w.data().to_vec()
+        };
+        assert_close(&run(1.0), &run(1000.0));
+        assert_close(&run(1.0), &run(1e-3));
+    }
+
+    #[test]
     fn a_quadratic_converges_through_real_gradients() {
         // minimize sum((w - target)^2) using backward() for the gradients.
         let target = [2.0f32, -1.0, 0.5];

@@ -15,11 +15,17 @@ the gate step in train-smoke.yml decides pass/fail from the step outcome.
 """
 import argparse
 import json
+import os
 import re
 
 RE_ANSI = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 RE_RESULT = re.compile(r"loss\s+([0-9.]+)\s+->\s+([0-9.]+),\s+accuracy\s+([0-9.]+)")
 RE_SUMMARY = re.compile(r"^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored")
+RE_PANIC = re.compile(r"panicked at")
+# Cargo prints `Finished `release` profile ...` now and `Finished release [optimized] ...` on older versions.
+RE_FINISHED = re.compile(r"^[ \t]*Finished ", re.M)
+MAX_RAW_EMBED = 200_000
+TAIL_LINES = 60
 
 
 def parse(text):
@@ -34,9 +40,19 @@ def parse(text):
     return runs, totals
 
 
-def tail(text, n=25):
-    lines = RE_ANSI.sub("", text).splitlines()
-    return "\n".join(lines[-n:])
+def raw_embed(text):
+    """The end of the log without the build output.
+
+    Everything before cargo's own `Finished` line is compiler output, which can be
+    thousands of warning lines and can push the job summary past GitHub's size
+    limit. If the marker is missing the build itself failed and the whole log is
+    the useful part. The result is also capped in size and in lines.
+    """
+    text = RE_ANSI.sub("", text)
+    finished = list(RE_FINISHED.finditer(text))
+    body = text[finished[-1].start():] if finished else text
+    body = "\n".join(body.splitlines()[-TAIL_LINES:])
+    return body[-MAX_RAW_EMBED:]
 
 
 def main():
@@ -57,13 +73,17 @@ def main():
     except OSError:
         text = ""
     runs, totals = parse(text)
+    panics = len(RE_PANIC.findall(text))
+    runner = os.environ.get("RUNNER_LABEL", "unknown")
+    note = os.environ.get("BASELINE_NOTE", "")
 
     result = {
         "meta": {"build": args.build, "branch": args.branch, "commit": args.commit,
-                 "rust_version": args.rust_version},
+                 "rust_version": args.rust_version, "runner": runner, "note": note},
         "outcome": args.outcome,
         "runs": [{"first_loss": a, "last_loss": b, "accuracy": c} for a, b, c in runs],
         "tests": totals,
+        "panics": panics,
     }
     with open(args.json_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
@@ -72,8 +92,10 @@ def main():
     icon = "\u2705 pass" if args.outcome == "success" else "\u274c fail"
     out = [f"## midman-ai train smoke: build #{args.build}", "",
            f"Branch: `{args.branch}` &nbsp;|&nbsp; Commit: `{args.commit[:10]}` &nbsp;|&nbsp; "
-           f"Rust: `{args.rust_version or 'unknown'}`", "",
-           f"`cargo test --release -- --ignored`: {icon}", ""]
+           f"Runner: `{runner}` &nbsp;|&nbsp; Rust: `{args.rust_version or 'unknown'}`", ""]
+    if note:
+        out += [f"Note: {note}", ""]
+    out += [f"`cargo test --release -- --ignored`: {icon}", ""]
     if runs:
         out += ["| Run | Loss at start | Loss at end | Next-token accuracy |",
                 "| --- | --- | --- | --- |"]
@@ -85,8 +107,10 @@ def main():
     if totals:
         out += [f"Tests: {totals['passed']} passed, {totals['failed']} failed, "
                 f"{totals['ignored']} ignored.", ""]
+    if panics:
+        out += ["### Diagnostics", "", "| Kind | Count |", "|---|---|", f"| panic | {panics} |", ""]
     if not runs or args.outcome != "success":
-        out += ["<details><summary>End of the raw log</summary>", "", "```", tail(text), "```",
+        out += ["<details><summary>End of the raw log</summary>", "", "```", raw_embed(text), "```",
                 "", "</details>", ""]
     md = "\n".join(out)
     if args.md:

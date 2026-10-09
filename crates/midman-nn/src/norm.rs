@@ -123,6 +123,20 @@ mod tests {
     }
 
     #[test]
+    fn scaling_the_input_does_not_change_the_output() {
+        // RMSNorm divides out the overall scale; a tiny eps keeps that exact enough.
+        let x = Tensor::uniform(&[3, 8], -2.0, 2.0, &mut Rng::seed_from_u64(7)).unwrap();
+        let w = Tensor::uniform(&[8], 0.5, 1.5, &mut Rng::seed_from_u64(8)).unwrap();
+        let base = rms_norm(&x, &w, 1e-12).unwrap();
+        for factor in [0.01f32, 7.0, 1000.0] {
+            let scaled = rms_norm(&x.scale(factor), &w, 1e-12).unwrap();
+            for (a, b) in base.data().iter().zip(scaled.data()) {
+                assert!((a - b).abs() < 1e-3, "factor {factor}: {a} vs {b}");
+            }
+        }
+    }
+
+    #[test]
     fn the_weight_scales_each_channel() {
         let x = Tensor::ones(&[2, 3]).unwrap();
         let w = Tensor::from_vec(vec![1.0, 2.0, 3.0], &[3]).unwrap();

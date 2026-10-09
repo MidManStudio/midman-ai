@@ -312,6 +312,27 @@ mod tests {
     }
 
     #[test]
+    fn huge_scores_stay_finite() {
+        // Scores in the thousands would overflow a softmax that skips the row maximum.
+        let big = |seed| rand_t(&[1, 2, 4, 4], seed).scale(300.0);
+        let out = causal_attention(&big(40), &big(41), &rand_t(&[1, 2, 4, 4], 42)).unwrap();
+        assert!(out.is_finite());
+        // Each output row is a convex combination of value rows, so it stays within their range.
+        assert!(out.data().iter().all(|v| v.abs() <= 1.0 + 1e-5));
+    }
+
+    #[test]
+    fn batch_entries_are_independent() {
+        let q = rand_t(&[3, 2, 4, 3], 43);
+        let (k, v) = (rand_t(&[3, 2, 4, 3], 44), rand_t(&[3, 2, 4, 3], 45));
+        let together = causal_attention(&q, &k, &v).unwrap();
+        let one = |t: &Tensor| t.narrow(0, 1, 1).unwrap();
+        let alone = causal_attention(&one(&q), &one(&k), &one(&v)).unwrap();
+        let size = 2 * 4 * 3;
+        assert_eq!(&together.data()[size..2 * size], alone.data());
+    }
+
+    #[test]
     fn bad_shapes_are_errors() {
         let q = rand_t(&[1, 4, 3, 2], 13);
         let ok = rand_t(&[1, 2, 3, 2], 14);

@@ -1,0 +1,36 @@
+[package]
+name        = "midman-bench"
+version     = "0.0.1"
+edition     = "2021"
+publish     = false
+description = "Criterion benchmarks for the midman-ai crates, kept in their own package so the benchmark toolchain requirement does not reach the library crates."
+
+[lints]
+workspace = true
+
+[dependencies]
+midman-foundation   = { path = "../../crates/midman-foundation" }
+midman-model-config = { path = "../../crates/midman-model-config" }
+midman-tensor       = { path = "../../crates/midman-tensor" }
+midman-nn           = { path = "../../crates/midman-nn" }
+midman-model        = { path = "../../crates/midman-model" }
+midman-optim        = { path = "../../crates/midman-optim" }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name    = "tensor_ops"
+harness = false
+
+[[bench]]
+name    = "nn_layers"
+harness = false
+
+[[bench]]
+name    = "model_step"
+harness = false
+
+[[bench]]
+name    = "optim_step"
+harness = false

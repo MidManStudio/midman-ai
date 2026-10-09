@@ -1,5 +1,8 @@
 [workspace]
 # Rationale for every section in this file: see docs/workspace-cargo.md.
+# benches/midman-bench needs a toolchain with edition2024 support (criterion ->
+# clap_builder); every other member does not. See docs/workspace-cargo.md,
+# "Toolchain walls."
 members = [
     "crates/midman-foundation",
     "crates/midman-model-config",
@@ -22,6 +25,7 @@ members = [
     "apps/midman-cli",
     "apps/midman-server",
     "apps/midman-trainer",
+    "benches/midman-bench",
 ]
 resolver = "2"
 
@@ -34,7 +38,7 @@ missing_docs = "warn"
 undocumented_unsafe_blocks = "warn"
 
 [workspace.dependencies]
-# Intentionally empty.
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [profile.release]
 opt-level     = 3

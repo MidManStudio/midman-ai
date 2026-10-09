@@ -1,0 +1,140 @@
+   Compiling midman-bench v0.0.1 (/home/claude/midman-ai/benches/midman-bench)
+    Finished `bench` profile [optimized + debuginfo] target(s) in 1m 05s
+     Running benches/model_step.rs (/home/claude/target-191/release/deps/model_step-16ab2bc121390286)
+Gnuplot not found, using plotters backend
+Benchmarking train_step_smoke_b4_t32/unit-forward
+Benchmarking train_step_smoke_b4_t32/unit-forward: Warming up for 1.0000 s
+Benchmarking train_step_smoke_b4_t32/unit-forward: Collecting 10 samples in estimated 2.0641 s (605 iterations)
+Benchmarking train_step_smoke_b4_t32/unit-forward: Analyzing
+train_step_smoke_b4_t32/unit-forward
+                        time:   [3.3381 ms 3.3864 ms 3.5005 ms]
+                        thrpt:  [36.566 Kelem/s 37.798 Kelem/s 38.345 Kelem/s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+Benchmarking train_step_smoke_b4_t32/forward-backward
+Benchmarking train_step_smoke_b4_t32/forward-backward: Warming up for 1.0000 s
+Benchmarking train_step_smoke_b4_t32/forward-backward: Collecting 10 samples in estimated 2.3961 s (165 iterations)
+Benchmarking train_step_smoke_b4_t32/forward-backward: Analyzing
+train_step_smoke_b4_t32/forward-backward
+                        time:   [14.599 ms 15.252 ms 15.979 ms]
+                        thrpt:  [8.0104 Kelem/s 8.3924 Kelem/s 8.7677 Kelem/s]
+                 change:
+                        time:   [+17.178% +20.262% +23.802%] (p = 0.00 < 0.05)
+                        thrpt:  [-19.226% -16.848% -14.659%]
+                        Performance has regressed.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+Benchmarking train_step_smoke_b4_t32/full-step
+Benchmarking train_step_smoke_b4_t32/full-step: Warming up for 1.0000 s
+Benchmarking train_step_smoke_b4_t32/full-step: Collecting 10 samples in estimated 2.4621 s (165 iterations)
+Benchmarking train_step_smoke_b4_t32/full-step: Analyzing
+train_step_smoke_b4_t32/full-step
+                        time:   [14.813 ms 15.010 ms 15.280 ms]
+                        thrpt:  [8.3771 Kelem/s 8.5277 Kelem/s 8.6411 Kelem/s]
+                 change:
+                        time:   [+13.267% +16.259% +19.495%] (p = 0.00 < 0.05)
+                        thrpt:  [-16.315% -13.985% -11.713%]
+                        Performance has regressed.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+
+Benchmarking train_step_tiny_b1_t32/unit-forward
+Benchmarking train_step_tiny_b1_t32/unit-forward: Warming up for 1.0000 s
+Benchmarking train_step_tiny_b1_t32/unit-forward: Collecting 10 samples in estimated 10.497 s (1155 iterations)
+Benchmarking train_step_tiny_b1_t32/unit-forward: Analyzing
+train_step_tiny_b1_t32/unit-forward
+                        time:   [8.8296 ms 8.9717 ms 9.1455 ms]
+                        thrpt:  [3.4990 Kelem/s 3.5668 Kelem/s 3.6242 Kelem/s]
+Benchmarking train_step_tiny_b1_t32/forward-backward
+Benchmarking train_step_tiny_b1_t32/forward-backward: Warming up for 1.0000 s
+Benchmarking train_step_tiny_b1_t32/forward-backward: Collecting 10 samples in estimated 11.167 s (220 iterations)
+Benchmarking train_step_tiny_b1_t32/forward-backward: Analyzing
+train_step_tiny_b1_t32/forward-backward
+                        time:   [50.344 ms 51.386 ms 52.460 ms]
+                        thrpt:  [609.98  elem/s 622.73  elem/s 635.63  elem/s]
+                 change:
+                        time:   [+17.522% +19.964% +22.485%] (p = 0.00 < 0.05)
+                        thrpt:  [-18.358% -16.642% -14.909%]
+                        Performance has regressed.
+Found 4 outliers among 10 measurements (40.00%)
+  2 (20.00%) low mild
+  2 (20.00%) high mild
+Benchmarking train_step_tiny_b1_t32/full-step
+Benchmarking train_step_tiny_b1_t32/full-step: Warming up for 1.0000 s
+Benchmarking train_step_tiny_b1_t32/full-step: Collecting 10 samples in estimated 12.862 s (220 iterations)
+Benchmarking train_step_tiny_b1_t32/full-step: Analyzing
+train_step_tiny_b1_t32/full-step
+                        time:   [54.198 ms 55.400 ms 56.245 ms]
+                        thrpt:  [568.93  elem/s 577.62  elem/s 590.43  elem/s]
+                 change:
+                        time:   [+24.965% +28.177% +30.906%] (p = 0.00 < 0.05)
+                        thrpt:  [-23.609% -21.983% -19.978%]
+                        Performance has regressed.
+
+Benchmarking model_build/smoke
+Benchmarking model_build/smoke: Warming up for 1.0000 s
+Benchmarking model_build/smoke: Collecting 10 samples in estimated 2.0765 s (825 iterations)
+Benchmarking model_build/smoke: Analyzing
+model_build/smoke       time:   [2.2632 ms 2.3045 ms 2.4140 ms]
+                        thrpt:  [48.491 Melem/s 50.796 Melem/s 51.722 Melem/s]
+                 change:
+                        time:   [+19.401% +27.587% +36.508%] (p = 0.00 < 0.05)
+                        thrpt:  [-26.744% -21.622% -16.248%]
+                        Performance has regressed.
+Benchmarking model_build/tiny
+Benchmarking model_build/tiny: Warming up for 1.0000 s
+Benchmarking model_build/tiny: Collecting 10 samples in estimated 2.8569 s (110 iterations)
+Benchmarking model_build/tiny: Analyzing
+model_build/tiny        time:   [25.061 ms 25.409 ms 26.030 ms]
+                        thrpt:  [50.555 Melem/s 51.791 Melem/s 52.511 Melem/s]
+                 change:
+                        time:   [+13.400% +16.368% +19.174%] (p = 0.00 < 0.05)
+                        thrpt:  [-16.089% -14.066% -11.817%]
+                        Performance has regressed.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+
+     Running benches/nn_layers.rs (/home/claude/target-191/release/deps/nn_layers-28038d709b9e05d9)
+Gnuplot not found, using plotters backend
+Benchmarking attention_forward_t16/baseline-mha
+Benchmarking attention_forward_t16/baseline-mha: Warming up for 1.0000 s
+Benchmarking attention_forward_t16/baseline-mha: Collecting 10 samples in estimated 2.0010 s (13k iterations)
+Benchmarking attention_forward_t16/baseline-mha: Analyzing
+attention_forward_t16/baseline-mha
+                        time:   [154.93 µs 159.28 µs 167.77 µs]
+                        change: [+24.637% +29.173% +33.332%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Benchmarking attention_forward_t16/gqa-2
+Benchmarking attention_forward_t16/gqa-2: Warming up for 1.0000 s
+Benchmarking attention_forward_t16/gqa-2: Collecting 10 samples in estimated 2.0029 s (15k iterations)
+Benchmarking attention_forward_t16/gqa-2: Analyzing
+attention_forward_t16/gqa-2
+                        time:   [131.28 µs 132.31 µs 134.07 µs]
+                        change: [+15.174% +17.255% +19.098%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Benchmarking attention_forward_t16/mqa
+Benchmarking attention_forward_t16/mqa: Warming up for 1.0000 s
+Benchmarking attention_forward_t16/mqa: Collecting 10 samples in estimated 2.0054 s (14k iterations)
+Benchmarking attention_forward_t16/mqa: Analyzing
+attention_forward_t16/mqa
+                        time:   [126.90 µs 130.99 µs 137.10 µs]
+                        change: [+19.034% +23.307% +27.104%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+
+Benchmarking attention_forward_t64/baseline-mha
+Benchmarking attention_forward_t64/baseline-mha: Warming up for 1.0000 s
+Benchmarking attention_forward_t64/baseline-mha: Collecting 10 samples in estimated 2.0225 s (2200 iterations)
+Benchmarking attention_forward_t64/baseline-mha: Analyzing
+attention_forward_t64/baseline-mha
+                        time:   [973.47 µs 1.0036 ms 1.0356 ms]
+                        change: [+19.666% +24.175% +28.271%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Benchmarking attention_forward_t64/gqa-2
+Benchmarking attention_forward_t64/gqa-2: Warming up for 1.0000 s
+Benchmarking attention_forward_t64/gqa-2: Collecting 10 samples in estimated 2.0196 s (2365 iterations)
+Benchmarking attention_forward_t64/gqa-2: Analyzing
+attention_forward_t64/gqa-2
+                        time:   [852.33 µs 888.44 µs 919.40 µs]
+                        change: [+14.136% +17.228% +21.138%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 10 measurements (20.00%)

@@ -153,17 +153,80 @@ fn sequences_in_a_batch_do_not_affect_each_other() {
     }
 }
 
+#[test]
+fn a_shorter_prefix_gives_the_same_logits_as_the_start_of_a_longer_run() {
+    let model = MidManModel::with_init_std(&small(true), 0.3, &mut Rng::seed_from_u64(4)).unwrap();
+    let vocab = 13;
+    let ids = [3usize, 1, 4, 1, 5, 9, 2, 6];
+    let full = model.forward(&ids, 1, 8).unwrap();
+    for k in 1..=8 {
+        let prefix = model.forward(&ids[..k], 1, k).unwrap();
+        for (a, b) in prefix.data().iter().zip(&full.data()[..k * vocab]) {
+            assert!((a - b).abs() < 1e-5, "prefix of length {k}: {a} vs {b}");
+        }
+    }
+}
+
+#[test]
+fn the_order_of_sequences_in_a_batch_does_not_matter() {
+    let model = MidManModel::with_init_std(&small(true), 0.3, &mut Rng::seed_from_u64(5)).unwrap();
+    let (a, b) = ([1usize, 2, 3, 4], [9usize, 8, 7, 6]);
+    let (ta, tb) = ([2usize, 3, 4, 5], [8usize, 7, 6, 5]);
+    let loss = |x: [usize; 4], y: [usize; 4], u: [usize; 4], v: [usize; 4]| {
+        let inputs: Vec<usize> = x.iter().chain(&y).copied().collect();
+        let targets: Vec<usize> = u.iter().chain(&v).copied().collect();
+        model.loss(&inputs, &targets, 2, 4).unwrap().item().unwrap()
+    };
+    assert!((loss(a, b, ta, tb) - loss(b, a, tb, ta)).abs() < 1e-5);
+}
+
+#[test]
+fn the_batch_loss_is_the_mean_of_the_per_sequence_losses() {
+    let model = MidManModel::with_init_std(&small(false), 0.3, &mut Rng::seed_from_u64(6)).unwrap();
+    let (a, b) = ([1usize, 5, 2, 8, 3], [12usize, 0, 7, 7, 4]);
+    let (ta, tb) = ([5usize, 2, 8, 3, 6], [0usize, 7, 7, 4, 10]);
+    let single = |x: &[usize], y: &[usize]| model.loss(x, y, 1, 5).unwrap().item().unwrap();
+    let both_inputs: Vec<usize> = a.iter().chain(&b).copied().collect();
+    let both_targets: Vec<usize> = ta.iter().chain(&tb).copied().collect();
+    let together = model.loss(&both_inputs, &both_targets, 2, 5).unwrap().item().unwrap();
+    assert!((together - (single(&a, &ta) + single(&b, &tb)) / 2.0).abs() < 1e-5);
+}
+
+#[test]
+fn the_longest_allowed_sequence_and_a_single_token_both_run() {
+    let config = small(true);
+    let model = MidManModel::new(&config, &mut Rng::seed_from_u64(7)).unwrap();
+    let longest: Vec<usize> = (0..config.max_seq_len).map(|i| i % config.vocab_size).collect();
+    let logits = model.forward(&longest, 1, config.max_seq_len).unwrap();
+    assert_eq!(logits.shape(), &[1, config.max_seq_len, config.vocab_size]);
+    assert!(logits.is_finite());
+    let single = model.forward(&[3, 4, 5], 3, 1).unwrap();
+    assert_eq!(single.shape(), &[3, 1, config.vocab_size]);
+    assert!(single.is_finite());
+}
+
+/// How well one parameter's analytic gradient agrees with finite differences.
+struct ParamAgreement {
+    name: String,
+    /// Relative L2 error over the sampled entries.
+    error: f64,
+    /// L2 norm of the sampled analytic gradient entries.
+    size: f64,
+    /// Absolute L2 difference over the sampled entries.
+    absolute: f64,
+}
+
 /// Every parameter's analytic gradient against central finite differences.
 ///
 /// The weights are drawn with a large standard deviation so the gradients are
 /// well above `f32` noise; with the default 0.02 they would be too small for a
 /// finite difference to resolve. A few entries of every parameter are sampled.
-fn gradient_agreement(tie: bool) -> (f64, f64, Vec<(String, f64, f64)>) {
+fn gradient_agreement(tie: bool, batch: usize, seq: usize) -> (f64, f64, Vec<ParamAgreement>) {
     let config = small(tie);
     let mut model = MidManModel::with_init_std(&config, 0.3, &mut Rng::seed_from_u64(11)).unwrap();
-    let (batch, seq) = (2, 5);
-    let inputs = [1usize, 5, 2, 8, 3, 12, 0, 7, 7, 4];
-    let targets = [5usize, 2, 8, 3, 6, 0, 7, 7, 4, 10];
+    let mut ids = Rng::seed_from_u64(12);
+    let inputs: Vec<usize> = (0..batch * seq).map(|_| ids.below(config.vocab_size)).collect();
+    let targets: Vec<usize> = (0..batch * seq).map(|_| ids.below(config.vocab_size)).collect();
 
     let mut grads = model.loss(&inputs, &targets, batch, seq).unwrap().backward().unwrap();
     let analytic: Vec<Vec<f32>> = model
@@ -194,24 +257,58 @@ fn gradient_agreement(tie: bool) -> (f64, f64, Vec<(String, f64, f64)>) {
         }
         diff_sq += p_diff;
         ref_sq += p_ref;
-        per_param.push((name, (p_diff / p_ref.max(1e-12)).sqrt(), p_ref.sqrt()));
+        per_param.push(ParamAgreement {
+            name,
+            error: (p_diff / p_ref.max(1e-12)).sqrt(),
+            size: p_ref.sqrt(),
+            absolute: p_diff.sqrt(),
+        });
     }
     ((diff_sq / ref_sq).sqrt(), ref_sq.sqrt(), per_param)
+}
+
+fn check_gradients(tie: bool, batch: usize, seq: usize) {
+    let (relative_error, gradient_size, per_param) = gradient_agreement(tie, batch, seq);
+    let case = format!("tie={tie} batch={batch} seq={seq}");
+    assert!(gradient_size > 1e-2, "{case}: the sampled gradients are too small to mean anything");
+    assert!(relative_error < 5e-3, "{case}: overall relative error {relative_error}");
+    // Per parameter, so a bug confined to one small tensor cannot hide in the total.
+    for ParamAgreement { name, error, size, absolute } in &per_param {
+        // With one position the softmax is over a single score, so the attention output
+        // does not depend on the queries or keys: their gradient is exactly zero, and a
+        // finite difference must agree.
+        let ignores_scores =
+            seq == 1 && (name.ends_with("q_proj.weight") || name.ends_with("k_proj.weight"));
+        if ignores_scores {
+            assert_eq!(
+                *size, 0.0,
+                "{case}: {name} should have an exactly zero gradient, got {size}"
+            );
+            assert!(
+                *absolute < 1e-3,
+                "{case}: {name} finite difference should be about 0, got {absolute}"
+            );
+            continue;
+        }
+        assert!(
+            *size > 1e-3,
+            "{case}: the sampled gradient of {name} is {size}, too small to check"
+        );
+        assert!(*error < 3e-2, "{case}: {name} has relative error {error}");
+    }
 }
 
 #[test]
 fn analytic_gradients_match_finite_differences_for_every_parameter() {
     for tie in [true, false] {
-        let (relative_error, gradient_size, per_param) = gradient_agreement(tie);
-        assert!(gradient_size > 1e-2, "the sampled gradients are too small to mean anything");
-        assert!(relative_error < 5e-3, "tie={tie}: overall relative error {relative_error}");
-        // Per parameter, so a bug confined to one small tensor cannot hide in the total.
-        for (name, error, size) in &per_param {
-            assert!(
-                *size > 1e-3,
-                "tie={tie}: the sampled gradient of {name} is {size}, too small to check"
-            );
-            assert!(*error < 3e-2, "tie={tie}: {name} has relative error {error}");
-        }
+        check_gradients(tie, 2, 5);
     }
+}
+
+#[test]
+fn gradients_match_at_the_sequence_length_limits() {
+    // seq == max_seq_len exercises the full-length rotary tables and mask;
+    // seq == 1 has a single position that attends only to itself.
+    check_gradients(true, 1, small(true).max_seq_len);
+    check_gradients(false, 3, 1);
 }
