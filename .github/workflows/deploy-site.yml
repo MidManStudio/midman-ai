@@ -1,0 +1,203 @@
+# .github/workflows/deploy-site.yml
+#
+# Publishes the site (landing page, lab, docs, tests, benchmarks) to Cloudflare Pages.
+#
+# Manual dispatch only, on purpose: it never runs on a push. A deploy is a decision.
+#
+# What it does, in order: builds the WebAssembly engine (a SIMD build and a plain build),
+# runs the tests that guard it (native, in a headless DOM, and for the helper scripts),
+# builds the docs book with a pinned mdBook, pulls the latest CI, benchmark and smoke-test
+# results from earlier runs, assembles dist/, and deploys it. Missing results never block a
+# deploy; the pages say that none are published yet.
+#
+# Secrets: CLOUDFLARE_API_TOKEN (Pages edit) and CLOUDFLARE_ACCOUNT_ID, set on this repository.
+# Helper script: scripts/assemble_site.py. Notes: docs/ci-and-workflows.md and docs/midman-web.md.
+
+name: midman-ai Deploy Site
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_tests:
+        description: 'Run the engine, page and script tests before deploying'
+        type: boolean
+        default: true
+      project_name:
+        description: 'Cloudflare Pages project name (created on the first run)'
+        type: string
+        default: midman-ai
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  deploy:
+    name: build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PROJECT: ${{ inputs.project_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Rust with the WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Toolchain info
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          node --version
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-site-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-site-${{ runner.os }}-${{ runner.arch }}-
+
+      # ── The engine ────────────────────────────────────────────────────────
+      # Two builds of the same code. Browsers that support WebAssembly SIMD load the faster
+      # one (about 1.6 times), the rest load the plain one; both give the same numbers.
+      - name: Build the WebAssembly engine
+        run: |
+          set -eu
+          mkdir -p build
+          cargo build --release --target wasm32-unknown-unknown -p midman-api
+          cp target/wasm32-unknown-unknown/release/midman_api.wasm build/midman_api.wasm
+          RUSTFLAGS="-C target-feature=+simd128" cargo build --release --target wasm32-unknown-unknown \
+            -p midman-api --target-dir target-simd
+          cp target-simd/wasm32-unknown-unknown/release/midman_api.wasm build/midman_api.simd.wasm
+          ls -l build
+
+      # ── Tests ─────────────────────────────────────────────────────────────
+      - name: Test the engine crate natively
+        if: inputs.run_tests
+        run: |
+          set -o pipefail
+          cargo test -p midman-api 2>&1 | tee api-test-raw.txt
+
+      - name: Install the test-only DOM library
+        if: inputs.run_tests
+        run: npm install --no-save --no-audit --no-fund jsdom
+
+      - name: Test the engine in Node, the pages in a headless DOM, and the scripts
+        if: inputs.run_tests
+        env:
+          MIDMAN_WASM: build/midman_api.wasm
+          MIDMAN_WASM_SIMD: build/midman_api.simd.wasm
+          REQUIRE_DOM: '1'
+        run: |
+          set -o pipefail
+          node --test \
+            web/lab/test/engine.test.mjs \
+            web/lab/test/charts.test.mjs \
+            web/lab/test/lab.dom.test.mjs \
+            web/benchmarks/test/render.test.mjs \
+            web/tests/test/render.test.mjs 2>&1 | tee node-test-raw.txt
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      # ── The docs book ─────────────────────────────────────────────────────
+      - name: Install mdBook
+        run: |
+          set -eu
+          mkdir -p "$HOME/.mdbook-bin"
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz -C "$HOME/.mdbook-bin"
+          echo "$HOME/.mdbook-bin" >> "$GITHUB_PATH"
+
+      - name: Build the docs book
+        run: mdbook build web/site
+
+      # ── Latest results from earlier runs ──────────────────────────────────
+      # Each lookup is allowed to find nothing; the pages handle that.
+      - name: Fetch the latest CI, benchmark and smoke-test results
+        run: |
+          mkdir -p site-data data-src
+          fetch() {
+            workflow="$1"; wanted="$2"; label="$3"
+            id=$(gh run list --workflow "$workflow" --status success --limit 1 --json databaseId -q '.[0].databaseId' || true)
+            if [ -z "$id" ] || [ "$id" = "null" ]; then
+              echo "No successful $workflow run found; $wanted will be missing."
+              return 0
+            fi
+            mkdir -p "data-src/$label"
+            gh run download "$id" --dir "data-src/$label" || { echo "Could not download run $id of $workflow."; return 0; }
+            found=$(find "data-src/$label" -name "$wanted" -path "*ubuntu*" | head -n 1)
+            [ -n "$found" ] || found=$(find "data-src/$label" -name "$wanted" | head -n 1)
+            if [ -n "$found" ]; then
+              cp "$found" "site-data/$wanted"
+              echo "Using $wanted from run $id of $workflow."
+            else
+              echo "Run $id of $workflow has no $wanted."
+            fi
+          }
+          fetch ci.yml ci-results.json ci
+          fetch benchmarks.yml bench-results.json bench
+          fetch train-smoke.yml train-smoke-results.json smoke
+          find site-data -maxdepth 1 -type f
+
+      # ── Assemble and deploy ───────────────────────────────────────────────
+      - name: Assemble the site
+        run: python3 scripts/assemble_site.py --web web --book web/site/book --wasm build --data site-data --out dist
+
+      # `pages project create` fails when the project already exists, which is the normal
+      # case after the first run, so this step may not fail the job.
+      - name: Ensure the Cloudflare Pages project exists
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create ${{ inputs.project_name }} --production-branch=main
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ inputs.project_name }} --branch=main
+
+      - name: Write the deploy summary
+        if: always()
+        run: |
+          {
+            echo "## midman-ai deploy site: build #${{ github.run_number }}"
+            echo ""
+            echo "Branch: \`${{ github.ref_name }}\` | Commit: \`${{ github.sha }}\` | Project: \`${{ inputs.project_name }}\`"
+            echo ""
+            echo "Engine builds:"
+            find build -maxdepth 1 -type f -printf '    %s bytes  %f\n' 2>/dev/null || true
+            echo ""
+            echo "Results published with the site:"
+            find site-data -maxdepth 1 -type f -printf '    %s bytes  %f\n' 2>/dev/null || echo "    none"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the assembled site and test logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: site-${{ github.run_number }}
+          path: |
+            dist
+            api-test-raw.txt
+            node-test-raw.txt
+          retention-days: 14
+          if-no-files-found: warn
