@@ -28,3 +28,11 @@ dist/
 *.arrow
 runs/
 checkpoints/
+
+# Site build outputs (the deploy workflow's scratch directories)
+build/
+target-simd/
+site-data/
+data-src/
+web/site/book/
+node_modules/

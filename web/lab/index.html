@@ -1,0 +1,153 @@
+<!doctype html>
+<!-- ============================================================================
+     NOTICE: Full documentation, design decisions, and fix history for this file
+     live in docs/midman-web.md, section "lab/index.html"
+     ============================================================================ -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MidMan AI Lab</title>
+  <meta name="description" content="Run the real MidMan transformer, compiled to WebAssembly, in your browser: train it, and watch the loss, gradients and attention.">
+  <link rel="stylesheet" href="../shared/theme.css">
+  <link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="../">MidMan <span>AI</span></a>
+  <nav aria-label="Site">
+    <a href="../lab/" aria-current="page">Lab</a>
+    <a href="../docs/">Docs</a>
+    <a href="../tests/">Tests</a>
+    <a href="../benchmarks/">Benchmarks</a>
+  </nav>
+</header>
+
+<main>
+  <h1>Lab</h1>
+  <p class="lede">The real Rust model, compiled to WebAssembly, running in this tab. Nothing is simulated in JavaScript: every parameter count, loss, gradient and attention map below comes from the same code the tests check.</p>
+  <p id="status" class="status" role="status">Loading the engine…</p>
+  <div id="error" class="banner" role="alert" hidden></div>
+
+  <div class="tabs" role="tablist" aria-label="Lab tools">
+    <button role="tab" id="tab-calc" aria-selected="true" aria-controls="panel-calc">Calculator</button>
+    <button role="tab" id="tab-train" aria-selected="false" aria-controls="panel-train">Train</button>
+    <button role="tab" id="tab-attn" aria-selected="false" aria-controls="panel-attn">Attention</button>
+    <button role="tab" id="tab-rope" aria-selected="false" aria-controls="panel-rope">RoPE</button>
+    <button role="tab" id="tab-emb" aria-selected="false" aria-controls="panel-emb">Embeddings</button>
+  </div>
+
+  <!-- ------------------------------------------------------------ calculator -->
+  <section id="panel-calc" class="panel card" role="tabpanel" aria-labelledby="tab-calc">
+    <h2>Model calculator</h2>
+    <p class="muted">Pick a preset or edit the architecture. The counts come from the Rust code that builds the model, so they are exact.</p>
+    <div class="fields">
+      <label>Preset <select id="preset"></select></label>
+      <label>vocab_size <input id="cfg-0" type="number" min="1" step="1"></label>
+      <label>d_model <input id="cfg-1" type="number" min="1" step="1"></label>
+      <label>n_layers <input id="cfg-2" type="number" min="1" step="1"></label>
+      <label>n_heads <input id="cfg-3" type="number" min="1" step="1"></label>
+      <label>n_kv_heads <input id="cfg-4" type="number" min="1" step="1"></label>
+      <label>d_ff <input id="cfg-5" type="number" min="1" step="1"></label>
+      <label>max_seq_len <input id="cfg-6" type="number" min="1" step="1"></label>
+      <label>rope_theta <input id="cfg-7" type="number" min="1" step="any"></label>
+      <label>norm_eps <input id="cfg-8" type="number" min="0" step="any"></label>
+      <label class="check"><input id="cfg-9" type="checkbox"> tie_embeddings</label>
+    </div>
+    <div id="calc-invalid" class="banner" hidden></div>
+    <div class="readouts">
+      <div class="readout"><span class="label">Parameters</span><span class="value" id="calc-total">–</span></div>
+      <div class="readout"><span class="label">Head size</span><span class="value" id="calc-head">–</span></div>
+      <div class="readout"><span class="label">KV width</span><span class="value" id="calc-kv">–</span></div>
+      <div class="readout"><span class="label">Fits in the lab</span><span class="value" id="calc-fits">–</span></div>
+    </div>
+    <canvas id="calc-bars" width="720" height="190" role="img" aria-label="Parameters by category"></canvas>
+    <div class="actions"><button id="calc-use" class="primary">Use this model in Train</button></div>
+  </section>
+
+  <!-- ----------------------------------------------------------------- train -->
+  <section id="panel-train" class="panel card" role="tabpanel" aria-labelledby="tab-train" hidden>
+    <h2>Train</h2>
+    <p class="muted">The task is memorization: random token sequences the model has to learn to predict. A model that cannot do this has a bug; this is the same task the smoke test uses.</p>
+    <div class="fields">
+      <label>Seed <input id="seed" type="number" min="0" step="1" value="2024"></label>
+      <label>Sequences <input id="batch" type="number" min="1" step="1" value="2"></label>
+      <label>Tokens each <input id="seq" type="number" min="1" step="1" value="12"></label>
+      <label>Peak learning rate <input id="max-lr" type="number" min="0" step="any" value="0.03"></label>
+      <label>Final learning rate <input id="min-lr" type="number" min="0" step="any" value="0.003"></label>
+      <label>Warmup steps <input id="warmup" type="number" min="0" step="1" value="15"></label>
+      <label>Total steps <input id="total" type="number" min="1" step="1" value="150"></label>
+      <label>Weight decay <input id="decay" type="number" min="0" step="any" value="0.01"></label>
+      <label>Clip norm <input id="clip" type="number" min="0" step="any" value="1"></label>
+      <label>Steps per click <input id="chunk" type="number" min="1" step="1" value="10"></label>
+    </div>
+    <div class="actions">
+      <button id="train-create" class="primary">Create model</button>
+      <button id="train-step" disabled>Step</button>
+      <button id="train-run" disabled>Run to the end</button>
+      <button id="train-pause" disabled>Pause</button>
+    </div>
+    <div class="readouts">
+      <div class="readout"><span class="label">Step</span><span class="value" id="r-step">–</span></div>
+      <div class="readout"><span class="label">Loss</span><span class="value" id="r-loss">–</span></div>
+      <div class="readout"><span class="label">Gradient norm</span><span class="value" id="r-grad">–</span></div>
+      <div class="readout"><span class="label">Learning rate</span><span class="value" id="r-lr">–</span></div>
+      <div class="readout"><span class="label">Accuracy</span><span class="value" id="r-acc">–</span></div>
+      <div class="readout"><span class="label">ms per step</span><span class="value" id="r-ms">–</span></div>
+    </div>
+    <div class="charts">
+      <canvas id="chart-loss" width="520" height="260" role="img" aria-label="Loss and gradient norm over training steps"></canvas>
+      <canvas id="chart-lr" width="520" height="260" role="img" aria-label="Learning rate over training steps"></canvas>
+    </div>
+    <h3>Gradient norm by parameter</h3>
+    <canvas id="chart-grads" width="720" height="200" role="img" aria-label="Gradient norm of every parameter at the last step"></canvas>
+    <h3>The task</h3>
+    <div class="task"><table id="task-table"><thead><tr><th></th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- ------------------------------------------------------------- attention -->
+  <section id="panel-attn" class="panel card" role="tabpanel" aria-labelledby="tab-attn" hidden>
+    <h2>Attention</h2>
+    <p class="muted">Each row shows how much one position reads from every earlier position (a row sums to 1). The empty upper triangle is the causal mask. Train a little first and watch the patterns sharpen.</p>
+    <div class="fields">
+      <label>Sequence <select id="attn-seq"></select></label>
+      <label>Layer <select id="attn-layer"></select></label>
+    </div>
+    <h3>Selected head</h3>
+    <canvas id="attn-main" width="480" height="420" role="img" aria-label="Attention of the selected head"></canvas>
+    <h3>All heads in this layer</h3>
+    <div id="attn-heads" class="heads"></div>
+    <div class="actions"><button id="attn-refresh">Refresh</button></div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ rope -->
+  <section id="panel-rope" class="panel card" role="tabpanel" aria-labelledby="tab-rope" hidden>
+    <h2>Rotary position embeddings</h2>
+    <p class="muted">Each pair of channels is rotated by an angle that grows with position, fast for the first pairs and slowly for the last. This is the table the model uses.</p>
+    <div class="fields">
+      <label>Head size <input id="rope-dim" type="number" min="2" step="2" value="16"></label>
+      <label>Positions <input id="rope-len" type="number" min="1" step="1" value="64"></label>
+      <label>theta <input id="rope-theta" type="number" min="1" step="any" value="10000"></label>
+    </div>
+    <h3>cos of the rotation angle (rows are positions, columns are channel pairs)</h3>
+    <canvas id="rope-map" width="480" height="420" role="img" aria-label="Rotary cosines by position and channel pair"></canvas>
+    <h3>Four channel pairs across positions</h3>
+    <canvas id="rope-lines" width="720" height="260" role="img" aria-label="Rotary cosine against position for four channel pairs"></canvas>
+  </section>
+
+  <!-- ------------------------------------------------------------ embeddings -->
+  <section id="panel-emb" class="panel card" role="tabpanel" aria-labelledby="tab-emb" hidden>
+    <h2>Token embeddings</h2>
+    <p class="muted">The embedding table projected onto its two strongest directions. Create a model on the Train tab, then train it and watch the tokens move.</p>
+    <canvas id="emb-plot" width="720" height="440" role="img" aria-label="Token embeddings projected to two dimensions"></canvas>
+    <div class="actions"><button id="emb-refresh">Refresh</button></div>
+  </section>
+</main>
+
+<footer>
+  <p>The same code runs natively and here: the browser build agrees with the native build to within one float rounding step (checked in CI). <a href="../docs/">Read how it works</a>.</p>
+</footer>
+
+<script type="module" src="boot.js"></script>
+</body>
+</html>

@@ -7,9 +7,16 @@ description = "Stable library interfaces for applications embedding MidMan."
 [lints]
 workspace = true
 
+# `rlib` for Rust callers, `cdylib` for the C ABI in src/ffi.rs: the browser build
+# (`wasm32-unknown-unknown`) and any native C or C++ caller link against that.
 [lib]
 name       = "midman_api"
-crate-type = ["lib"]
+crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-# Intentionally empty. The crate dependency graph is not settled yet.
+midman-foundation   = { path = "../midman-foundation" }
+midman-model-config = { path = "../midman-model-config" }
+midman-tensor       = { path = "../midman-tensor" }
+midman-nn           = { path = "../midman-nn" }
+midman-model        = { path = "../midman-model" }
+midman-optim        = { path = "../midman-optim" }

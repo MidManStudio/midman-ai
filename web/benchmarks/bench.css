@@ -1,0 +1,11 @@
+/* ============================================================================
+   NOTICE: Full documentation, design decisions, and fix history for this file
+   live in docs/midman-web.md, section "benchmarks/bench.css"
+   ============================================================================ */
+.bar { display: block; height: 6px; background: var(--accent); border-radius: 3px; min-width: 2px; }
+.bar.baseline { background: var(--accent-2); }
+td.ratio.ok { color: var(--good); }
+td.ratio.warn { color: var(--accent-2); }
+td.ratio.bad { color: var(--bad); }
+.group h2 { font-family: var(--mono); font-size: 1rem; }
+.scroll { overflow-x: auto; }

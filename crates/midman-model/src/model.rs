@@ -101,6 +101,36 @@ impl MidManModel {
     /// Returns an error if `batch` or `seq` is 0, `seq` exceeds `max_seq_len`,
     /// `ids.len()` is not `batch * seq`, or an id is not below `vocab_size`.
     pub fn forward(&self, ids: &[usize], batch: usize, seq: usize) -> Result<Tensor> {
+        self.run(ids, batch, seq, None)
+    }
+
+    /// [`MidManModel::forward`] that also returns the attention probabilities of
+    /// every layer, each of shape `[batch, n_heads, seq, seq]` (see
+    /// `midman_nn::causal_attention_weights`).
+    ///
+    /// The logits are bit-for-bit the ones `forward` returns.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error under the same conditions as [`MidManModel::forward`].
+    pub fn forward_traced(
+        &self,
+        ids: &[usize],
+        batch: usize,
+        seq: usize,
+    ) -> Result<(Tensor, Vec<Tensor>)> {
+        let mut attention = Vec::with_capacity(self.blocks.len());
+        let logits = self.run(ids, batch, seq, Some(&mut attention))?;
+        Ok((logits, attention))
+    }
+
+    fn run(
+        &self,
+        ids: &[usize],
+        batch: usize,
+        seq: usize,
+        mut trace: Option<&mut Vec<Tensor>>,
+    ) -> Result<Tensor> {
         if batch == 0 || seq == 0 {
             return Err(Error::invalid("forward: batch and seq must be at least 1"));
         }
@@ -118,7 +148,14 @@ impl MidManModel {
         }
         let mut x = self.embed.forward(ids, &[batch, seq])?;
         for block in &self.blocks {
-            x = block.forward(&x, &self.rope)?;
+            x = match trace.as_mut() {
+                Some(probs) => {
+                    let (y, p) = block.forward_traced(&x, &self.rope)?;
+                    probs.push(p);
+                    y
+                }
+                None => block.forward(&x, &self.rope)?,
+            };
         }
         let x = self.final_norm.forward(&x)?;
         match &self.lm_head {

@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- ============================================================================
+     NOTICE: Full documentation, design decisions, and fix history for this file
+     live in docs/midman-web.md, section "tests/index.html"
+     ============================================================================ -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MidMan AI Tests</title>
+  <link rel="stylesheet" href="../shared/theme.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="../">MidMan <span>AI</span></a>
+  <nav aria-label="Site">
+    <a href="../lab/">Lab</a>
+    <a href="../docs/">Docs</a>
+    <a href="../tests/" aria-current="page">Tests</a>
+    <a href="../benchmarks/">Benchmarks</a>
+  </nav>
+</header>
+<main>
+  <h1>Tests</h1>
+  <p class="lede">Results from the latest CI run and the latest training smoke test. The smoke test trains the 117K-parameter preset to memorize random sequences, on three kinds of machine, and the numbers must match.</p>
+  <div id="ci" class="card" role="status">Loading…</div>
+  <div id="suites" class="card" hidden></div>
+  <div id="smoke" class="card" hidden></div>
+</main>
+<script type="module" src="boot.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- ============================================================================
+     NOTICE: Full documentation, design decisions, and fix history for this file
+     live in docs/midman-web.md, section "home/index.html"
+     ============================================================================ -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MidMan AI</title>
+  <meta name="description" content="A coding and game-development model built from scratch in Rust, with a lab that runs it in your browser.">
+  <link rel="stylesheet" href="shared/theme.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="">MidMan <span>AI</span></a>
+  <nav aria-label="Site">
+    <a href="lab/">Lab</a>
+    <a href="docs/">Docs</a>
+    <a href="tests/">Tests</a>
+    <a href="benchmarks/">Benchmarks</a>
+  </nav>
+</header>
+<main>
+  <h1>MidMan AI</h1>
+  <p class="lede">A coding and game-development language model built from scratch in Rust: its own tensors, its own autograd, its own training loop. No pretrained weights and no ML framework.</p>
+
+  <div class="grid">
+    <a class="card" href="lab/"><h2>Lab</h2><p class="muted">Run the real model in your browser, compiled to WebAssembly. Train it, and watch the loss, the gradients and the attention.</p></a>
+    <a class="card" href="docs/"><h2>Docs</h2><p class="muted">How each crate works, why it was built that way, and what is still open.</p></a>
+    <a class="card" href="tests/"><h2>Tests</h2><p class="muted">The latest test, lint and training-smoke results from CI.</p></a>
+    <a class="card" href="benchmarks/"><h2>Benchmarks</h2><p class="muted">Criterion results, with a reference implementation next to every kernel.</p></a>
+  </div>
+
+  <div class="card">
+    <h2>Where it stands</h2>
+    <p class="muted">Working and tested: the tensor library with reverse-mode autodiff, the transformer layers (grouped-query attention, rotary embeddings, SwiGLU), the model, AdamW, and an end-to-end training loop that memorizes a task. Not started yet: the tokenizer, the data pipeline, checkpoints, and everything after them.</p>
+  </div>
+</main>
+<footer><p>Built by MidMan Studio. The lab runs the same Rust code as the tests; nothing is reimplemented in JavaScript.</p></footer>
+</body>
+</html>

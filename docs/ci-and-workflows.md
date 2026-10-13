@@ -1,7 +1,7 @@
 # CI and workflows
 
 ## Overview
-Five GitHub Actions workflows and six helper scripts cover formatting, linting, tests, docs, security scans, benchmarks and a training smoke test for the whole workspace. Two of the scripts have self-tests that run against real captured output.
+Six GitHub Actions workflows and seven helper scripts cover formatting, linting, tests, docs, security scans, benchmarks and a training smoke test for the whole workspace. Two of the scripts have self-tests that run against real captured output.
 
 Every workflow is manual only (`workflow_dispatch`). There are no push or pull_request triggers, so every run is one you chose to start. Each run writes a job summary and uploads its raw logs and a JSON result as an artifact.
 
@@ -66,6 +66,15 @@ Criterion needs a Cargo that understands edition 2024, so the workflow uses the 
 
 A smaller version of the same test runs in every `cargo test`, so ordinary CI covers the training path. This workflow exists because the larger one is too slow in a debug build. It uses the workspace release profile (fat LTO, one codegen unit), so most of its time is compiling. The workflow file was checked with actionlint 1.7.12 and shellcheck. Its first run on GitHub (`ubuntu-latest`, Rust 1.99.0) passed, with loss 5.5674 to 0.0005 and 100% accuracy, the same as the local run on Rust 1.75 without LTO. The matrix and the new inputs have not been run on GitHub yet.
 
+### `deploy-site.yml`
+**What it does:** Publishes the site to Cloudflare Pages. Manual dispatch only: it never runs on a push. It builds the WebAssembly engine (a SIMD build and a plain build), runs the engine crate's tests, the Node tests (engine against the real binary, charts, the lab page and the two result pages in a headless DOM) and the script tests, builds the docs book with a pinned mdBook v0.4.40, pulls the latest results from the most recent successful `ci.yml`, `benchmarks.yml` and `train-smoke.yml` runs, assembles `dist/`, makes sure the Pages project exists, and deploys.
+
+**Inputs:** `run_tests` (default true), `project_name` (default `midman-ai`).
+
+**Output:** the deployed site, a summary of the engine builds and the results published, and artifact `site-<run>` with `dist/` and the raw test logs (14 days).
+
+Missing results never block a deploy; the pages say that none are published yet. The repository needs the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets. The workflow file was checked with actionlint and shellcheck, and every step that can run in a sandbox was run there (the engine builds, all tests, the book, the assembly); the Cloudflare steps and the workflow as a whole have not run on GitHub yet.
+
 ## Scripts
 All scripts use only the Python standard library. `check_docs.py` and `repo_hygiene.py` need Python 3.11 or newer for `tomllib`.
 
@@ -97,6 +106,12 @@ All scripts use only the Python standard library. `check_docs.py` and `repo_hygi
 ### `test_train_smoke_summary.py`
 **What it does:** Self-tests for `train_smoke_summary.py`. They run against `scripts/fixtures/train_smoke_real_run.txt`, a real smoke-test log in the older cargo format, plus synthetic logs for the modern format, failures and a missing log.
 
+### `assemble_site.py`
+**What it does:** Puts the site's parts into `dist/`: the landing page at the root, the lab, tests and benchmarks pages (without their tests and fixtures), the built book as `docs/`, both engine builds into `lab/`, the result files into `data/`, and the headers file. It fails naming what is missing if either engine build or the book is absent, because a site published without them would look fine and not work; missing result files are not an error.
+
+### `test_assemble_site.py`
+**What it does:** Seven self-tests for `assemble_site.py`: a complete site lands in the right places, tests and fixtures are not published, a missing engine is an error that names the file and assembles nothing, missing data is fine, an old output is replaced, and the command line exits non-zero on a problem.
+
 ## Not decided yet
 - `cargo-deny` is not used. It needs a license policy, and the workspace license is not chosen.
 - No GPU or self-hosted runner jobs. The workflows run on `ubuntu-latest`.
@@ -120,3 +135,6 @@ All scripts use only the Python standard library. `check_docs.py` and `repo_hygi
 ### `train-smoke.yml`
 - **First version had no `baseline_note` or `platforms` input, no diagnostics, and embedded an unstripped log tail.** All four are fixed to match `benchmarks.yml`.
 
+### `deploy-site.yml`
+- **A scratch directory collided with a tracked one.** The first draft fetched results into `data/`, which is the repository's own tracked directory (it holds `data/README.md`). It uses `site-data/` now, and the scratch directories are in `.gitignore`.
+- **Shellcheck style note.** Listing files by piping `ls` was replaced with `find`.

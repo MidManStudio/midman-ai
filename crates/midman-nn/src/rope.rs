@@ -94,6 +94,16 @@ impl RotaryTables {
         self.max_seq_len
     }
 
+    /// The cosines of every rotation angle, shape `[max_seq_len, head_dim / 2]`.
+    pub fn cos(&self) -> &Tensor {
+        &self.cos
+    }
+
+    /// The sines of every rotation angle, shape `[max_seq_len, head_dim / 2]`.
+    pub fn sin(&self) -> &Tensor {
+        &self.sin
+    }
+
     /// Rotates `x` of shape `[batch, heads, time, head_dim]`, treating its time
     /// axis as positions `0..time`.
     ///
@@ -182,6 +192,19 @@ mod tests {
         }
         // And it is not constant in the distance, or the rotation did nothing.
         assert!((score(0, 0) - score(0, 3)).abs() > 1e-3);
+    }
+
+    #[test]
+    fn the_exposed_tables_have_one_row_per_position_and_start_at_no_rotation() {
+        let tables = RotaryTables::new(6, 9, 10_000.0).unwrap();
+        assert_eq!(tables.cos().shape(), &[9, 3]);
+        assert_eq!(tables.sin().shape(), &[9, 3]);
+        assert_eq!(&tables.cos().data()[..3], &[1.0, 1.0, 1.0]);
+        assert_eq!(&tables.sin().data()[..3], &[0.0, 0.0, 0.0]);
+        // cos^2 + sin^2 = 1 everywhere, so every entry really is a rotation.
+        for (c, s) in tables.cos().data().iter().zip(tables.sin().data()) {
+            assert!((c * c + s * s - 1.0).abs() < 1e-6);
+        }
     }
 
     #[test]

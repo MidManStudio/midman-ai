@@ -65,8 +65,19 @@ impl DecoderBlock {
     ///
     /// Returns an error if `x` or `rope` do not fit the block.
     pub fn forward(&self, x: &Tensor, rope: &RotaryTables) -> Result<Tensor> {
-        let h = x.add(&self.attn.forward(&self.attn_norm.forward(x)?, rope)?)?;
-        h.add(&self.mlp.forward(&self.mlp_norm.forward(&h)?)?)
+        Ok(self.forward_traced(x, rope)?.0)
+    }
+
+    /// [`DecoderBlock::forward`] that also returns the block's attention
+    /// probabilities of shape `[batch, n_heads, time, time]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error under the same conditions as [`DecoderBlock::forward`].
+    pub fn forward_traced(&self, x: &Tensor, rope: &RotaryTables) -> Result<(Tensor, Tensor)> {
+        let (attended, probs) = self.attn.forward_traced(&self.attn_norm.forward(x)?, rope)?;
+        let h = x.add(&attended)?;
+        Ok((h.add(&self.mlp.forward(&self.mlp_norm.forward(&h)?)?)?, probs))
     }
 }
 
@@ -174,6 +185,16 @@ mod tests {
         // And both branches really contribute, or the comparison proves nothing.
         assert_ne!(h.data(), x.data());
         assert_ne!(expected.data(), h.data());
+    }
+
+    #[test]
+    fn the_traced_block_returns_the_same_output_and_the_probabilities() {
+        let rope = RotaryTables::new(4, 16, 10_000.0).unwrap();
+        let block = block();
+        let x = Tensor::uniform(&[2, 5, 8], -1.0, 1.0, &mut Rng::seed_from_u64(6)).unwrap();
+        let (traced, probs) = block.forward_traced(&x, &rope).unwrap();
+        assert_eq!(block.forward(&x, &rope).unwrap().data(), traced.data());
+        assert_eq!(probs.shape(), &[2, 2, 5, 5]);
     }
 
     #[test]

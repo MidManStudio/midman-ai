@@ -7,7 +7,7 @@ The crate does not know about `ModelConfig`. Every layer takes its sizes explici
 
 Dependencies: `midman-foundation` and `midman-tensor`.
 
-Test status when this was written: 50 unit tests, 8 gradient-check tests and 1 doctest. Checked with `fmt`, `clippy -D warnings` and `rustdoc -D warnings` on Rust 1.75 and on Rust 1.91, and the unit and gradient tests were mutation-tested (see "Fixes and Problems").
+Test status when this was written: 56 unit tests, 9 gradient-check tests and 1 doctest. Checked with `fmt`, `clippy -D warnings` and `rustdoc -D warnings` on Rust 1.75 and on Rust 1.91, and the unit and gradient tests were mutation-tested (see "Fixes and Problems").
 
 ## Modules
 
@@ -66,22 +66,25 @@ Test status when this was written: 50 unit tests, 8 gradient-check tests and 1 d
 - The tables are computed in `f64` and stored as `f32`.
 - There is no start-position argument. Nothing needs one until `midman-inference` has a KV cache.
 
+**What it adds:** `RotaryTables::cos` and `sin`, the tables themselves, so the lab can show the rotation the model uses.
+
 **Benchmarks:** `rope_t128` in `nn_layers.rs`: 116 us in one noisy local run.
 
 **Tests:** Unit tests for position zero, the table formula, preserved vector length, that dot products depend only on the distance between positions, shorter sequences using the first positions, and bad arguments. Gradient checks in `tests/grad_layers.rs`.
 
 ### `attention.rs`
-**What it does:** `causal_mask`, `causal_attention` (scaled dot-product with grouped-query sharing), `AttentionWeights`, `attention_forward` (project, split heads, rotate, attend, merge, project) and the `Attention` layer.
+**What it does:** `causal_mask`, `causal_attention_weights` (the attention probabilities), `causal_attention` (the probabilities times the values, with grouped-query sharing), `AttentionWeights`, `attention_forward` (project, split heads, rotate, attend, merge, project), `attention_forward_traced` and `Attention::forward_traced` (the same output plus the probabilities) and the `Attention` layer.
 
 **Decisions:**
 - Grouped-query sharing copies each key/value head to its group with `repeat_interleave`, so consecutive query heads share one key/value head. That costs memory proportional to the number of query heads and is fine for a CPU reference; a faster kernel can avoid the copy later.
+- The probabilities are exposed so the lab can draw them. `attention_forward` is `attention_forward_traced` with the probabilities dropped, and the traced output is bit for bit the plain one; the probabilities are values the forward pass already computed, so asking for them costs nothing.
 - The mask is built on every call, `O(T^2)` floats, with `-1e9` above the diagonal. The softmax subtracts the row maximum, so masked entries get weight exactly 0.
 - The divisibility checks are written `(a / b) * b == a` instead of `a % b == 0`, because newer clippy flags `%` on unsigned integers (`manual_is_multiple_of`) and Rust 1.75 has no `is_multiple_of`.
 - Gradient checks cannot tell a correct gradient of the wrong function from the right one, so the score scaling has its own known-answer test.
 
 **Benchmarks:** `attention_forward_t*` and `attention_backward_t64` in `nn_layers.rs`. In one noisy local run grouped-query and multi-query attention were 4 to 18% faster than full multi-head despite the copy, and `backward` cost 2.44 times a forward pass.
 
-**Tests:** Unit tests for the mask, a single position attending to itself, a known answer that pins down the score scaling, no leakage from the future, grouped attention equalling attention over copied heads, multi-query attention, huge scores staying finite, independence of batch entries, shape errors, and the layer's shape, causality, parameter naming and order, and bad arguments. Gradient checks in `tests/grad_layers.rs` cover equal and grouped head counts and the whole layer with respect to all four weights.
+**Tests:** Unit tests for the probabilities of a known case, that every row is a distribution over the past only, that query heads in one group share keys and those in different groups do not, that the traced layer returns the same output, the mask, a single position attending to itself, a known answer that pins down the score scaling, no leakage from the future, grouped attention equalling attention over copied heads, multi-query attention, huge scores staying finite, independence of batch entries, shape errors, and the layer's shape, causality, parameter naming and order, and bad arguments. Gradient checks in `tests/grad_layers.rs` cover equal and grouped head counts and the whole layer with respect to all four weights.
 
 ### `mlp.rs`
 **What it does:** `swiglu(x, w_gate, w_up, w_down)` and the `SwiGluMlp` layer, `(silu(x * w_gate) * (x * w_up)) * w_down`.
@@ -92,6 +95,8 @@ Test status when this was written: 50 unit tests, 8 gradient-check tests and 1 d
 
 ### `block.rs`
 **What it does:** `BlockSpec` (sizes, epsilon and `Init`) and `DecoderBlock`, `h = x + attention(norm(x))` then `h + mlp(norm(h))`. Parameters are named `"{name}.attn_norm"`, `"{name}.attn.{q,k,v,o}_proj"`, `"{name}.mlp_norm"` and `"{name}.mlp.{gate,up,down}_proj"`, each with a `.weight` suffix.
+
+**What it adds:** `forward_traced`, which also returns the block's attention probabilities.
 
 **Benchmarks:** `decoder_block_t64` in `nn_layers.rs`: backward cost 3.27 times a forward pass in one noisy local run.
 

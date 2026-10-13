@@ -269,6 +269,14 @@ version = "0.0.1"
 [[package]]
 name = "midman-api"
 version = "0.0.1"
+dependencies = [
+ "midman-foundation",
+ "midman-model",
+ "midman-model-config",
+ "midman-nn",
+ "midman-optim",
+ "midman-tensor",
+]
 
 [[package]]
 name = "midman-bench"

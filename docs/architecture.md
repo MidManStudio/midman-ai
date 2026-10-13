@@ -54,7 +54,7 @@ The workspace keeps three systems separate but interoperable:
 | `midman-trainer` | Training entry point for MidMan model runs. |
 
 ## Status
-Real code exists in six crates and one benchmark package. The rest are stubs.
+Real code exists in seven crates and one benchmark package. The rest are stubs.
 
 | Crate | State |
 | --- | --- |
@@ -64,6 +64,7 @@ Real code exists in six crates and one benchmark package. The rest are stubs.
 | `midman-nn` | Linear, embedding, RMSNorm, rotary embeddings, causal grouped-query attention, SwiGLU MLP, decoder block. |
 | `midman-model` | `MidManModel`: the decoder-only transformer built from a `ModelConfig`, with the parameter total checked against the config. |
 | `midman-optim` | AdamW, warmup and cosine schedule, global-norm gradient clipping. |
+| `midman-api` | The interface for applications that embed MidMan: a `Lab` that trains and inspects a model, and a C ABI over it that the browser build exports. |
 | `midman-bench` | Criterion benchmarks for the crates above, in a package of its own because criterion needs a newer Cargo. |
 
 A small model trains end to end on the CPU: the smoke test in `midman-model` memorizes random sequences through the real forward pass, `backward`, clipping and AdamW.
@@ -80,3 +81,5 @@ Dependencies so far: `midman-model-config`, `midman-tensor` and `midman-optim` (
 - The rest of the crate dependency graph.
 - The final model architecture beyond the v0 defaults.
 - The sandbox execution approach.
+
+The website under `web/` runs `midman-api` compiled to WebAssembly; see `docs/midman-web.md`.

@@ -7,8 +7,8 @@
 
 use midman_foundation::Rng;
 use midman_nn::{
-    apply_rope, attention_forward, causal_attention, rms_norm, swiglu, AttentionWeights,
-    RotaryTables,
+    apply_rope, attention_forward, causal_attention, causal_attention_weights, rms_norm, swiglu,
+    AttentionWeights, RotaryTables,
 };
 use midman_tensor::check::{grad_check, DEFAULT_EPS};
 use midman_tensor::Tensor;
@@ -84,6 +84,20 @@ fn causal_attention_with_grouped_key_value_heads() {
             rand_t(&[2, 1, 3, 2], 14, -1.0, 1.0),
             rand_t(&[2, 1, 3, 2], 15, -1.0, 1.0),
         ],
+    );
+}
+
+#[test]
+fn attention_probabilities_with_grouped_key_value_heads() {
+    // The probabilities are public, so they must be differentiable on their own.
+    // The sum of squares weights each probability differently, so a wrong gradient
+    // cannot cancel out the way it would for a plain sum (which is always 1 per row).
+    check(
+        |v| {
+            let weights = causal_attention_weights(&v[0], &v[1])?;
+            weights.mul(&weights)
+        },
+        &[rand_t(&[1, 4, 3, 2], 30, -1.0, 1.0), rand_t(&[1, 2, 3, 2], 31, -1.0, 1.0)],
     );
 }
 

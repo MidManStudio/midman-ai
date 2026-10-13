@@ -26,23 +26,16 @@ pub fn causal_mask(t: usize) -> Result<Tensor> {
     Tensor::from_vec(data, &[t, t])
 }
 
-/// `softmax(q k^T / sqrt(head_dim) + causal_mask) v` with grouped-query sharing.
-///
-/// `q` is `[batch, n_heads, time, head_dim]`; `k` and `v` are
-/// `[batch, n_kv_heads, time, head_dim]` where `n_heads` is a multiple of
-/// `n_kv_heads`. Consecutive groups of `n_heads / n_kv_heads` query heads share
-/// one key/value head. The result is `[batch, n_heads, time, head_dim]`.
-///
-/// # Errors
-///
-/// Returns an error if the shapes do not have that form.
-pub fn causal_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
-    let (qs, ks, vs) = (q.shape(), k.shape(), v.shape());
-    if qs.len() != 4 || ks.len() != 4 || ks != vs {
+/// Checks the shapes of `q`, `k` and (when given) `v`, and returns how many
+/// query heads share each key/value head.
+fn group_count(q: &Tensor, k: &Tensor, v: Option<&Tensor>) -> Result<usize> {
+    let (qs, ks) = (q.shape(), k.shape());
+    if qs.len() != 4 || ks.len() != 4 || v.is_some_and(|v| v.shape() != ks) {
         return Err(Error::shape(
             "causal_attention",
             format!(
-                "expected q [B, H, T, D] and k, v [B, Hkv, T, D]; got {qs:?}, {ks:?} and {vs:?}"
+                "expected q [B, H, T, D] and k, v [B, Hkv, T, D]; got {qs:?}, {ks:?} and {:?}",
+                v.map(Tensor::shape)
             ),
         ));
     }
@@ -59,15 +52,52 @@ pub fn causal_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
             format!("{n_heads} query heads is not a multiple of {n_kv_heads} key/value heads"),
         ));
     }
-    let groups = n_heads / n_kv_heads;
-    let (k, v) = if groups > 1 {
-        (k.repeat_interleave(1, groups)?, v.repeat_interleave(1, groups)?)
+    Ok(n_heads / n_kv_heads)
+}
+
+/// Copies each key/value head to every query head that shares it.
+fn expand_heads(t: &Tensor, groups: usize) -> Result<Tensor> {
+    if groups > 1 {
+        t.repeat_interleave(1, groups)
     } else {
-        (k.clone(), v.clone())
-    };
-    let scale = 1.0 / (qs[3] as f32).sqrt();
-    let scores = q.matmul(&k.transpose(-1, -2)?)?.scale(scale).add(&causal_mask(qs[2])?)?;
-    scores.softmax(-1)?.matmul(&v)
+        Ok(t.clone())
+    }
+}
+
+/// The attention probabilities `softmax(q k^T / sqrt(head_dim) + causal_mask)`.
+///
+/// `q` is `[batch, n_heads, time, head_dim]` and `k` is
+/// `[batch, n_kv_heads, time, head_dim]` where `n_heads` is a multiple of
+/// `n_kv_heads`. Consecutive groups of `n_heads / n_kv_heads` query heads share
+/// one key/value head. The result is `[batch, n_heads, time, time]`: row `i` of
+/// each matrix says how much position `i` reads from every position, sums to 1,
+/// and is exactly 0 for positions after `i`.
+///
+/// # Errors
+///
+/// Returns an error if the shapes do not have that form.
+pub fn causal_attention_weights(q: &Tensor, k: &Tensor) -> Result<Tensor> {
+    let groups = group_count(q, k, None)?;
+    let k = expand_heads(k, groups)?;
+    let scale = 1.0 / (q.shape()[3] as f32).sqrt();
+    let scores = q.matmul(&k.transpose(-1, -2)?)?.scale(scale).add(&causal_mask(q.shape()[2])?)?;
+    scores.softmax(-1)
+}
+
+/// `softmax(q k^T / sqrt(head_dim) + causal_mask) v` with grouped-query sharing.
+///
+/// `q` is `[batch, n_heads, time, head_dim]`; `k` and `v` are
+/// `[batch, n_kv_heads, time, head_dim]` where `n_heads` is a multiple of
+/// `n_kv_heads`. Consecutive groups of `n_heads / n_kv_heads` query heads share
+/// one key/value head. The result is `[batch, n_heads, time, head_dim]`.
+///
+/// # Errors
+///
+/// Returns an error if the shapes do not have that form.
+pub fn causal_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
+    let groups = group_count(q, k, Some(v))?;
+    let weights = causal_attention_weights(q, k)?;
+    weights.matmul(&expand_heads(v, groups)?)
 }
 
 /// The four projection matrices of an attention layer, as plain tensors.
@@ -100,6 +130,26 @@ pub fn attention_forward(
     n_kv_heads: usize,
     rope: &RotaryTables,
 ) -> Result<Tensor> {
+    Ok(attention_forward_traced(x, weights, n_heads, n_kv_heads, rope)?.0)
+}
+
+/// [`attention_forward`] that also returns the attention probabilities of shape
+/// `[batch, n_heads, time, time]` (see [`causal_attention_weights`]).
+///
+/// The output is bit-for-bit the one `attention_forward` returns. The
+/// probabilities are the values the forward pass already computed, so asking for
+/// them costs nothing extra.
+///
+/// # Errors
+///
+/// Returns an error under the same conditions as [`attention_forward`].
+pub fn attention_forward_traced(
+    x: &Tensor,
+    weights: &AttentionWeights,
+    n_heads: usize,
+    n_kv_heads: usize,
+    rope: &RotaryTables,
+) -> Result<(Tensor, Tensor)> {
     let &[batch, time, _] = x.shape() else {
         return Err(Error::shape(
             "attention",
@@ -113,8 +163,10 @@ pub fn attention_forward(
     let q = rope.apply(&heads(x.matmul(&weights.q)?, n_heads)?)?;
     let k = rope.apply(&heads(x.matmul(&weights.k)?, n_kv_heads)?)?;
     let v = heads(x.matmul(&weights.v)?, n_kv_heads)?;
-    let context = causal_attention(&q, &k, &v)?;
-    context.permute(&[0, 2, 1, 3])?.reshape(&[batch, time, n_heads * head_dim])?.matmul(&weights.o)
+    let probs = causal_attention_weights(&q, &k)?;
+    let context = probs.matmul(&expand_heads(&v, n_heads / n_kv_heads)?)?;
+    let merged = context.permute(&[0, 2, 1, 3])?.reshape(&[batch, time, n_heads * head_dim])?;
+    Ok((merged.matmul(&weights.o)?, probs))
 }
 
 /// A causal self-attention layer with grouped-query sharing and no biases.
@@ -171,6 +223,16 @@ impl Attention {
     /// Returns an error if `x` does not have that shape, or `rope` was built for
     /// a different head size.
     pub fn forward(&self, x: &Tensor, rope: &RotaryTables) -> Result<Tensor> {
+        Ok(self.forward_traced(x, rope)?.0)
+    }
+
+    /// [`Attention::forward`] that also returns the attention probabilities of
+    /// shape `[batch, n_heads, time, time]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error under the same conditions as [`Attention::forward`].
+    pub fn forward_traced(&self, x: &Tensor, rope: &RotaryTables) -> Result<(Tensor, Tensor)> {
         if rope.head_dim() != self.head_dim {
             return Err(Error::shape(
                 "attention",
@@ -187,7 +249,7 @@ impl Attention {
             v: self.v_proj.weight().tensor(),
             o: self.o_proj.weight().tensor(),
         };
-        attention_forward(x, &weights, self.n_heads, self.n_kv_heads, rope)
+        attention_forward_traced(x, &weights, self.n_heads, self.n_kv_heads, rope)
     }
 
     /// The size of one attention head.
@@ -255,6 +317,69 @@ mod tests {
         let expected = [1.0, 0.0, 0.0, 0.0, w0, 1.0 - w0, 0.0, 0.0];
         for (got, want) in out.data().iter().zip(expected) {
             assert!((got - want).abs() < 1e-6, "{:?} vs {expected:?}", out.data());
+        }
+    }
+
+    #[test]
+    fn the_weights_of_a_known_case_are_the_expected_probabilities() {
+        // The same setup as the known-answer test: head size 4 (scores divided by 2),
+        // position 1 scores [2, 0] / 2 = [1, 0], so its row is [sigmoid(1), 1 - sigmoid(1)].
+        let t = |d: Vec<f32>| Tensor::from_vec(d, &[1, 1, 2, 4]).unwrap();
+        let q = t(vec![2.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0]);
+        let k = t(vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        let weights = causal_attention_weights(&q, &k).unwrap();
+        assert_eq!(weights.shape(), &[1, 1, 2, 2]);
+        let w0 = 1.0 / (1.0 + (-1.0f32).exp());
+        let expected = [1.0, 0.0, w0, 1.0 - w0];
+        for (got, want) in weights.data().iter().zip(expected) {
+            assert!((got - want).abs() < 1e-6, "{:?} vs {expected:?}", weights.data());
+        }
+    }
+
+    #[test]
+    fn every_row_is_a_distribution_over_the_past_only() {
+        // 4 query heads over 2 key/value heads, so the probabilities have one
+        // matrix per query head.
+        let weights =
+            causal_attention_weights(&rand_t(&[2, 4, 5, 3], 50), &rand_t(&[2, 2, 5, 3], 51))
+                .unwrap();
+        assert_eq!(weights.shape(), &[2, 4, 5, 5]);
+        for matrix in weights.data().chunks_exact(5 * 5) {
+            for (i, row) in matrix.chunks_exact(5).enumerate() {
+                assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5, "row {i} sums to {row:?}");
+                assert!(
+                    row[i + 1..].iter().all(|&p| p == 0.0),
+                    "row {i} reads the future: {row:?}"
+                );
+                assert!(row[..=i].iter().all(|&p| p > 0.0));
+            }
+        }
+    }
+
+    #[test]
+    fn query_heads_in_one_group_share_keys_and_those_in_different_groups_do_not() {
+        // 4 query heads over 2 key/value heads: heads 0 and 1 use key head 0, heads 2 and 3 use key
+        // head 1. Give all four the same query, so only the keys can make the weights differ.
+        let one = rand_t(&[1, 1, 4, 3], 52);
+        let q = Tensor::concat(&[one.clone(), one.clone(), one.clone(), one], 1).unwrap();
+        let weights = causal_attention_weights(&q, &rand_t(&[1, 2, 4, 3], 53)).unwrap();
+        let head = |h: usize| weights.data()[h * 16..(h + 1) * 16].to_vec();
+        assert_eq!(head(0), head(1));
+        assert_eq!(head(2), head(3));
+        assert_ne!(head(0), head(2));
+    }
+
+    #[test]
+    fn the_traced_layer_returns_the_same_output_and_the_probabilities() {
+        let rope = RotaryTables::new(4, 16, 10_000.0).unwrap();
+        let attn = layer(2, 1);
+        let x = rand_t(&[2, 6, 8], 54);
+        let plain = attn.forward(&x, &rope).unwrap();
+        let (traced, probs) = attn.forward_traced(&x, &rope).unwrap();
+        assert_eq!(plain.data(), traced.data());
+        assert_eq!(probs.shape(), &[2, 2, 6, 6]);
+        for row in probs.data().chunks_exact(6) {
+            assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5);
         }
     }
 

@@ -5,7 +5,7 @@
 
 Dependencies: `midman-foundation`, `midman-model-config`, `midman-nn` and `midman-tensor`. `midman-optim` is a dev-dependency used only by the training smoke tests. It moves to `midman-training` when that crate has a training loop.
 
-Test status when this was written: 6 unit tests, 14 whole-model tests, 3 training smoke tests that run by default and 1 that is ignored by default, 1 doctest. Checked with `fmt`, `clippy -D warnings` and `rustdoc -D warnings` on Rust 1.75 and on Rust 1.91, and mutation-tested (see "Fixes and Problems").
+Test status when this was written: 6 unit tests, 15 whole-model tests, 3 training smoke tests that run by default and 1 that is ignored by default, 1 doctest. Checked with `fmt`, `clippy -D warnings` and `rustdoc -D warnings` on Rust 1.75 and on Rust 1.91, and mutation-tested (see "Fixes and Problems").
 
 ## Modules
 
@@ -15,7 +15,7 @@ Test status when this was written: 6 unit tests, 14 whole-model tests, 3 trainin
 **Tests:** The doctest.
 
 ### `model.rs`
-**What it does:** `MidManModel` with `new`, `with_init_std`, `config`, `num_parameters`, `forward` (token ids to logits of shape `[batch, seq, vocab_size]`), `loss` (mean next-token cross-entropy) and a `Module` implementation.
+**What it does:** `MidManModel` with `new`, `with_init_std`, `config`, `num_parameters`, `forward` (token ids to logits of shape `[batch, seq, vocab_size]`), `forward_traced` (the same logits plus every layer's attention probabilities, bit for bit the logits `forward` returns), `loss` (mean next-token cross-entropy) and a `Module` implementation.
 
 **Parameter names and order:** `embed_tokens.weight`, then for each block `blocks.{i}.attn_norm`, `blocks.{i}.attn.{q,k,v,o}_proj`, `blocks.{i}.mlp_norm` and `blocks.{i}.mlp.{gate,up,down}_proj`, then `final_norm.weight`, and `lm_head.weight` only when embeddings are untied. Every name but the norms ends in `.weight`.
 
@@ -33,6 +33,7 @@ Test status when this was written: 6 unit tests, 14 whole-model tests, 3 trainin
 ### `tests/wiring.rs`
 **What it does:** Whole-model checks.
 - **Parameter accounting:** for the Smoke and Tiny presets and a grouped-query model in both head modes, the built parameters equal `ModelConfig::param_breakdown` in total and per category (embedding, attention, MLP, norms, head). The larger presets are covered by the config crate's own tests, because building a billion-parameter model in a unit test is not sensible.
+- **Tracing:** `forward_traced` returns the same logits as `forward` and one probability tensor per layer, each row a distribution over the past only.
 - **Names and determinism:** names are unique, in running order, with the expected first and last names; one seed gives one model and another seed gives another.
 - **Causality and prefixes:** changing the token at any position leaves every earlier position's logits unchanged, and the logits of every shorter prefix equal the first rows of the longer run, which also exercises the rotary tables and the mask at every length.
 - **Batches:** sequences in a batch do not affect each other, the order of sequences does not change the loss, and the batch loss equals the mean of the per-sequence losses.

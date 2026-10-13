@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- ============================================================================
+     NOTICE: Full documentation, design decisions, and fix history for this file
+     live in docs/midman-web.md, section "benchmarks/index.html"
+     ============================================================================ -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MidMan AI Benchmarks</title>
+  <link rel="stylesheet" href="../shared/theme.css">
+  <link rel="stylesheet" href="bench.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="../">MidMan <span>AI</span></a>
+  <nav aria-label="Site">
+    <a href="../lab/">Lab</a>
+    <a href="../docs/">Docs</a>
+    <a href="../tests/">Tests</a>
+    <a href="../benchmarks/" aria-current="page">Benchmarks</a>
+  </nav>
+</header>
+<main>
+  <h1>Benchmarks</h1>
+  <p class="lede">Criterion results from the latest benchmark run. Where a group has a <code>baseline-*</code> variant, it is a plain reference implementation of the same operation, and every other variant is compared with it. A <code>unit-*</code> variant is only a cost denominator, such as the forward pass.</p>
+  <div id="summary" class="card" role="status">Loading…</div>
+  <div id="groups"></div>
+</main>
+<script type="module" src="boot.js"></script>
+</body>
+</html>

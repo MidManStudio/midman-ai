@@ -43,7 +43,8 @@ mod norm;
 mod rope;
 
 pub use attention::{
-    attention_forward, causal_attention, causal_mask, Attention, AttentionWeights,
+    attention_forward, attention_forward_traced, causal_attention, causal_attention_weights,
+    causal_mask, Attention, AttentionWeights,
 };
 pub use block::{BlockSpec, DecoderBlock};
 pub use embedding::Embedding;

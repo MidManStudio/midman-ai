@@ -9,6 +9,8 @@ Notes on the root `Cargo.toml`, `rust-toolchain.toml`, `rustfmt.toml`, and `.car
 ## [workspace.lints] and [workspace.dependencies]
 `unsafe_code` is `deny` and `missing_docs` is `warn`, with clippy's `undocumented_unsafe_blocks` at `warn`. Every crate opts in with `[lints] workspace = true`. A crate that needs unsafe code opts back out with `#![allow(unsafe_code)]` at its crate root, so the exception is visible in one line.
 
+`midman-api` builds as `rlib` and `cdylib` and also compiles to `wasm32-unknown-unknown` for the web lab; it has no external dependencies and builds on Rust 1.75.
+
 `[workspace.dependencies]` holds `criterion` (version 0.5 with `html_reports`), which only `benches/midman-bench` uses. Every other crate still has no external dependencies. Shared dependency versions go in this table, and crates opt in with `criterion = { workspace = true }`.
 
 The benchmark package's bench files open with `#![allow(missing_docs)]`, because `criterion_group!` expands to an undocumented `pub fn`.
@@ -36,7 +38,7 @@ Every crate stays at `0.0.1` during active development. The first official relea
 
 ## Not decided yet
 - `[workspace.package]` is not used, and no crate sets a `license` field. Add both once a license is chosen.
-- Whether any crate needs `unsafe` code.
+- Whether other crates will need `unsafe`. `midman-api` does, for its C ABI, and opts out of `unsafe_code = "deny"` at its own crate root with a comment, as mid-engine's FFI crates do.
 - Whether to record a minimum supported Rust version. The benchmark package needs about 1.85 and the rest built on 1.75 when checked.
 
 ## Fixes and Problems

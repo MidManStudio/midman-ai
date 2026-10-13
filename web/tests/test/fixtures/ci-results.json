@@ -1,0 +1,213 @@
+{
+  "meta": {
+    "build": "1",
+    "branch": "main",
+    "commit": "01234567",
+    "rust_version": "rustc 1.75.0",
+    "package": "workspace"
+  },
+  "outcomes": {
+    "fmt": "success",
+    "clippy": "success",
+    "build": "success",
+    "test": "success"
+  },
+  "fmt": {
+    "files": [],
+    "errors": []
+  },
+  "clippy": {
+    "errors": 0,
+    "warnings": 0,
+    "diagnostics": []
+  },
+  "test": {
+    "suites": [
+      {
+        "name": "midman-api",
+        "passed": 24,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 3.09,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "c-abi",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.41,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-foundation",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.59,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-model",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.01,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "overfit",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 1,
+        "duration_s": 3.04,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "wiring",
+        "passed": 15,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 2.05,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-model-config",
+        "passed": 25,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.0,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "preset-files",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.0,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-nn",
+        "passed": 56,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.01,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "grad-layers",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.1,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-optim",
+        "passed": 19,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.01,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-tensor",
+        "passed": 70,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.75,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "grad-ops",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.06,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-api (doc-tests)",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.67,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-foundation (doc-tests)",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.17,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-model (doc-tests)",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.33,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-model-config (doc-tests)",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.2,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-nn (doc-tests)",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.26,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-optim (doc-tests)",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.31,
+        "failed_tests": [],
+        "failure_output": {}
+      },
+      {
+        "name": "midman-tensor (doc-tests)",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "duration_s": 0.32,
+        "failed_tests": [],
+        "failure_output": {}
+      }
+    ],
+    "passed": 291,
+    "failed": 0,
+    "ignored": 1,
+    "duration_s": 12.38,
+    "build_errors": []
+  }
+}

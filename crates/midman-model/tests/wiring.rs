@@ -168,6 +168,29 @@ fn a_shorter_prefix_gives_the_same_logits_as_the_start_of_a_longer_run() {
 }
 
 #[test]
+fn the_traced_forward_returns_the_same_logits_and_one_probability_tensor_per_layer() {
+    let config = small(true);
+    let model = MidManModel::with_init_std(&config, 0.3, &mut Rng::seed_from_u64(8)).unwrap();
+    let ids = [1usize, 5, 2, 8, 3, 12, 0, 7];
+    let plain = model.forward(&ids, 2, 4).unwrap();
+    let (logits, attention) = model.forward_traced(&ids, 2, 4).unwrap();
+    assert_eq!(plain.data(), logits.data());
+    assert_eq!(attention.len(), config.n_layers);
+    for probs in &attention {
+        assert_eq!(probs.shape(), &[2, config.n_heads, 4, 4]);
+        for matrix in probs.data().chunks_exact(16) {
+            for (i, row) in matrix.chunks_exact(4).enumerate() {
+                assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5);
+                assert!(row[i + 1..].iter().all(|&p| p == 0.0));
+            }
+        }
+    }
+    // The first position can only read itself.
+    assert!(attention[0].data().chunks_exact(16).all(|m| m[0] == 1.0));
+    assert!(model.forward_traced(&ids, 2, 0).is_err());
+}
+
+#[test]
 fn the_order_of_sequences_in_a_batch_does_not_matter() {
     let model = MidManModel::with_init_std(&small(true), 0.3, &mut Rng::seed_from_u64(5)).unwrap();
     let (a, b) = ([1usize, 2, 3, 4], [9usize, 8, 7, 6]);

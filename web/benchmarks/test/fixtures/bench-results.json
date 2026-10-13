@@ -1,0 +1,810 @@
+{
+  "meta": {
+    "build": "0",
+    "branch": "unknown",
+    "commit": "unknown",
+    "rust_version": "stable",
+    "runner": "unknown",
+    "package": "workspace",
+    "filter": "",
+    "note": ""
+  },
+  "outcome": "success",
+  "groups": [
+    {
+      "group": "train_step_smoke_b4_t32",
+      "rows": [
+        {
+          "name": "train_step_smoke_b4_t32/unit-forward",
+          "group": "train_step_smoke_b4_t32",
+          "variant": "unit-forward",
+          "low_ns": 3338100.0,
+          "mid_ns": 3386400.0,
+          "high_ns": 3500500.0,
+          "throughput": "37.798 Kelem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "train_step_smoke_b4_t32/forward-backward",
+          "group": "train_step_smoke_b4_t32",
+          "variant": "forward-backward",
+          "low_ns": 14599000.0,
+          "mid_ns": 15252000.0,
+          "high_ns": 15979000.0,
+          "throughput": "8.3924 Kelem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 4.503897944720057
+        },
+        {
+          "name": "train_step_smoke_b4_t32/full-step",
+          "group": "train_step_smoke_b4_t32",
+          "variant": "full-step",
+          "low_ns": 14813000.0,
+          "mid_ns": 15010000.0,
+          "high_ns": 15280000.0,
+          "throughput": "8.5277 Kelem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 4.43243562485235
+        }
+      ],
+      "denominator": "unit-forward",
+      "kind": "unit"
+    },
+    {
+      "group": "train_step_tiny_b1_t32",
+      "rows": [
+        {
+          "name": "train_step_tiny_b1_t32/unit-forward",
+          "group": "train_step_tiny_b1_t32",
+          "variant": "unit-forward",
+          "low_ns": 8829600.0,
+          "mid_ns": 8971700.0,
+          "high_ns": 9145500.0,
+          "throughput": "3.5668 Kelem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "train_step_tiny_b1_t32/forward-backward",
+          "group": "train_step_tiny_b1_t32",
+          "variant": "forward-backward",
+          "low_ns": 50344000.0,
+          "mid_ns": 51386000.0,
+          "high_ns": 52460000.0,
+          "throughput": "622.73 elem/s",
+          "outliers": 4,
+          "samples": 10,
+          "ratio": 5.727565567283793
+        },
+        {
+          "name": "train_step_tiny_b1_t32/full-step",
+          "group": "train_step_tiny_b1_t32",
+          "variant": "full-step",
+          "low_ns": 54198000.0,
+          "mid_ns": 55400000.0,
+          "high_ns": 56245000.0,
+          "throughput": "577.62 elem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": 6.174972413255013
+        }
+      ],
+      "denominator": "unit-forward",
+      "kind": "unit"
+    },
+    {
+      "group": "model_build",
+      "rows": [
+        {
+          "name": "model_build/smoke",
+          "group": "model_build",
+          "variant": "smoke",
+          "low_ns": 2263200.0,
+          "mid_ns": 2304500.0,
+          "high_ns": 2414000.0,
+          "throughput": "50.796 Melem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "model_build/tiny",
+          "group": "model_build",
+          "variant": "tiny",
+          "low_ns": 25061000.0,
+          "mid_ns": 25409000.0,
+          "high_ns": 26030000.0,
+          "throughput": "51.791 Melem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    },
+    {
+      "group": "attention_forward_t16",
+      "rows": [
+        {
+          "name": "attention_forward_t16/baseline-mha",
+          "group": "attention_forward_t16",
+          "variant": "baseline-mha",
+          "low_ns": 154930.0,
+          "mid_ns": 159280.0,
+          "high_ns": 167770.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "attention_forward_t16/gqa-2",
+          "group": "attention_forward_t16",
+          "variant": "gqa-2",
+          "low_ns": 131280.0,
+          "mid_ns": 132310.0,
+          "high_ns": 134070.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": 0.8306755399296836
+        },
+        {
+          "name": "attention_forward_t16/mqa",
+          "group": "attention_forward_t16",
+          "variant": "mqa",
+          "low_ns": 126900.0,
+          "mid_ns": 130990.00000000001,
+          "high_ns": 137100.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": 0.8223882471120041
+        }
+      ],
+      "denominator": "baseline-mha",
+      "kind": "baseline"
+    },
+    {
+      "group": "attention_forward_t64",
+      "rows": [
+        {
+          "name": "attention_forward_t64/baseline-mha",
+          "group": "attention_forward_t64",
+          "variant": "baseline-mha",
+          "low_ns": 973470.0,
+          "mid_ns": 1003600.0,
+          "high_ns": 1035600.0000000001,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "attention_forward_t64/gqa-2",
+          "group": "attention_forward_t64",
+          "variant": "gqa-2",
+          "low_ns": 852330.0,
+          "mid_ns": 888440.0,
+          "high_ns": 919400.0,
+          "throughput": null,
+          "outliers": 2,
+          "samples": 10,
+          "ratio": 0.8852530888800318
+        },
+        {
+          "name": "attention_forward_t64/mqa",
+          "group": "attention_forward_t64",
+          "variant": "mqa",
+          "low_ns": 832030.0,
+          "mid_ns": 845960.0,
+          "high_ns": 866550.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": 0.8429254683140693
+        }
+      ],
+      "denominator": "baseline-mha",
+      "kind": "baseline"
+    },
+    {
+      "group": "attention_forward_t128",
+      "rows": [
+        {
+          "name": "attention_forward_t128/baseline-mha",
+          "group": "attention_forward_t128",
+          "variant": "baseline-mha",
+          "low_ns": 3942600.0,
+          "mid_ns": 3986700.0,
+          "high_ns": 4044100.0000000005,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "attention_forward_t128/gqa-2",
+          "group": "attention_forward_t128",
+          "variant": "gqa-2",
+          "low_ns": 3768600.0,
+          "mid_ns": 3843300.0,
+          "high_ns": 3947000.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": 0.9640304010836029
+        },
+        {
+          "name": "attention_forward_t128/mqa",
+          "group": "attention_forward_t128",
+          "variant": "mqa",
+          "low_ns": 3601900.0,
+          "mid_ns": 3721400.0,
+          "high_ns": 3948000.0,
+          "throughput": null,
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 0.9334537336644343
+        }
+      ],
+      "denominator": "baseline-mha",
+      "kind": "baseline"
+    },
+    {
+      "group": "attention_backward_t64",
+      "rows": [
+        {
+          "name": "attention_backward_t64/unit-forward",
+          "group": "attention_backward_t64",
+          "variant": "unit-forward",
+          "low_ns": 838570.0,
+          "mid_ns": 869780.0,
+          "high_ns": 913240.0,
+          "throughput": null,
+          "outliers": 3,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "attention_backward_t64/forward-backward",
+          "group": "attention_backward_t64",
+          "variant": "forward-backward",
+          "low_ns": 2054399.9999999998,
+          "mid_ns": 2123700.0,
+          "high_ns": 2188400.0,
+          "throughput": null,
+          "outliers": 2,
+          "samples": 10,
+          "ratio": 2.4416519119777416
+        }
+      ],
+      "denominator": "unit-forward",
+      "kind": "unit"
+    },
+    {
+      "group": "rms_norm_512x64",
+      "rows": [
+        {
+          "name": "rms_norm_512x64/baseline-naive-rows",
+          "group": "rms_norm_512x64",
+          "variant": "baseline-naive-rows",
+          "low_ns": 21842.0,
+          "mid_ns": 21966.0,
+          "high_ns": 22166.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "rms_norm_512x64/midman-nn",
+          "group": "rms_norm_512x64",
+          "variant": "midman-nn",
+          "low_ns": 303740.0,
+          "mid_ns": 304800.0,
+          "high_ns": 305780.0,
+          "throughput": null,
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 13.875990166621142
+        }
+      ],
+      "denominator": "baseline-naive-rows",
+      "kind": "baseline"
+    },
+    {
+      "group": "rope_t128",
+      "rows": [
+        {
+          "name": "rope_t128/midman-nn",
+          "group": "rope_t128",
+          "variant": "midman-nn",
+          "low_ns": 114160.0,
+          "mid_ns": 115670.0,
+          "high_ns": 117260.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    },
+    {
+      "group": "swiglu_t64",
+      "rows": [
+        {
+          "name": "swiglu_t64/midman-nn",
+          "group": "swiglu_t64",
+          "variant": "midman-nn",
+          "low_ns": 553400.0,
+          "mid_ns": 555770.0,
+          "high_ns": 558160.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    },
+    {
+      "group": "decoder_block_t64",
+      "rows": [
+        {
+          "name": "decoder_block_t64/unit-forward",
+          "group": "decoder_block_t64",
+          "variant": "unit-forward",
+          "low_ns": 2182500.0,
+          "mid_ns": 2209200.0,
+          "high_ns": 2237900.0,
+          "throughput": null,
+          "outliers": 1,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "decoder_block_t64/forward-backward",
+          "group": "decoder_block_t64",
+          "variant": "forward-backward",
+          "low_ns": 7149700.0,
+          "mid_ns": 7226800.0,
+          "high_ns": 7317000.0,
+          "throughput": null,
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 3.2712294043092522
+        }
+      ],
+      "denominator": "unit-forward",
+      "kind": "unit"
+    },
+    {
+      "group": "adamw_step_65536",
+      "rows": [
+        {
+          "name": "adamw_step_65536/baseline-plain-loop",
+          "group": "adamw_step_65536",
+          "variant": "baseline-plain-loop",
+          "low_ns": 52727.0,
+          "mid_ns": 54216.0,
+          "high_ns": 55758.0,
+          "throughput": "1.2088 Gelem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "adamw_step_65536/midman-optim",
+          "group": "adamw_step_65536",
+          "variant": "midman-optim",
+          "low_ns": 77775.0,
+          "mid_ns": 78315.0,
+          "high_ns": 78616.0,
+          "throughput": "836.82 Melem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": 1.4444997786631253
+        }
+      ],
+      "denominator": "baseline-plain-loop",
+      "kind": "baseline"
+    },
+    {
+      "group": "adamw_step_1048576",
+      "rows": [
+        {
+          "name": "adamw_step_1048576/baseline-plain-loop",
+          "group": "adamw_step_1048576",
+          "variant": "baseline-plain-loop",
+          "low_ns": 868860.0,
+          "mid_ns": 870390.0,
+          "high_ns": 872310.0,
+          "throughput": "1.2047 Gelem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "adamw_step_1048576/midman-optim",
+          "group": "adamw_step_1048576",
+          "variant": "midman-optim",
+          "low_ns": 1254100.0,
+          "mid_ns": 1259300.0,
+          "high_ns": 1266400.0,
+          "throughput": "832.66 Melem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 1.4468226886797872
+        }
+      ],
+      "denominator": "baseline-plain-loop",
+      "kind": "baseline"
+    },
+    {
+      "group": "clip_1m",
+      "rows": [
+        {
+          "name": "clip_1m/global-norm",
+          "group": "clip_1m",
+          "variant": "global-norm",
+          "low_ns": 744790.0,
+          "mid_ns": 746610.0,
+          "high_ns": 749690.0,
+          "throughput": "1.4044 Gelem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "clip_1m/clip-and-rescale",
+          "group": "clip_1m",
+          "variant": "clip-and-rescale",
+          "low_ns": 1154500.0,
+          "mid_ns": 1161900.0,
+          "high_ns": 1168600.0,
+          "throughput": "902.47 Melem/s",
+          "outliers": 2,
+          "samples": 10,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    },
+    {
+      "group": "matmul_square_32",
+      "rows": [
+        {
+          "name": "matmul_square_32/baseline-naive-ijk",
+          "group": "matmul_square_32",
+          "variant": "baseline-naive-ijk",
+          "low_ns": 24635.0,
+          "mid_ns": 24795.0,
+          "high_ns": 24960.0,
+          "throughput": "2.6431 Gelem/s",
+          "outliers": 4,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "matmul_square_32/midman-tensor",
+          "group": "matmul_square_32",
+          "variant": "midman-tensor",
+          "low_ns": 4882.5,
+          "mid_ns": 4901.099999999999,
+          "high_ns": 4921.1,
+          "throughput": "13.372 Gelem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 0.19766485178463397
+        }
+      ],
+      "denominator": "baseline-naive-ijk",
+      "kind": "baseline"
+    },
+    {
+      "group": "matmul_square_96",
+      "rows": [
+        {
+          "name": "matmul_square_96/baseline-naive-ijk",
+          "group": "matmul_square_96",
+          "variant": "baseline-naive-ijk",
+          "low_ns": 632490.0,
+          "mid_ns": 637550.0,
+          "high_ns": 641110.0,
+          "throughput": "2.7754 Gelem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "matmul_square_96/midman-tensor",
+          "group": "matmul_square_96",
+          "variant": "midman-tensor",
+          "low_ns": 91079.0,
+          "mid_ns": 91544.0,
+          "high_ns": 92102.0,
+          "throughput": "19.329 Gelem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 0.1435871696337542
+        }
+      ],
+      "denominator": "baseline-naive-ijk",
+      "kind": "baseline"
+    },
+    {
+      "group": "matmul_square_192",
+      "rows": [
+        {
+          "name": "matmul_square_192/baseline-naive-ijk",
+          "group": "matmul_square_192",
+          "variant": "baseline-naive-ijk",
+          "low_ns": 5329500.0,
+          "mid_ns": 5424800.0,
+          "high_ns": 5667100.0,
+          "throughput": "2.6095 Gelem/s",
+          "outliers": 2,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "matmul_square_192/midman-tensor",
+          "group": "matmul_square_192",
+          "variant": "midman-tensor",
+          "low_ns": 864070.0,
+          "mid_ns": 875020.0,
+          "high_ns": 894940.0,
+          "throughput": "16.178 Gelem/s",
+          "outliers": 2,
+          "samples": 10,
+          "ratio": 0.16129995575873765
+        }
+      ],
+      "denominator": "baseline-naive-ijk",
+      "kind": "baseline"
+    },
+    {
+      "group": "matmul_linear_smoke_gate",
+      "rows": [
+        {
+          "name": "matmul_linear_smoke_gate/midman-tensor",
+          "group": "matmul_linear_smoke_gate",
+          "variant": "midman-tensor",
+          "low_ns": 156950.0,
+          "mid_ns": 163860.0,
+          "high_ns": 170490.0,
+          "throughput": "17.598 Gelem/s",
+          "outliers": 2,
+          "samples": 10,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    },
+    {
+      "group": "matmul_linear_smoke_head",
+      "rows": [
+        {
+          "name": "matmul_linear_smoke_head/midman-tensor",
+          "group": "matmul_linear_smoke_head",
+          "variant": "midman-tensor",
+          "low_ns": 263030.0,
+          "mid_ns": 265820.0,
+          "high_ns": 271120.0,
+          "throughput": "15.779 Gelem/s",
+          "outliers": 4,
+          "samples": 10,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    },
+    {
+      "group": "matmul_batched_scores_t32",
+      "rows": [
+        {
+          "name": "matmul_batched_scores_t32/midman-tensor",
+          "group": "matmul_batched_scores_t32",
+          "variant": "midman-tensor",
+          "low_ns": 20369.0,
+          "mid_ns": 20492.0,
+          "high_ns": 20589.0,
+          "throughput": "12.792 Gelem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    },
+    {
+      "group": "matmul_batched_scores_t128",
+      "rows": [
+        {
+          "name": "matmul_batched_scores_t128/midman-tensor",
+          "group": "matmul_batched_scores_t128",
+          "variant": "midman-tensor",
+          "low_ns": 233010.0,
+          "mid_ns": 235180.0,
+          "high_ns": 236570.0,
+          "throughput": "17.835 Gelem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    },
+    {
+      "group": "softmax_256x128",
+      "rows": [
+        {
+          "name": "softmax_256x128/baseline-naive-rows",
+          "group": "softmax_256x128",
+          "variant": "baseline-naive-rows",
+          "low_ns": 131280.0,
+          "mid_ns": 131750.0,
+          "high_ns": 132200.0,
+          "throughput": "248.71 Melem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "softmax_256x128/midman-tensor",
+          "group": "softmax_256x128",
+          "variant": "midman-tensor",
+          "low_ns": 216060.0,
+          "mid_ns": 216660.0,
+          "high_ns": 217270.0,
+          "throughput": "151.24 Melem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": 1.6444781783681215
+        }
+      ],
+      "denominator": "baseline-naive-rows",
+      "kind": "baseline"
+    },
+    {
+      "group": "silu_64k",
+      "rows": [
+        {
+          "name": "silu_64k/baseline-naive-map",
+          "group": "silu_64k",
+          "variant": "baseline-naive-map",
+          "low_ns": 184670.0,
+          "mid_ns": 187080.0,
+          "high_ns": 190570.0,
+          "throughput": "350.30 Melem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "silu_64k/midman-tensor",
+          "group": "silu_64k",
+          "variant": "midman-tensor",
+          "low_ns": 195810.0,
+          "mid_ns": 197690.0,
+          "high_ns": 200560.0,
+          "throughput": "331.52 Melem/s",
+          "outliers": 1,
+          "samples": 10,
+          "ratio": 1.056713705366688
+        }
+      ],
+      "denominator": "baseline-naive-map",
+      "kind": "baseline"
+    },
+    {
+      "group": "broadcast_add_256x512",
+      "rows": [
+        {
+          "name": "broadcast_add_256x512/baseline-naive-zip",
+          "group": "broadcast_add_256x512",
+          "variant": "baseline-naive-zip",
+          "low_ns": 127280.0,
+          "mid_ns": 127760.0,
+          "high_ns": 128550.00000000001,
+          "throughput": "1.0259 Gelem/s",
+          "outliers": 2,
+          "samples": 10,
+          "ratio": null
+        },
+        {
+          "name": "broadcast_add_256x512/midman-tensor",
+          "group": "broadcast_add_256x512",
+          "variant": "midman-tensor",
+          "low_ns": 301480.0,
+          "mid_ns": 305210.0,
+          "high_ns": 310410.0,
+          "throughput": "429.45 Melem/s",
+          "outliers": 2,
+          "samples": 10,
+          "ratio": 2.3889323731997494
+        }
+      ],
+      "denominator": "baseline-naive-zip",
+      "kind": "baseline"
+    },
+    {
+      "group": "mlp_128x64x256",
+      "rows": [
+        {
+          "name": "mlp_128x64x256/unit-forward-untracked",
+          "group": "mlp_128x64x256",
+          "variant": "unit-forward-untracked",
+          "low_ns": 644880.0,
+          "mid_ns": 650310.0,
+          "high_ns": 656550.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        },
+        {
+          "name": "mlp_128x64x256/forward-tracked",
+          "group": "mlp_128x64x256",
+          "variant": "forward-tracked",
+          "low_ns": 654640.0,
+          "mid_ns": 676630.0,
+          "high_ns": 696240.0,
+          "throughput": null,
+          "outliers": 0,
+          "samples": 0,
+          "ratio": 1.0404730051821438
+        },
+        {
+          "name": "mlp_128x64x256/forward-backward",
+          "group": "mlp_128x64x256",
+          "variant": "forward-backward",
+          "low_ns": 2055300.0,
+          "mid_ns": 2099400.0,
+          "high_ns": 2210700.0,
+          "throughput": null,
+          "outliers": 2,
+          "samples": 10,
+          "ratio": 3.228306499976934
+        }
+      ],
+      "denominator": "unit-forward-untracked",
+      "kind": "unit"
+    },
+    {
+      "group": "randn_1m",
+      "rows": [
+        {
+          "name": "randn_1m/midman-tensor",
+          "group": "randn_1m",
+          "variant": "midman-tensor",
+          "low_ns": 20041000.0,
+          "mid_ns": 20351000.0,
+          "high_ns": 20591000.0,
+          "throughput": "51.524 Melem/s",
+          "outliers": 0,
+          "samples": 0,
+          "ratio": null
+        }
+      ],
+      "denominator": null,
+      "kind": null
+    }
+  ],
+  "diagnostics": []
+}
