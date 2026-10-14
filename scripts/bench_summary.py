@@ -14,6 +14,11 @@ split at the final `/`. Within a group:
   * otherwise a variant named `unit-*` is a cost denominator (for example the
     forward pass); every other variant gets a plain multiple, no badge.
 
+A group that also has `baseline-c-*` variants (the same operation in plain C)
+gets a second ratio, `ratio_c`, for every variant: its time over the fastest C
+variant's. The C compiler is read from the line `C baselines compiled with: ...`
+that the benches print once.
+
 Never fails the job; the gate step in benchmarks.yml decides pass/fail from the
 cargo step outcome.
 """
@@ -32,6 +37,7 @@ RE_TIME = re.compile(
 RE_THRPT = re.compile(
     r"^\s*thrpt:\s+\[[\d.]+\s+\S+\s+(?P<mid>[\d.]+)\s+(?P<unit>\S+)\s+[\d.]+\s+\S+\]\s*$"
 )
+RE_C_COMPILER = re.compile(r"^C baselines compiled with: (.+?)\s*$", re.M)
 RE_OUTLIERS = re.compile(r"^Found (\d+) outliers among (\d+) measurements")
 DIAG_PATTERNS = [
     ("took zero time", re.compile(r"took zero time", re.I)),
@@ -46,6 +52,7 @@ RE_FINISHED = re.compile(r"^[ \t]*Finished ", re.M)
 MAX_RAW_EMBED = 200_000
 BASELINE_PREFIX = "baseline-"
 UNIT_PREFIX = "unit-"
+C_PREFIX = "baseline-c-"
 
 
 def to_ns(value, unit):
@@ -107,8 +114,15 @@ def parse(text):
     return results
 
 
+def c_compiler(text):
+    """The C compiler the benches reported, or an empty string."""
+    m = RE_C_COMPILER.search(text)
+    return m.group(1) if m else ""
+
+
 def group_results(results):
-    """Groups in log order, each with its denominator variant and kind (or None)."""
+    """Groups in log order, each with its denominator variant and kind (or None),
+    and its fastest C variant (or None)."""
     groups = {}
     for r in results:
         groups.setdefault(r["group"], []).append(r)
@@ -120,11 +134,17 @@ def group_results(results):
             if found:
                 denominator, kind = found, label
                 break
+        c_rows = [r for r in rows if r["variant"].startswith(C_PREFIX) and r["mid_ns"] > 0]
+        c_reference = min(c_rows, key=lambda r: r["mid_ns"]) if c_rows else None
         for r in rows:
             r["ratio"] = None
             if denominator is not None and r is not denominator and denominator["mid_ns"] > 0:
                 r["ratio"] = r["mid_ns"] / denominator["mid_ns"]
-        out.append({"group": name, "rows": rows, "denominator": denominator, "kind": kind})
+            r["ratio_c"] = None
+            if c_reference is not None and r is not c_reference:
+                r["ratio_c"] = r["mid_ns"] / c_reference["mid_ns"]
+        out.append({"group": name, "rows": rows, "denominator": denominator, "kind": kind,
+                    "c_reference": c_reference})
     return out
 
 
@@ -167,7 +187,8 @@ def build_md(meta, outcome, grouped, total, diags, raw):
     out = [f"## midman-ai benchmarks: build #{meta['build']}", "",
            f"Package: `{meta['package']}` &nbsp;|&nbsp; Filter: `{meta['filter'] or '(none)'}` "
            f"&nbsp;|&nbsp; Branch: `{meta['branch']}` &nbsp;|&nbsp; Commit: `{meta['commit']}` "
-           f"&nbsp;|&nbsp; Runner: `{meta['runner']}` &nbsp;|&nbsp; Rust: `{meta['rust_version']}`", ""]
+           f"&nbsp;|&nbsp; Runner: `{meta['runner']}` &nbsp;|&nbsp; Rust: `{meta['rust_version']}`"
+           + (f" &nbsp;|&nbsp; C compiler: `{meta['c_compiler']}`" if meta.get("c_compiler") else ""), ""]
     if meta["note"]:
         out += [f"Note: {meta['note']}", ""]
     out += [f"`cargo bench`: {status}", ""]
@@ -179,10 +200,14 @@ def build_md(meta, outcome, grouped, total, diags, raw):
                 "Time is criterion's estimate with its 95% interval. Throughput counts elements per "
                 "second: floating-point operations for matrix products, tokens for training steps. "
                 "Ratios are against the group's `baseline-*` variant (badged) or, failing that, its "
-                "`unit-*` variant (a plain multiple).", ""]
+                "`unit-*` variant (a plain multiple). A group with `baseline-c-*` variants (plain C) "
+                "also shows each variant against the fastest of them.", ""]
         for g in grouped:
             head = {"baseline": "vs baseline", "unit": "x the unit variant"}.get(g["kind"], "")
-            cols = ["Variant", "Time", "95% interval", "Throughput"] + ([head] if head else []) + ["Outliers"]
+            cols = ["Variant", "Time", "95% interval", "Throughput"] + ([head] if head else [])
+            if g.get("c_reference"):
+                cols.append("vs fastest C")
+            cols.append("Outliers")
             out += [f"### {g['group']}", "", "| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
             for r in g["rows"]:
                 cells = [f"`{r['variant']}`", pretty(r["mid_ns"]),
@@ -194,6 +219,8 @@ def build_md(meta, outcome, grouped, total, diags, raw):
                         cells.append(badge(r["ratio"]))
                     else:
                         cells.append(f"{r['ratio']:.2f}x")
+                if g.get("c_reference"):
+                    cells.append("(fastest C)" if r is g["c_reference"] else badge(r["ratio_c"]))
                 cells.append(f"{r['outliers']}/{r['samples']}" if r["samples"] else "0")
                 out.append("| " + " | ".join(cells) + " |")
             out.append("")
@@ -228,15 +255,19 @@ def main():
         "package": os.environ.get("PACKAGE", "workspace"),
         "filter": os.environ.get("BENCH_FILTER", ""),
         "note": os.environ.get("BASELINE_NOTE", ""),
+        "c_compiler": c_compiler(text),
     }
     for g in grouped:  # keep the JSON free of object cross-references
         g["denominator"] = g["denominator"]["variant"] if g["denominator"] else None
+        g["c_reference"] = g["c_reference"]["variant"] if g["c_reference"] else None
     with open(args.json_path, "w", encoding="utf-8") as fh:
         json.dump({"meta": meta, "outcome": args.outcome, "groups": grouped, "diagnostics": diags}, fh, indent=2)
         fh.write("\n")
 
     md = build_md(meta, args.outcome, [
-        {**g, "denominator": next((r for r in g["rows"] if r["variant"] == g["denominator"]), None)}
+        {**g,
+         "denominator": next((r for r in g["rows"] if r["variant"] == g["denominator"]), None),
+         "c_reference": next((r for r in g["rows"] if r["variant"] == g["c_reference"]), None)}
         for g in grouped
     ], len(results), diags, raw_embed(text, args.outcome, bool(results)))
     if args.md:

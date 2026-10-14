@@ -1,0 +1,50 @@
+     Running unittests src/lib.rs (/tmp/t191/debug/deps/midman_api-233e8cfcdbf647fd)
+running 24 tests
+test ffi::tests::a_panic_becomes_a_status_and_a_message_instead_of_unwinding_out ... ok
+test ffi::tests::a_panic_with_a_formatted_message_is_reported_too ... ok
+test ffi::tests::counts_must_be_whole_numbers_in_range ... ok
+test ffi::tests::floats_must_be_finite_and_fit ... ok
+test ffi::tests::library_errors_map_to_their_own_codes ... ok
+test json::tests::a_missing_number_is_null ... ok
+test json::tests::a_top_level_scalar_is_allowed ... ok
+test json::tests::nested_values_get_their_commas_and_colons ... ok
+test json::tests::strings_are_escaped ... ok
+test json::tests::values_json_cannot_hold_become_null ... ok
+test lab::tests::a_lab_builds_with_the_task_the_config_describes ... ok
+test lab::tests::a_model_beyond_the_size_limit_is_refused_before_it_is_built ... ok
+test lab::tests::attention_maps_have_the_documented_layout_and_are_causal ... ok
+test lab::tests::bad_configurations_are_errors ... ok
+test lab::tests::each_record_follows_the_schedule_and_measures_real_numbers ... ok
+test lab::tests::one_seed_gives_one_training_run_bit_for_bit ... ok
+test lab::tests::parameter_stats_gain_gradient_norms_after_a_step ... ok
+test lab::tests::stepping_in_pieces_equals_stepping_at_once ... ok
+test lab::tests::the_embedding_has_one_row_per_token ... ok
+test lab::tests::training_learns_the_task ... ok
+test lab::tests::training_that_blows_up_stops_and_says_why ... ok
+test report::tests::a_preset_reports_its_exact_parameter_count ... ok
+test report::tests::an_invalid_configuration_reports_the_reason ... ok
+test report::tests::the_rope_table_starts_unrotated_and_covers_every_position ... ok
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.75s
+     Running tests/c_abi.rs (/tmp/t191/debug/deps/c_abi-fcbea58e9694f03b)
+running 16 tests
+test a_bad_creation_returns_zero_and_says_why ... ok
+test a_destroyed_slot_is_reused_and_labs_do_not_share_state ... ok
+test a_lab_runs_from_creation_to_destruction ... ok
+test a_preset_config_round_trips_through_the_report ... ok
+test allocated_buffers_are_aligned_writable_and_freeable ... ok
+test an_invalid_config_is_an_answer_not_a_failure ... ok
+test attention_for_a_missing_sequence_is_an_error ... ok
+test describe_lists_the_abi_the_field_orders_and_every_preset ... ok
+test each_call_replaces_the_previous_results ... ok
+test gradient_norms_are_null_before_the_first_step ... ok
+test invented_handles_are_errors_not_crashes ... ok
+test malformed_arguments_are_rejected_with_a_message ... ok
+test the_abi_version_is_one ... ok
+test the_rope_table_is_cosines_then_sines ... ok
+test the_same_seed_gives_the_same_training_through_the_abi ... ok
+test training_that_blows_up_reports_the_steps_it_completed ... ok
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+   Doc-tests midman_api
+running 1 test
+test crates/midman-api/src/lib.rs - (line 19) ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s

@@ -1,0 +1,2 @@
+ok:   the program started
+bad.c:9:54: runtime error: signed integer overflow: 2147483647 + 2 cannot be represented in type 'int'

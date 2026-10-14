@@ -3,10 +3,15 @@ name        = "midman-bench"
 version     = "0.0.1"
 edition     = "2021"
 publish     = false
-description = "Criterion benchmarks for the midman-ai crates, kept in their own package so the benchmark toolchain requirement does not reach the library crates."
+description = "Criterion benchmarks for the midman-ai crates, kept in their own package so the benchmark toolchain requirement does not reach the library crates. Also compiles the C baseline kernels the benchmarks compare against."
+build       = "build.rs"
 
 [lints]
 workspace = true
+
+[lib]
+name = "midman_bench"
+path = "src/lib.rs"
 
 [dependencies]
 midman-foundation   = { path = "../../crates/midman-foundation" }
@@ -15,6 +20,11 @@ midman-tensor       = { path = "../../crates/midman-tensor" }
 midman-nn           = { path = "../../crates/midman-nn" }
 midman-model        = { path = "../../crates/midman-model" }
 midman-optim        = { path = "../../crates/midman-optim" }
+
+# Compiles c/baseline_kernels.c. A build dependency only: nothing outside this
+# package sees it.
+[build-dependencies]
+cc = "1"
 
 [dev-dependencies]
 criterion = { workspace = true }

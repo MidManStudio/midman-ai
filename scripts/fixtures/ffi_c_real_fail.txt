@@ -1,0 +1,98 @@
+=== midman-api C ABI: a C11 program calling the compiled library ===
+
+ok:   the ABI version is 1
+ok:   the library and the header agree on the ABI version
+ok:   the header's array lengths are 10 and 8
+ok:   the header's field indices are where the docs say
+ok:   midman_alloc returns writable 8-aligned memory for lengths 0, 1, 7, 8 and 4096
+ok:   midman_free(NULL, n) is a no-op
+ok:   describe succeeds
+ok:   describe starts with the ABI version
+ok:   describe lists the config fields in the order of enum midman_config_field
+ok:   describe lists the hyperparameter fields in the order of enum midman_hyper_field
+ok:   describe reports the parameter limit
+ok:   describe lists all six presets
+ok:   describe gives the smoke preset's exact parameter count
+ok:   preset 0 can be read
+ok:   the smoke preset has width 64
+ok:   a preset's config validates
+ok:   the report of the smoke preset has its exact count and head size
+ok:   an invalid config is an answer, not a failure
+ok:   the answer says valid:false and why
+ok:   a NULL config is MIDMAN_ERR_ARGUMENT
+ok:   and the message says the pointer was null
+ok:   a fractional, negative, NaN or too large count is rejected, naming the field
+ok:   an infinite rope_theta is rejected
+ok:   a NULL output pointer is rejected
+ok:   a preset index that does not exist is rejected
+ok:   a misaligned config pointer is rejected
+ok:   and the message says it was not aligned
+ok:   describe again so there is text to lose
+ok:   describe left text behind
+ok:   a failing call
+ok:   a failing call leaves no stale text, only its error
+ok:   midman_alloc gives room for a config and hyperparameters
+ok:   a config built in midman_alloc memory validates
+ok:   a lab can be created from midman_alloc memory
+ok:   the lab keeps working after its inputs are freed
+ok:   the first lab gets handle 1
+ok:   five steps run
+ok:   three numbers per step
+ok:   every step has a finite loss, a positive gradient norm and a positive learning rate
+ok:   the first loss is near ln(vocab size)
+ok:   eval succeeds
+ok:   eval reports the step, the accuracy and the task shape
+ok:   stats succeed
+ok:   stats list the parameters with their shapes
+ok:   after a step every gradient norm is known
+ok:   attention of sequence 1 succeeds
+ok:   attention reports layers, heads and seq
+ok:   attention has layers * heads * seq * seq values
+ok:   the embedding table can be read
+ok:   it has vocab x width values
+ok:   the lab is destroyed
+ok:   its handle is then an error
+ok:   and the message says so
+ok:   destroying twice is an error, not a crash
+ok:   stats of a fresh lab succeed
+ok:   the last loss and gradient norms are null before the first step
+ok:   two labs get handles 1 and 2
+ok:   stepping the first lab
+ok:   reading the second lab
+ok:   stepping one lab does not move the other
+ok:   the freed slot is reused
+ok:   the other lab survives
+ok:   handles 0, 7 and UINT32_MAX are errors for every lab call, not crashes
+ok:   a model over the size limit is refused with handle 0
+ok:   and the message states the limit
+ok:   a task with no sequences is refused
+ok:   a sequence longer than max_seq_len is refused
+ok:   a beta1 of 1 is refused
+ok:   a NULL config is refused
+ok:   NULL hyperparameters are refused
+ok:   attention for a sequence that does not exist is an error
+ok:   and the message says so
+ok:   a lab with an absurd learning rate can still be created
+FAIL: training that blows up returns MIDMAN_STOPPED (line 357)
+      text: 
+      error: 
+FAIL: and the message says a value was not finite (line 359)
+      text: 
+      error: 
+ok:   the steps that did complete are reported
+ok:   a call with text and numbers
+ok:   leaves both results
+ok:   a call with neither
+ok:   replaces both, leaving nothing stale behind
+ok:   the same seed gives bit-identical training
+ok:   a different seed gives different training
+ok:   a rope table for head size 8 and 6 positions
+ok:   the numeric result is 4-byte aligned
+ok:   its text names the positions and half size
+ok:   it holds the cosines then the sines
+ok:   position 0 has cosine 1 and sine 0
+ok:   an odd head size has no rotary table
+ok:   and the error says why
+ok:   a NaN theta is rejected
+
+=== 2 check(s) failed ===

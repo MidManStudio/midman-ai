@@ -9,6 +9,11 @@
 //! `scripts/bench_summary.py`; a variant named `unit-*` is only a cost
 //! denominator (such as the forward pass) and gets a plain multiple. Each
 //! baseline is checked against the code under test before anything is timed.
+//!
+//! `baseline-naive-*` is plain Rust. `baseline-c-*` is the same operation in plain
+//! C (`c/baseline_kernels.c`); the summary also shows every variant's ratio against
+//! the fastest C one. The Rust baseline is registered first, so it stays the
+//! group's denominator.
 
 // `criterion_group!` expands to an undocumented `pub fn`, which `missing_docs` flags.
 #![allow(missing_docs)]
@@ -72,12 +77,21 @@ fn matmul_square(c: &mut Criterion) {
     for n in [32usize, 96, 192] {
         let (a, b) = (uniform(&[n, n], 1), uniform(&[n, n], 2));
         let (a_data, b_data) = (a.to_vec(), b.to_vec());
-        assert_close(&naive_matmul(&a_data, &b_data, n), a.matmul(&b).unwrap().data(), 1e-4);
+        let reference = naive_matmul(&a_data, &b_data, n);
+        assert_close(&reference, a.matmul(&b).unwrap().data(), 1e-4);
+        assert_close(&reference, &midman_bench::matmul_ijk(&a_data, &b_data, n), 1e-4);
+        assert_close(&reference, &midman_bench::matmul_ikj(&a_data, &b_data, n), 1e-4);
 
         let mut group = c.benchmark_group(format!("matmul_square_{n}"));
         group.throughput(Throughput::Elements(2 * (n * n * n) as u64));
         group.bench_function("baseline-naive-ijk", |bench| {
             bench.iter(|| naive_matmul(black_box(&a_data), black_box(&b_data), n))
+        });
+        group.bench_function("baseline-c-ijk", |bench| {
+            bench.iter(|| midman_bench::matmul_ijk(black_box(&a_data), black_box(&b_data), n))
+        });
+        group.bench_function("baseline-c-ikj", |bench| {
+            bench.iter(|| midman_bench::matmul_ikj(black_box(&a_data), black_box(&b_data), n))
         });
         group.bench_function("midman-tensor", |bench| {
             bench.iter(|| a.matmul(black_box(&b)).unwrap())
@@ -119,12 +133,17 @@ fn softmax_rows(c: &mut Criterion) {
     let (rows, cols) = (256usize, 128usize);
     let x = uniform(&[rows, cols], 7);
     let x_data = x.to_vec();
-    assert_close(&naive_softmax_rows(&x_data, cols), x.softmax(-1).unwrap().data(), 1e-5);
+    let reference = naive_softmax_rows(&x_data, cols);
+    assert_close(&reference, x.softmax(-1).unwrap().data(), 1e-5);
+    assert_close(&reference, &midman_bench::softmax_rows(&x_data, cols), 1e-5);
 
     let mut group = c.benchmark_group("softmax_256x128");
     group.throughput(Throughput::Elements((rows * cols) as u64));
     group.bench_function("baseline-naive-rows", |bench| {
         bench.iter(|| naive_softmax_rows(black_box(&x_data), cols))
+    });
+    group.bench_function("baseline-c-rows", |bench| {
+        bench.iter(|| midman_bench::softmax_rows(black_box(&x_data), cols))
     });
     group.bench_function("midman-tensor", |bench| bench.iter(|| x.softmax(-1).unwrap()));
     group.finish();
@@ -133,12 +152,17 @@ fn softmax_rows(c: &mut Criterion) {
 fn silu_elementwise(c: &mut Criterion) {
     let x = uniform(&[256, 256], 8);
     let x_data = x.to_vec();
-    assert_close(&naive_silu(&x_data), x.silu().data(), 1e-5);
+    let reference = naive_silu(&x_data);
+    assert_close(&reference, x.silu().data(), 1e-5);
+    assert_close(&reference, &midman_bench::silu(&x_data), 1e-5);
 
     let mut group = c.benchmark_group("silu_64k");
     group.throughput(Throughput::Elements(x_data.len() as u64));
     group.bench_function("baseline-naive-map", |bench| {
         bench.iter(|| naive_silu(black_box(&x_data)))
+    });
+    group.bench_function("baseline-c-loop", |bench| {
+        bench.iter(|| midman_bench::silu(black_box(&x_data)))
     });
     group.bench_function("midman-tensor", |bench| bench.iter(|| black_box(&x).silu()));
     group.finish();
@@ -149,21 +173,27 @@ fn broadcast_add(c: &mut Criterion) {
     let matrix = uniform(&[rows, cols], 9);
     let row = uniform(&[cols], 10);
     let (matrix_data, row_data) = (matrix.to_vec(), row.to_vec());
-    assert_close(
-        &naive_broadcast_add(&matrix_data, &row_data),
-        matrix.add(&row).unwrap().data(),
-        1e-6,
-    );
+    let reference = naive_broadcast_add(&matrix_data, &row_data);
+    assert_close(&reference, matrix.add(&row).unwrap().data(), 1e-6);
+    assert_close(&reference, &midman_bench::broadcast_add(&matrix_data, &row_data), 1e-6);
 
     let mut group = c.benchmark_group("broadcast_add_256x512");
     group.throughput(Throughput::Elements((rows * cols) as u64));
     group.bench_function("baseline-naive-zip", |bench| {
         bench.iter(|| naive_broadcast_add(black_box(&matrix_data), black_box(&row_data)))
     });
+    group.bench_function("baseline-c-loop", |bench| {
+        bench.iter(|| midman_bench::broadcast_add(black_box(&matrix_data), black_box(&row_data)))
+    });
     group.bench_function("midman-tensor", |bench| {
         bench.iter(|| matrix.add(black_box(&row)).unwrap())
     });
     group.finish();
+}
+
+/// Prints the C compiler once, so the job summary can say what built the C baselines.
+fn announce_c_compiler(_: &mut Criterion) {
+    eprintln!("C baselines compiled with: {}", midman_bench::compiler());
 }
 
 fn mlp_loss(x: &Tensor, w1: &Tensor, w2: &Tensor) -> Tensor {
@@ -202,6 +232,7 @@ fn randn_fill(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    announce_c_compiler,
     matmul_square,
     matmul_linear,
     matmul_batched_scores,

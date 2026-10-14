@@ -1,6 +1,7 @@
 # Build output
 target/
 dist/
+ffi-smoke-build/
 
 # Secrets and local environment
 .env

@@ -118,6 +118,89 @@ class Grouping(unittest.TestCase):
         self.assertAlmostEqual(g["rows"][2]["ratio"], 2.0)
 
 
+def synthetic(*rows):
+    """A criterion-shaped log from (id, milliseconds) pairs."""
+    return "".join(f"{name}\n                        time:   [{ms} ms {ms} ms {ms} ms]\n"
+                   for name, ms in rows)
+
+
+class CBaselines(unittest.TestCase):
+    TEXT = synthetic(("g/baseline-naive-ijk", "8.0"), ("g/baseline-c-ijk", "8.0"),
+                     ("g/baseline-c-ikj", "2.0"), ("g/midman-tensor", "4.0"))
+
+    def setUp(self):
+        self.group = bs.group_results(bs.parse(self.TEXT))[0]
+        self.rows = {r["variant"]: r for r in self.group["rows"]}
+
+    def test_the_fastest_c_variant_is_the_c_reference(self):
+        self.assertEqual(self.group["c_reference"]["variant"], "baseline-c-ikj")
+        self.assertIsNone(self.rows["baseline-c-ikj"]["ratio_c"])
+        self.assertAlmostEqual(self.rows["midman-tensor"]["ratio_c"], 2.0)
+        self.assertAlmostEqual(self.rows["baseline-naive-ijk"]["ratio_c"], 4.0)
+        self.assertAlmostEqual(self.rows["baseline-c-ijk"]["ratio_c"], 4.0)
+
+    def test_the_rust_baseline_stays_the_denominator(self):
+        self.assertEqual(self.group["denominator"]["variant"], "baseline-naive-ijk")
+        self.assertAlmostEqual(self.rows["midman-tensor"]["ratio"], 0.5)
+        self.assertAlmostEqual(self.rows["baseline-c-ikj"]["ratio"], 0.25)
+
+    def test_a_group_without_c_variants_has_no_c_ratio(self):
+        for g in bs.group_results(bs.parse(fixture_text())):
+            self.assertIsNone(g["c_reference"], g["group"])
+            self.assertTrue(all(r["ratio_c"] is None for r in g["rows"]), g["group"])
+
+    def test_a_variant_that_only_resembles_the_prefix_is_not_a_c_variant(self):
+        g = bs.group_results(bs.parse(synthetic(("g/baseline-naive", "2.0"), ("g/baseline-cache", "1.0"),
+                                                ("g/x", "3.0"))))[0]
+        self.assertIsNone(g["c_reference"])
+
+    def test_the_markdown_has_the_column_only_for_groups_that_have_c_variants(self):
+        text = self.TEXT + synthetic(("other/baseline-naive", "2.0"), ("other/x", "1.0"))
+        results = bs.parse(text)
+        md = bs.build_md(Markdown.META, "success", bs.group_results(results), len(results), [], "")
+        c_section = md.split("### g")[1].split("### other")[0]
+        other_section = md.split("### other")[1]
+        self.assertIn("vs fastest C", c_section)
+        self.assertIn("(fastest C)", c_section)
+        self.assertIn("❌ 2.00x", c_section)  # midman-tensor is 2x the fastest C
+        self.assertNotIn("vs fastest C", other_section)
+
+    def test_the_compiler_line_is_read_once_from_the_log(self):
+        log = ("C baselines compiled with: 13.3.0\n" + self.TEXT
+               + "C baselines compiled with: something else\n")
+        self.assertEqual(bs.c_compiler(log), "13.3.0")
+        self.assertEqual(bs.c_compiler(self.TEXT), "")
+        self.assertEqual(bs.c_compiler("not at the start: C baselines compiled with: x\n"), "")
+
+    def test_the_compiler_appears_in_the_header_only_when_known(self):
+        results = bs.parse(self.TEXT)
+        grouped = bs.group_results(results)
+        with_cc = bs.build_md(dict(Markdown.META, c_compiler="13.3.0"), "success", grouped, 4, [], "")
+        without = bs.build_md(Markdown.META, "success", grouped, 4, [], "")
+        self.assertIn("C compiler: `13.3.0`", with_cc)
+        self.assertNotIn("C compiler", without)
+
+    def test_the_compiler_line_is_not_a_diagnostic(self):
+        self.assertEqual(bs.diagnostics("C baselines compiled with: 13.3.0\n" + self.TEXT), [])
+
+    def test_the_json_names_the_c_reference_and_the_c_ratios(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log, out = os.path.join(tmp, "log.txt"), os.path.join(tmp, "r.json")
+            with open(log, "w", encoding="utf-8") as fh:
+                fh.write("C baselines compiled with: 13.3.0\n" + self.TEXT)
+            subprocess.run([sys.executable, os.path.join(HERE, "bench_summary.py"), "--log", log,
+                            "--outcome", "success", "--json", out, "--md", os.path.join(tmp, "s.md")],
+                           capture_output=True, text=True, check=True)
+            with open(out, encoding="utf-8") as fh:
+                data = json.load(fh)
+        self.assertEqual(data["meta"]["c_compiler"], "13.3.0")
+        group = data["groups"][0]
+        self.assertEqual((group["denominator"], group["c_reference"]), ("baseline-naive-ijk", "baseline-c-ikj"))
+        ratios = {r["variant"]: r["ratio_c"] for r in group["rows"]}
+        self.assertIsNone(ratios["baseline-c-ikj"])
+        self.assertAlmostEqual(ratios["midman-tensor"], 2.0)
+
+
 class Badges(unittest.TestCase):
     def test_thresholds(self):
         self.assertIn("faster", bs.badge(0.5))

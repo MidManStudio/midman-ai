@@ -7,7 +7,8 @@
 //!
 //! Every benchmark id is `group/variant`; a variant named `baseline-*` is a
 //! reference implementation (badged by `scripts/bench_summary.py`) and one named
-//! `unit-*` is a cost denominator (a plain multiple).
+//! `unit-*` is a cost denominator (a plain multiple). `baseline-c-*` is the same
+//! operation in plain C (`c/baseline_kernels.c`).
 
 // `criterion_group!` expands to an undocumented `pub fn`, which `missing_docs` flags.
 #![allow(missing_docs)]
@@ -26,6 +27,11 @@ const MAX_T: usize = 128;
 
 fn uniform(shape: &[usize], seed: u64) -> Tensor {
     Tensor::uniform(shape, -1.0, 1.0, &mut Rng::seed_from_u64(seed)).unwrap()
+}
+
+/// Prints the C compiler once, so the job summary can say what built the C baselines.
+fn announce_c_compiler(_: &mut Criterion) {
+    eprintln!("C baselines compiled with: {}", midman_bench::compiler());
 }
 
 fn rope() -> RotaryTables {
@@ -94,13 +100,20 @@ fn rms_norm(c: &mut Criterion) {
     let x_data = x.to_vec();
     let weight = vec![1.0f32; D_MODEL];
     let want = naive_rms_norm(&x_data, &weight, 1e-5);
+    let c_got = midman_bench::rms_norm(&x_data, &weight, 1e-5);
     for (a, b) in want.iter().zip(layer.forward(&x).unwrap().data()) {
         assert!((a - b).abs() < 1e-4, "the baseline and the layer disagree: {a} vs {b}");
+    }
+    for (a, b) in want.iter().zip(&c_got) {
+        assert!((a - b).abs() < 1e-4, "the two baselines disagree: {a} vs {b}");
     }
 
     let mut group = c.benchmark_group("rms_norm_512x64");
     group.bench_function("baseline-naive-rows", |bench| {
         bench.iter(|| naive_rms_norm(black_box(&x_data), &weight, 1e-5))
+    });
+    group.bench_function("baseline-c-rows", |bench| {
+        bench.iter(|| midman_bench::rms_norm(black_box(&x_data), &weight, 1e-5))
     });
     group.bench_function("midman-nn", |bench| bench.iter(|| layer.forward(black_box(&x)).unwrap()));
     group.finish();
@@ -147,6 +160,7 @@ fn decoder_block(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    announce_c_compiler,
     attention_forward,
     attention_backward,
     rms_norm,

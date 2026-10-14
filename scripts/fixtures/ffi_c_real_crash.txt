@@ -1,0 +1,78 @@
+=== midman-api C ABI: a C11 program calling the compiled library ===
+
+ok:   the ABI version is 1
+ok:   the library and the header agree on the ABI version
+ok:   the header's array lengths are 10 and 8
+ok:   the header's field indices are where the docs say
+ok:   midman_alloc returns writable 8-aligned memory for lengths 0, 1, 7, 8 and 4096
+ok:   midman_free(NULL, n) is a no-op
+ok:   describe succeeds
+ok:   describe starts with the ABI version
+ok:   describe lists the config fields in the order of enum midman_config_field
+ok:   describe lists the hyperparameter fields in the order of enum midman_hyper_field
+ok:   describe reports the parameter limit
+ok:   describe lists all six presets
+ok:   describe gives the smoke preset's exact parameter count
+ok:   preset 0 can be read
+ok:   the smoke preset has width 64
+ok:   a preset's config validates
+ok:   the report of the smoke preset has its exact count and head size
+ok:   an invalid config is an answer, not a failure
+ok:   the answer says valid:false and why
+ok:   a NULL config is MIDMAN_ERR_ARGUMENT
+ok:   and the message says the pointer was null
+ok:   a fractional, negative, NaN or too large count is rejected, naming the field
+ok:   an infinite rope_theta is rejected
+ok:   a NULL output pointer is rejected
+ok:   a preset index that does not exist is rejected
+
+thread '<unnamed>' (3239) panicked at crates/midman-api/src/ffi.rs:166:17:
+unsafe precondition(s) violated: slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`
+
+This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/std/src/panicking.rs:698:5
+   1: core::panicking::panic_nounwind_fmt::runtime
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/core/src/panicking.rs:117:22
+   2: core::panicking::panic_nounwind_fmt
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/core/src/intrinsics/mod.rs:2435:9
+   3: core::slice::raw::from_raw_parts::precondition_check
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/core/src/ub_checks.rs:72:21
+   4: core::slice::raw::from_raw_parts
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/core/src/ub_checks.rs:77:17
+   5: midman_api::ffi::read_f64s
+             at ./crates/midman-api/src/ffi.rs:166:17
+   6: midman_api::ffi::midman_config_report::{{closure}}
+             at ./crates/midman-api/src/ffi.rs:410:31
+   7: midman_api::ffi::run::{{closure}}::{{closure}}
+             at ./crates/midman-api/src/ffi.rs:126:13
+   8: std::thread::local::LocalKey<T>::try_with
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/std/src/thread/local.rs:315:12
+   9: std::thread::local::LocalKey<T>::with
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/std/src/thread/local.rs:279:20
+  10: midman_api::ffi::run::{{closure}}
+             at ./crates/midman-api/src/ffi.rs:121:15
+  11: <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/core/src/panic/unwind_safe.rs:274:9
+  12: std::panicking::catch_unwind::do_call
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/std/src/panicking.rs:590:40
+  13: __rust_try
+  14: std::panicking::catch_unwind
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/std/src/panicking.rs:553:19
+  15: std::panic::catch_unwind
+             at /build/rustc-1.91-CXDYuc/rustc-1.91-1.91.1+dfsg~24.04/library/std/src/panic.rs:359:14
+  16: midman_api::ffi::run
+             at ./crates/midman-api/src/ffi.rs:120:19
+  17: midman_config_report
+             at ./crates/midman-api/src/ffi.rs:408:5
+  18: test_malformed_arguments
+  19: main
+  20: __libc_start_call_main
+             at ./csu/../sysdeps/nptl/libc_start_call_main.h:58:16
+  21: __libc_start_main_impl
+             at ./csu/../csu/libc-start.c:360:3
+  22: _start
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+thread caused non-unwinding panic. aborting.
+Aborted

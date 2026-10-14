@@ -11,7 +11,7 @@ Notes on the root `Cargo.toml`, `rust-toolchain.toml`, `rustfmt.toml`, and `.car
 
 `midman-api` builds as `rlib` and `cdylib` and also compiles to `wasm32-unknown-unknown` for the web lab; it has no external dependencies and builds on Rust 1.75.
 
-`[workspace.dependencies]` holds `criterion` (version 0.5 with `html_reports`), which only `benches/midman-bench` uses. Every other crate still has no external dependencies. Shared dependency versions go in this table, and crates opt in with `criterion = { workspace = true }`.
+`[workspace.dependencies]` holds `criterion` (version 0.5 with `html_reports`), which only `benches/midman-bench` uses. That package also has `cc` as a build dependency, declared in its own manifest and not in this table, because nothing else will use it: it compiles the C kernels the benchmarks compare against. Every other crate still has no external dependencies. Shared dependency versions go in this table, and crates opt in with `criterion = { workspace = true }`.
 
 The benchmark package's bench files open with `#![allow(missing_docs)]`, because `criterion_group!` expands to an undocumented `pub fn`.
 
@@ -24,9 +24,9 @@ The benchmark package's bench files open with `#![allow(missing_docs)]`, because
 ## Toolchain walls
 `benches/midman-bench` depends on criterion, which depends on `clap_builder`, and current `clap_builder` needs a Cargo that understands edition 2024 (about 1.85 or newer). Cargo resolves a package's whole manifest, dev-dependencies included, before it builds any target from it. That is why criterion lives in its own package: a criterion dev-dependency inside a library crate would raise the requirement for that crate's tests too.
 
-What was checked on Rust 1.75 with the lockfile that contains criterion's 90 packages:
+What was checked on Rust 1.75 with the lockfile that contains criterion's and `cc`'s packages (93 in all):
 - `cargo test -p <crate>` works for each of the six crates that have code (`midman-foundation`, `midman-model-config`, `midman-tensor`, `midman-nn`, `midman-model`, `midman-optim`). Resolution is scoped to the package's own dependency closure, so the benchmark package is not touched.
-- A bare `cargo test --workspace`, and `cargo check -p midman-bench --benches`, fail with "feature `edition2024` is required", because they build targets that need criterion. A plain `cargo check -p midman-bench` passes, because nothing it builds without `--benches` uses criterion.
+- A bare `cargo test --workspace`, and `cargo check -p midman-bench --benches`, fail with "feature `edition2024` is required", because they build targets that need criterion. A plain `cargo check -p midman-bench` passes, because nothing it builds without `--benches` uses criterion; it also builds `build.rs` and the `cc` crate on 1.75.
 - All 21 other packages pass `cargo check -p <package> --locked`.
 
 CI uses the latest stable, so it is not affected. On a local Cargo older than 1.85, use `-p`.
@@ -48,3 +48,4 @@ Every crate stays at `0.0.1` during active development. The first official relea
 
 ### `Cargo.lock`
 - **Adding criterion bumped the lockfile to version 4.** Described under "Toolchain walls". The version line was restored to 3, and `cargo audit` over the 90-package lockfile found no vulnerabilities and no warnings.
+- **Adding `cc` did it again.** Cargo 1.91 wrote version 4 on the first build after the build dependency was added. The line was set back to 3, `cargo metadata --locked` and the per-crate checks were repeated on Rust 1.75, and `cargo audit` over the 93-package lockfile (the new packages are `cc`, `shlex` and `find-msvc-tools`) found no vulnerabilities and no warnings.

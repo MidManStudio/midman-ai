@@ -56,13 +56,53 @@ Test status when this was written: 24 unit tests, 16 tests of the C ABI, 1 docte
 ### `tests/c_abi.rs`
 **What it does:** Tests of the C ABI written the way a C caller uses it: through the exported functions, with raw pointers, reading results back through the exported buffers. They cover allocation and alignment, the description, preset round trips, an invalid config being an answer rather than a failure, malformed arguments, the full lab lifecycle, independent labs and slot reuse, invented handles, bad creation, early stopping, results being replaced by every call, determinism through the ABI, and the rope table.
 
+### `midman_api.h`
+**What it does:** The C header for the ABI in `ffi.rs`, in `crates/midman-api/ffi-smoke-test/`. It declares every exported function, the status codes, the array lengths and two enums that name the positions in the config and hyperparameter arrays, and it states the rules of the boundary (handles, who owns which buffer, how long results stay valid, one thread).
+
+**Decisions:**
+- Hand-written, as the rest of the ABI is. There is no header generator in the build, no `cbindgen`, and so no tool whose version has to match. The cost is that a signature changed in `ffi.rs` must be changed here in the same commit. `test.c` and `cxx_check.cpp` call every function through this header, so a prototype that no longer matches the library fails a test.
+- The enums `midman_config_field` and `midman_hyper_field` give the array positions names, and `test.c` compares the library's `midman_describe` field lists with them, so the header and the library cannot disagree on the order without a failing check. Static assertions tie each enum's size to the array length.
+- Static assertions (`_Static_assert` in C, `static_assert` in C++) require a 32-bit `float` and a 64-bit `double`, because the arrays and results are passed that way.
+- The result rule is written conservatively: read what you need, and copy it, before the next call into the library that is not one of the accessors. `ffi.rs` says the same in its own words. The header does not promise that the accessors leave results alone, only that this library currently does.
+- A result pointer may be non-NULL when its length is 0 (an empty `Vec` has a dangling pointer). The header says not to dereference it.
+- Status codes and constants are `#define`s so the header works in C and C++ and in `static_assert` expressions.
+- The header has an `extern "C"` guard and uses only `<stddef.h>` and `<stdint.h>`.
+
+**Tests:** `test.c` (C11) and `cxx_check.cpp` (C++17) include it and are compiled with `-Wall -Wextra -Wpedantic -Werror`.
+
+### `test.c`
+**What it does:** A C11 program that calls the whole ABI through `midman_api.h` and links against the compiled library, as a shared library or as a static one. It has 90 checks, one `ok:` or `FAIL:` line each, and ends with `=== N check(s) failed ===`. It covers what `tests/c_abi.rs` covers, written the way a C caller writes it, and three things only a C caller can get wrong: arrays built in `midman_alloc` memory and freed after the call, a misaligned pointer, and results that have to be copied out before the next call.
+
+**Decisions:**
+- It is a separate program and not a Rust test, so it is compiled by a C compiler, links through the real C ABI, and can be run under AddressSanitizer, UndefinedBehaviorSanitizer and valgrind. A Rust test that calls the same `extern "C"` functions from the same binary proves less.
+- Every lab a test creates is destroyed before the test returns, so the slot numbers asserted (the first lab is 1, a freed slot is reused) hold, and a leak checker sees a clean exit. Valgrind reports no blocks in use at exit.
+- Results are copied out of the library's buffers into the program's own after each call. A failed check copies once more and prints the last text and error, so a log explains its own failure.
+- A result too big for the program's buffers is a reported failure and not a silent cut.
+- Standard output is set to line buffering. With a block buffer, a crash lost every line printed so far (found by crashing the library on purpose and looking at the log: 0 `ok:` lines survived), and the log would have said nothing about how far the program got. With line buffering the same crash leaves 25.
+- The closing line is how the summary tells a finished run from a crash. A run with no closing line is reported as one failed check, "program ran to completion".
+
+**Tests:** The program is the test. It was checked by injecting eight faults into `ffi.rs` one at a time (a step that stopped early reported as success, the alignment check removed, a freed slot never reused, the ABI version changed, two config fields swapped, results not cleared between calls, a destroyed handle left live, the null check removed) and each one made at least one check fail or the program abort. Six give a `FAIL:` line, and the two that remove a safety check crash the library with a failed precondition, which the summary reports as a failed run. It passes with the shared and static libraries, in debug and release builds, under AddressSanitizer and UndefinedBehaviorSanitizer, and under valgrind.
+
+### `cxx_check.cpp`
+**What it does:** A C++17 program that includes `midman_api.h` and calls the library: the version, `midman_describe`, a preset, a config report, and a lab from creation to destruction. Eight checks, with the same output convention as `test.c`.
+
+**Decisions:**
+- It exists only to prove the header parses as C++ with its `extern "C"` guard and that the symbols link without mangling. The behaviour is checked once, in `test.c`.
+- It is compiled with `g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror`.
+
+**Tests:** The program is the test.
+
 ## CI and Workflows
-`ci.yml` covers this crate with the rest. `deploy-site.yml` builds it for WebAssembly (a SIMD and a plain build), runs the Node and headless-DOM tests against the result, and publishes it. See `docs/ci-and-workflows.md` and `docs/midman-web.md`.
+`ci.yml` covers this crate with the rest. `midman-api-ffi.yml` tests the C ABI from C and C++: the Rust tests, `test.c` against the shared and the static library, `cxx_check.cpp`, `test.c` under AddressSanitizer and UndefinedBehaviorSanitizer, and `test.c` under valgrind, on Ubuntu by default and on macOS and Linux ARM with `platforms: all`, with `profile: debug` or `release`. `deploy-site.yml` builds it for WebAssembly (a SIMD and a plain build), runs the Node and headless-DOM tests against the result, and publishes it. The script behind the FFI workflow's summary is `scripts/ffi_summary.py`. See `docs/ci-and-workflows.md` and `docs/midman-web.md`.
 
 ## Fixes and Problems
 
 ### `lab.rs`
 - **`Option::is_none_or` needs Rust 1.82.** The first version used it for the token limit and would not have built on 1.75. It is a `matches!` now.
+
+### `test.c`
+- **A crash lost all of the program's output.** Standard output to a file is block-buffered, so when a mutated library aborted the program, none of the `ok:` lines printed before the abort reached the log. Both programs now set line buffering at the start of `main`.
+- **A failed check printed stale text.** The library call sits inside the check, and the results were copied out only after it, so the `text:` and `error:` lines under a failure showed the previous call's results. A failed check now copies the buffers before it prints them.
 
 ### `tests/c_abi.rs`
 - **Clippy `manual_is_multiple_of` on `len % 3 == 0`.** Only newer clippy flags it. It is written `(len / 3) * 3 == len`, as elsewhere in the workspace.

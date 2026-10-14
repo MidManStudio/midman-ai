@@ -6,15 +6,16 @@
 //! global gradient norm, over one matrix parameter of about 65 thousand and
 //! about one million values.
 //!
-//! The AdamW baseline is a plain loop over the same update rule, checked
-//! against the real optimizer before anything is timed. Every benchmark id is
-//! `group/variant`; a variant named `baseline-*` is a reference implementation
-//! (badged by `scripts/bench_summary.py`).
+//! The AdamW baselines are a plain Rust loop and a plain C loop (`c/baseline_kernels.c`)
+//! over the same update rule, both checked against the real optimizer before
+//! anything is timed. Every benchmark id is `group/variant`; a variant named
+//! `baseline-*` is a reference implementation (badged by `scripts/bench_summary.py`).
 
 // `criterion_group!` expands to an undocumented `pub fn`, which `missing_docs` flags.
 #![allow(missing_docs)]
 
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion, Throughput};
+use midman_bench::CAdamW;
 use midman_foundation::Rng;
 use midman_optim::{clip_global_norm, global_norm, AdamW};
 use midman_tensor::{Parameter, Tensor};
@@ -83,10 +84,21 @@ fn adamw_step(c: &mut Criterion) {
         let mut plain_weights = weights.to_vec();
         let mut plain = PlainAdamW::new(len);
 
+        let mut check_c = weights.to_vec();
+        CAdamW::new(len, LR, BETA1, BETA2, EPS, WEIGHT_DECAY).update(&mut check_c, &grads[0]);
+        for (a, b) in check_plain.iter().zip(&check_c) {
+            assert!((a - b).abs() < 1e-5, "the two baselines disagree: {a} vs {b}");
+        }
+        let mut c_weights = weights.to_vec();
+        let mut c_adamw = CAdamW::new(len, LR, BETA1, BETA2, EPS, WEIGHT_DECAY);
+
         let mut group = c.benchmark_group(format!("adamw_step_{len}"));
         group.throughput(Throughput::Elements(len as u64));
         group.bench_function("baseline-plain-loop", |bench| {
             bench.iter(|| plain.update(black_box(&mut plain_weights), black_box(&grads[0])))
+        });
+        group.bench_function("baseline-c-loop", |bench| {
+            bench.iter(|| c_adamw.update(black_box(&mut c_weights), black_box(&grads[0])))
         });
         group.bench_function("midman-optim", |bench| {
             bench.iter(|| optimizer.step(&mut [&mut param], black_box(&grads), LR).unwrap())
@@ -112,5 +124,10 @@ fn clipping(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, adamw_step, clipping);
+/// Prints the C compiler once, so the job summary can say what built the C baselines.
+fn announce_c_compiler(_: &mut Criterion) {
+    eprintln!("C baselines compiled with: {}", midman_bench::compiler());
+}
+
+criterion_group!(benches, announce_c_compiler, adamw_step, clipping);
 criterion_main!(benches);
