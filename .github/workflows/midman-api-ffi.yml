@@ -1,0 +1,257 @@
+# .github/workflows/midman-api-ffi.yml
+#
+# The C ABI of midman-api, tested the way a C or C++ program uses it.
+#
+# What runs, in order:
+#   1. the Rust tests of the crate (cargo test -p midman-api), which include the
+#      C-style tests in crates/midman-api/tests/c_abi.rs
+#   2. crates/midman-api/ffi-smoke-test/test.c, a C11 program, compiled with
+#      -Wall -Wextra -Wpedantic -Werror and linked against the shared library
+#   3. the same program linked against the static library (the library list for that
+#      link comes from `rustc --print native-static-libs`, not from a guess)
+#   4. crates/midman-api/ffi-smoke-test/cxx_check.cpp, which includes the header from
+#      C++17 and links against the shared library
+#   5. test.c rebuilt with AddressSanitizer and UndefinedBehaviorSanitizer
+#   6. test.c under valgrind (Linux only): no errors, nothing definitely lost
+#
+# `platforms: all` repeats this on macos-latest and ubuntu-24.04-arm. The sanitizer run
+# keeps leak detection off on macOS, where it is not supported, and valgrind is
+# Linux-only. `profile: release` tests the optimized library instead of the debug one.
+#
+# Every run step reports on its own, so one failure does not hide the others. The last
+# step fails the run if any check failed or none were collected.
+#
+# Helper script: scripts/ffi_summary.py, tested by scripts/test_ffi_summary.py.
+# Notes: docs/ci-and-workflows.md. Header: crates/midman-api/ffi-smoke-test/midman_api.h.
+# DO NOT add push or pull_request triggers.
+
+name: midman-api C ABI
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_note:
+        description: 'Free-text label for this run, shown in the summary'
+        type: string
+        default: ''
+      platforms:
+        description: 'ubuntu-only is the fast default; all adds macos-latest and ubuntu-24.04-arm'
+        type: choice
+        default: ubuntu-only
+        options:
+          - ubuntu-only
+          - all
+      profile:
+        description: 'Which build of the library the C programs use'
+        type: choice
+        default: debug
+        options:
+          - debug
+          - release
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  ffi:
+    name: C ABI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.platforms == 'all' && '["ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["ubuntu-latest"]') }}
+    env:
+      BASELINE_NOTE: ${{ inputs.baseline_note }}
+      PROFILE_DIR: ${{ inputs.profile == 'release' && 'release' || 'debug' }}
+      PROFILE_FLAG: ${{ inputs.profile == 'release' && '--release' || '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Script self-test
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Toolchain info
+        id: toolchain
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          gcc --version | head -n 1
+          g++ --version | head -n 1
+          {
+            echo "rust=$(rustc --version)"
+            echo "cc=$(gcc --version | head -n 1)"
+            echo "cxx=$(g++ --version | head -n 1)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-ffi-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-ffi-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install valgrind
+        if: runner.os == 'Linux'
+        run: |
+          set -eu
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq valgrind
+          valgrind --version
+
+      # Not allowed to fail: nothing after it means anything without the libraries.
+      - name: Build the shared library
+        run: |
+          set -eu
+          # shellcheck disable=SC2086
+          cargo build -p midman-api --locked $PROFILE_FLAG
+          found=0
+          for lib in "target/$PROFILE_DIR/libmidman_api.so" "target/$PROFILE_DIR/libmidman_api.dylib"; do
+            if [ -f "$lib" ]; then ls -l "$lib"; found=1; fi
+          done
+          [ "$found" = 1 ]
+
+      # The crate's crate-type is rlib + cdylib, so the static library is built on request
+      # here instead of on every build. `--print native-static-libs` prints the system
+      # libraries a C linker needs after the archive.
+      - name: Build the static library
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          cargo rustc -p midman-api --lib --crate-type staticlib --locked $PROFILE_FLAG \
+            -- --print native-static-libs 2>&1 | tee static-build-raw.txt
+          ls -l "target/$PROFILE_DIR/libmidman_api.a"
+          grep -q 'native-static-libs:' static-build-raw.txt
+
+      - name: Rust tests
+        id: rust
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          # shellcheck disable=SC2086
+          cargo test -p midman-api --locked $PROFILE_FLAG -- --test-threads=1 2>&1 | tee cargo-raw.txt
+
+      - name: Compile the C and C++ programs
+        id: compile
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          mkdir -p ffi-smoke-build
+          src=crates/midman-api/ffi-smoke-test
+          libdir="$PWD/target/$PROFILE_DIR"
+          cflags=(-std=c11 -Wall -Wextra -Wpedantic -Werror)
+          cxxflags=(-std=c++17 -Wall -Wextra -Wpedantic -Werror)
+          native_libs=$(sed -n 's/.*native-static-libs: //p' static-build-raw.txt | head -n 1)
+          {
+            set -x
+            gcc "${cflags[@]}" -o ffi-smoke-build/test_so "$src/test.c" -I "$src" \
+              -L "$libdir" "-Wl,-rpath,$libdir" -lmidman_api -lm
+            # shellcheck disable=SC2086
+            gcc "${cflags[@]}" -o ffi-smoke-build/test_a "$src/test.c" -I "$src" \
+              "$libdir/libmidman_api.a" $native_libs -lm
+            g++ "${cxxflags[@]}" -o ffi-smoke-build/cxx_check "$src/cxx_check.cpp" -I "$src" \
+              -L "$libdir" "-Wl,-rpath,$libdir" -lmidman_api
+            gcc "${cflags[@]}" -g -O1 -fno-omit-frame-pointer -fsanitize=address,undefined \
+              -fno-sanitize-recover=undefined -o ffi-smoke-build/test_asan "$src/test.c" -I "$src" \
+              -L "$libdir" "-Wl,-rpath,$libdir" -lmidman_api -lm
+          } 2>&1 | tee ffi-compile-raw.txt
+
+      # One step, one log per program, each allowed to fail on its own. A program that was
+      # never built leaves the compile log in its place, so the summary shows why.
+      - name: Run the C and C++ programs
+        id: run
+        continue-on-error: true
+        run: |
+          set +e
+          leaks=1
+          if [ "$RUNNER_OS" = macOS ]; then leaks=0; fi
+          run_logged() {
+            log="$1"; shift
+            if [ ! -x "$1" ]; then
+              { echo "$1 was not built; the compile log follows"; cat ffi-compile-raw.txt; } > "$log"
+              return 1
+            fi
+            "$@" > "$log" 2>&1
+            status=$?
+            echo "--- $1: exit status $status"
+            return "$status"
+          }
+          run_logged ffi-so-raw.txt ffi-smoke-build/test_so
+          run_logged ffi-a-raw.txt ffi-smoke-build/test_a
+          run_logged ffi-cxx-raw.txt ffi-smoke-build/cxx_check
+          ASAN_OPTIONS="detect_leaks=$leaks:abort_on_error=0" UBSAN_OPTIONS="print_stacktrace=1" \
+            run_logged ffi-asan-raw.txt ffi-smoke-build/test_asan
+          if [ "$RUNNER_OS" = Linux ]; then
+            valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite \
+              --errors-for-leak-kinds=definite ffi-smoke-build/test_so > ffi-valgrind-stdout.txt 2> ffi-valgrind-stderr.txt
+            echo "$?" > ffi-valgrind-status.txt
+            cat ffi-valgrind-stdout.txt ffi-valgrind-stderr.txt > ffi-valgrind-raw.txt
+          fi
+          exit 0
+
+      - name: Summarize
+        if: always()
+        env:
+          BUILD_NUM: ${{ github.run_number }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          RUST_VERSION: ${{ steps.toolchain.outputs.rust }}
+          CC_VERSION: ${{ steps.toolchain.outputs.cc }}
+          CXX_VERSION: ${{ steps.toolchain.outputs.cxx }}
+          RUNNER_LABEL: ${{ matrix.os }} (${{ runner.os }} ${{ runner.arch }}, ${{ inputs.profile }})
+        run: |
+          set -eu
+          args=(
+            --out midman-api-ffi-results.json --md "$GITHUB_STEP_SUMMARY"
+            --build "$BUILD_NUM" --branch "$BRANCH" --commit "$COMMIT"
+            --rust-version "$RUST_VERSION" --cc-version "$CC_VERSION" --cxx-version "$CXX_VERSION"
+            --cargo-raw cargo-raw.txt
+            --c-log "C11 test, shared library=ffi-so-raw.txt"
+            --c-log "C11 test, static library=ffi-a-raw.txt"
+            --c-log "C++17 header check=ffi-cxx-raw.txt"
+            --sanitizer-log "C11 test under ASan and UBSan=ffi-asan-raw.txt"
+          )
+          if [ "$RUNNER_OS" = Linux ]; then
+            args+=(--valgrind-log "C11 test under valgrind=ffi-valgrind-raw.txt")
+            args+=(--valgrind-status "$(cat ffi-valgrind-status.txt 2>/dev/null || echo 127)")
+          fi
+          python3 scripts/ffi_summary.py parse "${args[@]}"
+
+      - name: Upload raw logs and results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: midman-api-ffi-${{ github.run_number }}-${{ matrix.os }}
+          path: |
+            midman-api-ffi-results.json
+            cargo-raw.txt
+            static-build-raw.txt
+            ffi-compile-raw.txt
+            ffi-so-raw.txt
+            ffi-a-raw.txt
+            ffi-cxx-raw.txt
+            ffi-asan-raw.txt
+            ffi-valgrind-raw.txt
+          retention-days: 30
+          if-no-files-found: warn
+
+      # Last on purpose: everything above has already reported.
+      - name: Fail the run if any check failed
+        if: always()
+        run: python3 scripts/ffi_summary.py gate midman-api-ffi-results.json
