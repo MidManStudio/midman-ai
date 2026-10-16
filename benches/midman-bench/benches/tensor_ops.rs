@@ -72,6 +72,18 @@ fn naive_broadcast_add(matrix: &[f32], row: &[f32]) -> Vec<f32> {
     matrix.chunks_exact(row.len()).flat_map(|m| m.iter().zip(row).map(|(a, b)| a + b)).collect()
 }
 
+fn naive_mean_rows(data: &[f32], cols: usize) -> Vec<f32> {
+    data.chunks_exact(cols).map(|row| row.iter().sum::<f32>() / cols as f32).collect()
+}
+
+fn naive_scale_rows(data: &[f32], per_row: &[f32]) -> Vec<f32> {
+    let cols = data.len() / per_row.len();
+    data.chunks_exact(cols)
+        .zip(per_row)
+        .flat_map(|(row, &s)| row.iter().map(move |v| v * s))
+        .collect()
+}
+
 /// The elements throughput of a matrix product is its floating-point operation count.
 fn matmul_square(c: &mut Criterion) {
     for n in [32usize, 96, 192] {
@@ -191,6 +203,60 @@ fn broadcast_add(c: &mut Criterion) {
     group.finish();
 }
 
+/// The backward pass of a linear layer is two more matrix products, one of them against
+/// the transposed weights. `unit-forward` is the product alone; the ratio of
+/// `forward-backward` to it is what the backward pass costs in units of the forward pass.
+fn matmul_backward(c: &mut Criterion) {
+    let cases = [("smoke_gate", 64usize, 176usize), ("smoke_head", 64, 256)];
+    for (name, d_in, d_out) in cases {
+        let x = Parameter::new("x", uniform(&[4, 32, d_in], 3));
+        let w = Parameter::new("w", uniform(&[d_in, d_out], 4));
+        let mut group = c.benchmark_group(format!("matmul_backward_{name}"));
+        group.bench_function("unit-forward", |bench| {
+            bench.iter(|| x.tensor().matmul(black_box(&w.tensor())).unwrap())
+        });
+        group.bench_function("forward-backward", |bench| {
+            bench.iter(|| {
+                x.tensor().matmul(black_box(&w.tensor())).unwrap().sum_all().backward().unwrap()
+            })
+        });
+        group.finish();
+    }
+}
+
+fn mean_last_axis(c: &mut Criterion) {
+    let (rows, cols) = (512usize, 64usize);
+    let x = uniform(&[rows, cols], 14);
+    let x_data = x.to_vec();
+    assert_close(&naive_mean_rows(&x_data, cols), x.mean_axis(-1, true).unwrap().data(), 1e-6);
+    let mut group = c.benchmark_group("mean_last_axis_512x64");
+    group.throughput(Throughput::Elements((rows * cols) as u64));
+    group.bench_function("baseline-naive-rows", |bench| {
+        bench.iter(|| naive_mean_rows(black_box(&x_data), cols))
+    });
+    group.bench_function("midman-tensor", |bench| {
+        bench.iter(|| black_box(&x).mean_axis(-1, true).unwrap())
+    });
+    group.finish();
+}
+
+fn broadcast_mul_column(c: &mut Criterion) {
+    let (rows, cols) = (512usize, 64usize);
+    let x = uniform(&[rows, cols], 15);
+    let column = uniform(&[rows, 1], 16);
+    let (x_data, column_data) = (x.to_vec(), column.to_vec());
+    assert_close(&naive_scale_rows(&x_data, &column_data), x.mul(&column).unwrap().data(), 1e-6);
+    let mut group = c.benchmark_group("broadcast_mul_column_512x64");
+    group.throughput(Throughput::Elements((rows * cols) as u64));
+    group.bench_function("baseline-naive-rows", |bench| {
+        bench.iter(|| naive_scale_rows(black_box(&x_data), black_box(&column_data)))
+    });
+    group.bench_function("midman-tensor", |bench| {
+        bench.iter(|| black_box(&x).mul(black_box(&column)).unwrap())
+    });
+    group.finish();
+}
+
 /// Prints the C compiler once, so the job summary can say what built the C baselines.
 fn announce_c_compiler(_: &mut Criterion) {
     eprintln!("C baselines compiled with: {}", midman_bench::compiler());
@@ -239,6 +305,9 @@ criterion_group!(
     softmax_rows,
     silu_elementwise,
     broadcast_add,
+    broadcast_mul_column,
+    mean_last_axis,
+    matmul_backward,
     mlp_backward,
     randn_fill
 );

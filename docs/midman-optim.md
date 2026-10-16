@@ -27,9 +27,10 @@ Test status when this was written: 19 unit tests and 1 doctest. Checked with `fm
 - Weight decay applies to matrices and embeddings but not to vectors (the norm weights). That is the common convention, chosen here as a default and not tuned. Setting `weight_decay` to 0 disables it.
 - Moments are stored per parameter name in a `BTreeMap`, so the order is deterministic and the state can be saved later without the optimizer holding references to parameters. Parameter names must therefore be unique, and `step` rejects duplicates.
 - The learning rate is an argument of `step`. The schedule lives outside the optimizer.
+- The non-finite check is a single pass with no early exit (`fold` with `&`), which the compiler vectorizes. A search that stops at the first bad value, such as `any`, cannot be vectorized.
 - `step` validates everything first (list lengths, gradient sizes, non-finite gradients, duplicate names, size changes, `lr`) and only then changes anything, so a rejected step leaves the parameters, moments and step count untouched.
 
-**Benchmarks:** `adamw_step_65536` and `adamw_step_1048576` in `optim_step.rs`. In one noisy local run the step took 1.44 to 1.45 times as long as a plain-loop implementation of the same rule. See "Fixes and Problems" below and `docs/midman-bench.md`.
+**Benchmarks:** `adamw_step_65536` and `adamw_step_1048576` in `optim_step.rs`. In a local before and after comparison with the same settings on the same machine, the step went from 91.0 to 68.4 us at 65,536 values and from 1.416 to 1.228 ms at 1,048,576, while the plain-loop baselines (Rust and C) measured 48 to 58 us and 0.86 to 0.96 ms. Reference figures come from `benchmarks.yml`. See "Fixes and Problems" below and `docs/midman-bench.md`.
 
 **Tests:** Unit tests for three steps against an independent float64 Python implementation of the same update (one matrix parameter and one vector parameter), that only matrices are decayed, a zero learning rate, that a rejected step changes nothing, duplicate names, a parameter that changes size, bad hyperparameters, that scaling every gradient does not change the trajectory (Adam's scale invariance, with a negligible epsilon), and convergence on a quadratic through real gradients from `backward`.
 
@@ -59,7 +60,7 @@ Covered by the workspace workflows in `docs/ci-and-workflows.md`. This crate has
 
 ### `adamw.rs`
 - **Clippy `excessive_precision` on test constants.** The reference values came from a float64 calculation and had more digits than `f32` holds. They are rounded to 7 decimals and compared with a tolerance of 1e-6.
-- **Open, not diagnosed: the step is 1.45 times slower than a plain loop.** Unlike the baseline, `step` makes an extra pass over every gradient to reject non-finite values, and checks names and sizes. Whether that accounts for the gap has not been measured.
+- **The gradient check was the gap.** Timed on its own, the early-exit `any(!is_finite)` pass took 28 us of a 77 us step at 65,536 values and 566 of 1,293 us at 1,048,576, while the update loop on its own took 52.6 us, level with a plain C loop (52.6 us). A branch-free version of the same check took 10 us and 178 us. The step is now 1.33 and 1.15 times faster. What remains above the plain loop is that pass and the name and size checks; at a million values the update itself is probably limited by memory bandwidth, which has not been verified. Two tests were added: a NaN, an infinity and a negative infinity at seven positions of a 1,031-value gradient, so the vectorized body and its tail are both covered, and a check that a bad gradient in a later parameter changes no parameter. Two injected bugs (a check that misses infinities and one that passes if any value is finite) were caught.
 - **Mutation run.** Four injected bugs in this file (no bias correction, decay on vectors, beta2 using beta1, eps outside the scaling) were all caught by the tests as first written.
 
 ### `clip.rs`

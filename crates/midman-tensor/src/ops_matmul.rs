@@ -26,13 +26,24 @@ fn gemm_nn(a: &[f32], b: &[f32], c: &mut [f32], k: usize, n: usize) {
     }
 }
 
-/// `C[m,n] += A[m,k] * B[n,k]^T`, with `m` implied by the slice lengths.
+/// `C[m,n] += A[m,k] * B[n,k]^T`, with `m` implied by the slice lengths. `C` must
+/// start at zero, as it does at every call site.
+///
+/// `B` is copied once into a `[k, n]` layout and the product is done by
+/// [`gemm_nn`], whose inner loop runs along a row and vectorizes. The obvious form,
+/// one dot product per element of `C`, is a strictly ordered float sum that the
+/// compiler may not vectorize, and it ran at a quarter of the speed. Each `C[i][j]`
+/// still adds `A[i][p] * B[j][p]` for `p` in ascending order, starting from zero, so
+/// the result is bit-for-bit the dot-product form.
 fn gemm_nt(a: &[f32], b: &[f32], c: &mut [f32], k: usize, n: usize) {
-    for (a_row, c_row) in a.chunks_exact(k).zip(c.chunks_exact_mut(n)) {
-        for (c_ij, b_row) in c_row.iter_mut().zip(b.chunks_exact(k)) {
-            *c_ij += a_row.iter().zip(b_row).map(|(&x, &y)| x * y).sum::<f32>();
+    debug_assert!(c.iter().all(|&v| v == 0.0), "gemm_nt needs a zeroed C");
+    let mut b_t = vec![0.0f32; k * n];
+    for (j, b_row) in b.chunks_exact(k).enumerate() {
+        for (p, &v) in b_row.iter().enumerate() {
+            b_t[p * n + j] = v;
         }
     }
+    gemm_nn(a, &b_t, c, k, n);
 }
 
 /// `C[m,n] += A[k,m]^T * B[k,n]`, with `k` implied by the slice lengths.
@@ -241,5 +252,95 @@ mod tests {
         let grads = a.matmul(&b).unwrap().sum_all().backward().unwrap();
         assert_eq!(grads.get(&a).unwrap(), &[15., 19., 23., 15., 19., 23.]);
         assert_eq!(grads.get(&b).unwrap(), &[5., 5., 7., 7., 9., 9.]);
+    }
+
+    /// The dot-product form this kernel had before it went through a transposed copy of B.
+    fn reference_gemm_nt(a: &[f32], b: &[f32], c: &mut [f32], k: usize, n: usize) {
+        for (a_row, c_row) in a.chunks_exact(k).zip(c.chunks_exact_mut(n)) {
+            for (c_ij, b_row) in c_row.iter_mut().zip(b.chunks_exact(k)) {
+                *c_ij += a_row.iter().zip(b_row).map(|(&x, &y)| x * y).sum::<f32>();
+            }
+        }
+    }
+
+    fn noise(len: usize, seed: u64) -> Vec<f32> {
+        let mut state = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+        (0..len)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                let unit = (state >> 40) as f32 / (1u64 << 24) as f32;
+                let sign = if state & 1 == 0 { 1.0 } else { -1.0 };
+                sign * (0.01 + unit * 4.0) * [1.0, 10.0, 0.1][(state >> 8) as usize % 3]
+            })
+            .collect()
+    }
+
+    #[test]
+    fn gemm_nt_is_bit_for_bit_the_dot_product_form() {
+        // (rows of A, k, n): single elements, odd sizes, and sizes that are not multiples of a vector width.
+        for (n_case, &(m, k, n)) in
+            [(1, 1, 1), (1, 7, 1), (3, 5, 2), (7, 16, 9), (2, 33, 31), (13, 64, 176), (4, 176, 64)]
+                .iter()
+                .enumerate()
+        {
+            let a = noise(m * k, 100 + n_case as u64);
+            let b = noise(n * k, 200 + n_case as u64);
+            let mut want = vec![0.0f32; m * n];
+            reference_gemm_nt(&a, &b, &mut want, k, n);
+            let mut got = vec![0.0f32; m * n];
+            gemm_nt(&a, &b, &mut got, k, n);
+            let bits = |v: &[f32]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+            assert_eq!(bits(&got), bits(&want), "m {m}, k {k}, n {n}");
+        }
+    }
+
+    #[test]
+    fn gemm_nt_sums_each_element_in_ascending_order_of_the_inner_index() {
+        // 1e8 + 1 + 1 + ... loses every 1 when added in order, but 1e8 added last would keep their total.
+        let k = 40;
+        let mut a = vec![1.0f32; k];
+        a[k - 1] = 1.0e8;
+        let b = vec![1.0f32; k];
+        let mut c = [0.0f32];
+        gemm_nt(&a, &b, &mut c, k, 1);
+        let mut want = 0.0f32;
+        for v in &a {
+            want += v;
+        }
+        assert_eq!(c[0].to_bits(), want.to_bits());
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic(expected = "zeroed C")]
+    fn gemm_nt_refuses_a_c_that_does_not_start_at_zero() {
+        let mut c = [1.0f32];
+        gemm_nt(&[1.0, 2.0], &[3.0, 4.0], &mut c, 2, 1);
+    }
+
+    #[test]
+    fn the_input_gradient_of_a_batched_product_matches_the_dot_product_form() {
+        // Batched operands take the backward path that calls gemm_nt once per matrix.
+        let (batch, m, k, n) = (3usize, 4usize, 6usize, 5usize);
+        let a = Tensor::from_vec(noise(batch * m * k, 1), &[batch, m, k])
+            .unwrap()
+            .leaf_requiring_grad();
+        let b = Tensor::from_vec(noise(batch * k * n, 2), &[batch, k, n]).unwrap();
+        let w = Tensor::from_vec(noise(batch * m * n, 3), &[batch, m, n]).unwrap();
+        let grads = a.matmul(&b).unwrap().mul(&w).unwrap().sum_all().backward().unwrap();
+        let mut want = vec![0.0f32; batch * m * k];
+        for bi in 0..batch {
+            reference_gemm_nt(
+                &w.data()[bi * m * n..(bi + 1) * m * n],
+                &b.data()[bi * k * n..(bi + 1) * k * n],
+                &mut want[bi * m * k..(bi + 1) * m * k],
+                n,
+                k,
+            );
+        }
+        let bits = |v: &[f32]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+        assert_eq!(bits(grads.get(&a).unwrap()), bits(&want));
     }
 }

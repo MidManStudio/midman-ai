@@ -54,7 +54,7 @@ Test status when this was written: 56 unit tests, 9 gradient-check tests and 1 d
 - Built from `mul`, `mean_axis`, `add_scalar` and `powf`, so it differentiates with respect to both arguments.
 - `weight` must be a vector as long as the last axis. Without that check a weight of shape `[1]` would broadcast silently.
 
-**Benchmarks:** `rms_norm_512x64` in `nn_layers.rs`. In one noisy local run the layer took 305 us against 22 us for a plain loop. See "Fixes and Problems" below and `docs/midman-bench.md`.
+**Benchmarks:** `rms_norm_512x64` in `nn_layers.rs`. In a local before and after comparison with the same settings, the layer went from 640 to 41 us, against 31 us for a plain loop. See "Fixes and Problems" below and `docs/midman-bench.md`.
 
 **Tests:** Unit tests for unit root mean square per row, a known row, the effect of `eps` on tiny inputs, invariance to scaling the input, the per-channel weight, initial value and naming, and bad arguments. Gradient checks in `tests/grad_layers.rs`.
 
@@ -116,7 +116,7 @@ Covered by the workspace workflows in `docs/ci-and-workflows.md`. This crate has
 
 ### `norm.rs`
 - **A mutation run found that ignoring `eps` went unnoticed.** `eps` is negligible on ordinary inputs, so nothing noticed it was missing. A test with a tiny input now fails without it.
-- **Open, not diagnosed: the layer is much slower than a plain loop.** `rms_norm_512x64` took 305 us against 22 us (13.9 times) in one local run. The layer is built from six tensor operations, two of them broadcasts, and records a graph. How the gap divides between those has not been measured.
+- **The slowness was in the tensor operations it is built from, not in the layer.** Timing the six operations one at a time, the two broadcast multiplies took 153 us and `mean_axis` 66 us of a 307 us call, and all three were fixed in `midman-tensor` (see its "Fixes and Problems"). Between 40 and 110 us remain, depending on the run, against 20 to 31 us for a plain loop. The stages add up to only 34 us, and the rest of a harness run was page faults: with glibc told not to trim freed memory the call took 29.6 us. That is an open item in `midman-tensor`, not something this layer can fix without changing its own structure (for example by fusing the six operations into one kernel with its own backward pass, which would also remove four intermediate allocations).
 
 ### `mlp.rs`
 - **The first known-value test could not tell `silu` from `sigmoid`.** It used input 1, where `silu(1)` equals `sigmoid(1)`, so a mutant that swapped them survived. The test now uses input 2.

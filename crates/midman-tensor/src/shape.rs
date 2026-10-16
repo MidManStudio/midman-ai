@@ -97,6 +97,11 @@ pub(crate) fn axis_split(shape: &[usize], axis: usize) -> (usize, usize, usize) 
 
 /// Calls `f(i, offset)` for every element `i` of `shape` in row-major order,
 /// where `offset` follows the given strides (which may be zero).
+///
+/// The operations no longer use this: it moves the index once per element, which
+/// is slow. It stays in test builds as the reference that [`for_each_row`] and
+/// [`for_each_row2`] are checked against.
+#[cfg(test)]
 pub(crate) fn for_each_offset(shape: &[usize], strides: &[usize], mut f: impl FnMut(usize, usize)) {
     let n = numel(shape);
     let rank = shape.len();
@@ -118,7 +123,8 @@ pub(crate) fn for_each_offset(shape: &[usize], strides: &[usize], mut f: impl Fn
     }
 }
 
-/// Like [`for_each_offset`] with two independent stride sets.
+/// Like [`for_each_offset`] with two independent stride sets. Test builds only.
+#[cfg(test)]
 pub(crate) fn for_each_offset2(
     shape: &[usize],
     sa: &[usize],
@@ -147,15 +153,86 @@ pub(crate) fn for_each_offset2(
     }
 }
 
+/// Calls `f(start, oa, ob)` once per row of `shape`. A row is a run of
+/// `shape[last]` consecutive output elements: `start` is the output index of its
+/// first element, and `oa` and `ob` are the offsets of that element under the two
+/// stride sets. A rank-0 shape is one row of one element.
+///
+/// The rows come in the same order, and with the same offsets, as the elements
+/// of `for_each_offset2` that start a row. The index is moved once per row and
+/// not once per element, which leaves the caller a plain loop over the row.
+pub(crate) fn for_each_row2(
+    shape: &[usize],
+    sa: &[usize],
+    sb: &[usize],
+    mut f: impl FnMut(usize, usize, usize),
+) {
+    let n = numel(shape);
+    if n == 0 {
+        return;
+    }
+    let inner = shape.last().copied().unwrap_or(1);
+    let outer = shape.len().saturating_sub(1);
+    let mut idx = vec![0usize; outer];
+    let (mut oa, mut ob) = (0usize, 0usize);
+    for row in 0..n / inner {
+        f(row * inner, oa, ob);
+        let mut d = outer;
+        while d > 0 {
+            d -= 1;
+            idx[d] += 1;
+            oa += sa[d];
+            ob += sb[d];
+            if idx[d] < shape[d] {
+                break;
+            }
+            oa -= sa[d] * shape[d];
+            ob -= sb[d] * shape[d];
+            idx[d] = 0;
+        }
+    }
+}
+
+/// Like [`for_each_row2`] with one stride set: calls `f(start, offset)` per row.
+pub(crate) fn for_each_row(shape: &[usize], strides: &[usize], mut f: impl FnMut(usize, usize)) {
+    let unused = vec![0usize; shape.len()];
+    for_each_row2(shape, strides, &unused, |start, off, _| f(start, off));
+}
+
 /// Sums `grad` (laid out as `from`) down to the broadcast-compatible shape `to`.
 /// This is the adjoint of broadcasting.
+///
+/// Every output element receives its contributions in row-major order of `grad`,
+/// exactly as when the walk visits one element at a time, so the sums are
+/// bit-for-bit what they were.
 pub(crate) fn sum_to_shape(grad: &[f32], from: &[usize], to: &[usize]) -> Vec<f32> {
     if from == to {
         return grad.to_vec();
     }
     let mut out = vec![0.0f32; numel(to)];
     let to_strides = broadcast_strides(to, from);
-    for_each_offset(from, &to_strides, |i, off| out[off] += grad[i]);
+    let inner = from.last().copied().unwrap_or(1);
+    match to_strides.last().copied().unwrap_or(0) {
+        // The last axis is kept: each row adds elementwise into a row of the output.
+        1 => for_each_row(from, &to_strides, |i, off| {
+            for (o, &g) in out[off..off + inner].iter_mut().zip(&grad[i..i + inner]) {
+                *o += g;
+            }
+        }),
+        // The last axis is summed away: the whole row goes into one output element.
+        0 => for_each_row(from, &to_strides, |i, off| {
+            let mut total = out[off];
+            for &g in &grad[i..i + inner] {
+                total += g;
+            }
+            out[off] = total;
+        }),
+        stride => for_each_row(from, &to_strides, |i, off| {
+            for (j, &g) in grad[i..i + inner].iter().enumerate() {
+                out[off + j * stride] += g;
+            }
+        }),
+    }
     out
 }
 
@@ -166,7 +243,18 @@ pub(crate) fn permute_data(src: &[f32], shape: &[usize], dims: &[usize]) -> (Vec
     let out_shape: Vec<usize> = dims.iter().map(|&d| shape[d]).collect();
     let walk: Vec<usize> = dims.iter().map(|&d| src_strides[d]).collect();
     let mut out = vec![0.0f32; src.len()];
-    for_each_offset(&out_shape, &walk, |i, off| out[i] = src[off]);
+    let inner = out_shape.last().copied().unwrap_or(1);
+    match walk.last().copied().unwrap_or(0) {
+        // The last axis stays last: rows are contiguous in the source and are copied whole.
+        1 => for_each_row(&out_shape, &walk, |i, off| {
+            out[i..i + inner].copy_from_slice(&src[off..off + inner]);
+        }),
+        stride => for_each_row(&out_shape, &walk, |i, off| {
+            for (j, o) in out[i..i + inner].iter_mut().enumerate() {
+                *o = src[off + j * stride];
+            }
+        }),
+    }
     (out_shape, out)
 }
 
@@ -264,5 +352,113 @@ mod tests {
         assert_eq!(shape, vec![4, 2, 3]);
         // out[1][0][2] = in[0][2][1] = 0*12 + 2*4 + 1 = 9, stored at index (1*2 + 0)*3 + 2 = 8
         assert_eq!(data[8], 9.0);
+    }
+
+    /// Values of mixed sign and magnitude, so the order of float additions shows in the bits.
+    fn noise(len: usize, seed: u64) -> Vec<f32> {
+        let mut state = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+        (0..len)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                let unit = (state >> 40) as f32 / (1u64 << 24) as f32;
+                let sign = if state & 1 == 0 { 1.0 } else { -1.0 };
+                sign * (0.01 + unit * 4.0) * [1.0, 10.0, 0.1][(state >> 8) as usize % 3]
+            })
+            .collect()
+    }
+
+    fn bits(values: &[f32]) -> Vec<u32> {
+        values.iter().map(|v| v.to_bits()).collect()
+    }
+
+    /// Output shapes with an operand shape that broadcasts to each, covering every mix of
+    /// kept and stretched last axes.
+    const BROADCASTS: &[(&[usize], &[usize])] = &[
+        (&[2, 3, 4], &[4]),
+        (&[2, 3, 4], &[3, 1]),
+        (&[2, 3, 4], &[2, 1, 1]),
+        (&[2, 3, 4], &[1, 3, 4]),
+        (&[2, 3, 4], &[2, 3, 1]),
+        (&[2, 3, 4], &[]),
+        (&[3, 5], &[5]),
+        (&[6], &[1]),
+        (&[5, 1], &[1]),
+        (&[1, 5, 1], &[3, 1, 1]),
+        (&[2, 2, 2, 2], &[2, 1, 2, 1]),
+        (&[1], &[1]),
+        (&[], &[]),
+    ];
+
+    #[test]
+    fn rows_visit_the_same_offsets_as_the_per_element_walk() {
+        for &(out, operand) in BROADCASTS {
+            for other in [operand, out] {
+                let sa = broadcast_strides(operand, out);
+                let sb = broadcast_strides(other, out);
+                let mut reference = Vec::new();
+                for_each_offset2(out, &sa, &sb, |i, a, b| reference.push((i, a, b)));
+                let inner = out.last().copied().unwrap_or(1);
+                let (la, lb) = (sa.last().copied().unwrap_or(0), sb.last().copied().unwrap_or(0));
+                let mut seen = Vec::new();
+                for_each_row2(out, &sa, &sb, |start, a, b| {
+                    for j in 0..inner {
+                        seen.push((start + j, a + j * la, b + j * lb));
+                    }
+                });
+                assert_eq!(seen, reference, "out {out:?}, operands {operand:?} and {other:?}");
+                let mut one = Vec::new();
+                for_each_row(out, &sa, |start, a| one.push((start, a)));
+                let starts: Vec<_> =
+                    reference.iter().step_by(inner).map(|&(i, a, _)| (i, a)).collect();
+                assert_eq!(one, starts, "single stride set, out {out:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_row_walk_over_nothing_visits_nothing() {
+        let mut calls = 0;
+        for_each_row(&[3, 0], &[0, 0], |_, _| calls += 1);
+        assert_eq!(calls, 0);
+    }
+
+    #[test]
+    fn sum_to_shape_adds_in_exactly_the_per_element_order() {
+        for (n, &(from, to)) in BROADCASTS.iter().enumerate() {
+            let grad = noise(numel(from), 40 + n as u64);
+            let mut want = vec![0.0f32; numel(to)];
+            let to_strides = broadcast_strides(to, from);
+            for_each_offset(from, &to_strides, |i, off| want[off] += grad[i]);
+            let got = sum_to_shape(&grad, from, to);
+            assert_eq!(bits(&got), bits(&want), "from {from:?} to {to:?}");
+        }
+    }
+
+    #[test]
+    fn permute_data_gathers_exactly_as_the_per_element_walk() {
+        let cases: &[(&[usize], &[usize])] = &[
+            (&[2, 3, 4], &[0, 1, 2]),
+            (&[2, 3, 4], &[2, 0, 1]),
+            (&[2, 3, 4], &[0, 2, 1]),
+            (&[2, 3, 4], &[1, 0, 2]),
+            (&[3, 5], &[1, 0]),
+            (&[4, 3, 2, 5], &[0, 2, 1, 3]),
+            (&[4, 3, 2, 5], &[3, 1, 0, 2]),
+            (&[7], &[0]),
+            (&[], &[]),
+        ];
+        for (n, &(shape, dims)) in cases.iter().enumerate() {
+            let src = noise(numel(shape), 70 + n as u64);
+            let strides_in = strides(shape);
+            let out_shape: Vec<usize> = dims.iter().map(|&d| shape[d]).collect();
+            let walk: Vec<usize> = dims.iter().map(|&d| strides_in[d]).collect();
+            let mut want = vec![0.0f32; src.len()];
+            for_each_offset(&out_shape, &walk, |i, off| want[i] = src[off]);
+            let (got_shape, got) = permute_data(&src, shape, dims);
+            assert_eq!(got_shape, out_shape);
+            assert_eq!(bits(&got), bits(&want), "shape {shape:?}, dims {dims:?}");
+        }
     }
 }

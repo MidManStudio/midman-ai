@@ -114,7 +114,8 @@ impl AdamW {
                     g.len()
                 )));
             }
-            if g.iter().any(|v| !v.is_finite()) {
+            // `&` and not `&&`: no early exit, so the check is one vectorizable pass.
+            if !g.iter().fold(true, |ok, v| ok & v.is_finite()) {
                 return Err(Error::invalid(format!(
                     "adamw: gradient of '{}' is not finite",
                     p.name()
@@ -304,5 +305,39 @@ mod tests {
             opt.step(&mut params, &g, 0.05).unwrap();
         }
         assert_close(w.data(), &target);
+    }
+
+    #[test]
+    fn a_non_finite_gradient_is_rejected_wherever_it_sits() {
+        // 1031 is not a multiple of any vector width, so the last positions fall in a tail.
+        let len = 1031;
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for position in [0, 1, 7, 8, 513, len - 2, len - 1] {
+                let mut p = Parameter::new("w", Tensor::ones(&[len]).unwrap());
+                let mut grad = vec![0.5f32; len];
+                grad[position] = bad;
+                let mut opt = AdamW::new(0.9, 0.999, 1e-8, 0.1).unwrap();
+                let err = opt.step(&mut [&mut p], &[grad], 0.1).unwrap_err();
+                assert!(err.to_string().contains("not finite"), "{err}");
+                assert_eq!(opt.step_count(), 0, "a rejected step must not count");
+                assert!(
+                    p.data().iter().all(|&v| v == 1.0),
+                    "a rejected step must not change the weights"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_bad_gradient_in_a_later_parameter_changes_no_parameter() {
+        let mut good = Parameter::new("good", Tensor::ones(&[600]).unwrap());
+        let mut bad = Parameter::new("bad", Tensor::ones(&[600]).unwrap());
+        let mut grad_bad = vec![0.25f32; 600];
+        grad_bad[599] = f32::NAN;
+        let mut opt = AdamW::new(0.9, 0.999, 1e-8, 0.1).unwrap();
+        assert!(opt.step(&mut [&mut good, &mut bad], &[vec![0.25; 600], grad_bad], 0.1).is_err());
+        assert!(good.data().iter().all(|&v| v == 1.0));
+        assert!(bad.data().iter().all(|&v| v == 1.0));
+        assert_eq!(opt.step_count(), 0);
     }
 }

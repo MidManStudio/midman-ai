@@ -35,12 +35,24 @@ impl Tensor {
         let axis = normalize_axis(axis, self.rank())?;
         let (outer, len, inner) = axis_split(self.shape(), axis);
         let mut out = vec![0.0f32; outer * inner];
-        for (block, out_row) in
-            self.data().chunks_exact(len * inner).zip(out.chunks_exact_mut(inner))
-        {
-            for row in block.chunks_exact(inner) {
-                for (o, &v) in out_row.iter_mut().zip(row) {
-                    *o += v;
+        if inner == 1 {
+            // The summed axis is contiguous: one running total per block, added in the
+            // same order as the general loop below, so the result is the same bit for bit.
+            for (block, o) in self.data().chunks_exact(len).zip(out.iter_mut()) {
+                let mut total = 0.0f32;
+                for &v in block {
+                    total += v;
+                }
+                *o = total;
+            }
+        } else {
+            for (block, out_row) in
+                self.data().chunks_exact(len * inner).zip(out.chunks_exact_mut(inner))
+            {
+                for row in block.chunks_exact(inner) {
+                    for (o, &v) in out_row.iter_mut().zip(row) {
+                        *o += v;
+                    }
                 }
             }
         }
@@ -52,9 +64,15 @@ impl Tensor {
         }
         Ok(make_op(out_shape, Arc::new(out), &[self], move |g, _| {
             let mut dx = vec![0.0f32; outer * len * inner];
-            for (block, g_row) in dx.chunks_exact_mut(len * inner).zip(g.chunks_exact(inner)) {
-                for row in block.chunks_exact_mut(inner) {
-                    row.copy_from_slice(g_row);
+            if inner == 1 {
+                for (block, &gv) in dx.chunks_exact_mut(len).zip(g) {
+                    block.fill(gv);
+                }
+            } else {
+                for (block, g_row) in dx.chunks_exact_mut(len * inner).zip(g.chunks_exact(inner)) {
+                    for row in block.chunks_exact_mut(inner) {
+                        row.copy_from_slice(g_row);
+                    }
                 }
             }
             vec![Some(dx)]
@@ -81,22 +99,43 @@ impl Tensor {
         let (outer, len, inner) = axis_split(self.shape(), axis);
         let x = self.data();
         let mut y = vec![0.0f32; x.len()];
-        for o in 0..outer {
-            for i in 0..inner {
-                let base = o * len * inner + i;
-                let mut max = f32::NEG_INFINITY;
-                for k in 0..len {
-                    max = max.max(x[base + k * inner]);
-                }
+        if inner == 1 {
+            // The axis is contiguous, so each softmax is over one slice. Same operations,
+            // in the same order, as the strided loop below.
+            for (row, dst) in x.chunks_exact(len).zip(y.chunks_exact_mut(len)) {
+                // A fold and not a `for` loop with a running maximum: the compiler vectorizes
+                // this form of the reduction and not the other, and the difference was 75 of the
+                // 175 microseconds of a softmax over [256, 128]. The maximum is the same either way.
+                let max = row.iter().copied().fold(f32::NEG_INFINITY, f32::max);
                 let mut sum = 0.0f32;
-                for k in 0..len {
-                    let e = (x[base + k * inner] - max).exp();
-                    y[base + k * inner] = e;
+                for (d, &v) in dst.iter_mut().zip(row) {
+                    let e = (v - max).exp();
+                    *d = e;
                     sum += e;
                 }
                 let inv = 1.0 / sum;
-                for k in 0..len {
-                    y[base + k * inner] *= inv;
+                for d in dst.iter_mut() {
+                    *d *= inv;
+                }
+            }
+        } else {
+            for o in 0..outer {
+                for i in 0..inner {
+                    let base = o * len * inner + i;
+                    let mut max = f32::NEG_INFINITY;
+                    for k in 0..len {
+                        max = max.max(x[base + k * inner]);
+                    }
+                    let mut sum = 0.0f32;
+                    for k in 0..len {
+                        let e = (x[base + k * inner] - max).exp();
+                        y[base + k * inner] = e;
+                        sum += e;
+                    }
+                    let inv = 1.0 / sum;
+                    for k in 0..len {
+                        y[base + k * inner] *= inv;
+                    }
                 }
             }
         }
@@ -105,16 +144,30 @@ impl Tensor {
         Ok(make_op(self.shape().to_vec(), y, &[self], move |g, _| {
             // dx = y * (g - sum(g * y)) along the axis
             let mut dx = vec![0.0f32; g.len()];
-            for o in 0..outer {
-                for i in 0..inner {
-                    let base = o * len * inner + i;
+            if inner == 1 {
+                for ((g_row, y_row), dx_row) in
+                    g.chunks_exact(len).zip(y2.chunks_exact(len)).zip(dx.chunks_exact_mut(len))
+                {
                     let mut dot = 0.0f32;
-                    for k in 0..len {
-                        dot += g[base + k * inner] * y2[base + k * inner];
+                    for (&gi, &yi) in g_row.iter().zip(y_row) {
+                        dot += gi * yi;
                     }
-                    for k in 0..len {
-                        let idx = base + k * inner;
-                        dx[idx] = y2[idx] * (g[idx] - dot);
+                    for ((d, &gi), &yi) in dx_row.iter_mut().zip(g_row).zip(y_row) {
+                        *d = yi * (gi - dot);
+                    }
+                }
+            } else {
+                for o in 0..outer {
+                    for i in 0..inner {
+                        let base = o * len * inner + i;
+                        let mut dot = 0.0f32;
+                        for k in 0..len {
+                            dot += g[base + k * inner] * y2[base + k * inner];
+                        }
+                        for k in 0..len {
+                            let idx = base + k * inner;
+                            dx[idx] = y2[idx] * (g[idx] - dot);
+                        }
                     }
                 }
             }
@@ -336,5 +389,145 @@ mod tests {
         assert!(matches!(logits.cross_entropy(&[0]), Err(Error::Shape { .. })));
         assert!(matches!(logits.cross_entropy(&[0, 3]), Err(Error::IndexOutOfRange { .. })));
         assert!(matches!(t(&[0.0; 3], &[3]).cross_entropy(&[0]), Err(Error::Shape { .. })));
+    }
+
+    fn noise(len: usize, seed: u64) -> Vec<f32> {
+        let mut state = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+        (0..len)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                let unit = (state >> 40) as f32 / (1u64 << 24) as f32;
+                let sign = if state & 1 == 0 { 1.0 } else { -1.0 };
+                sign * (0.01 + unit * 4.0) * [1.0, 10.0, 0.1][(state >> 8) as usize % 3]
+            })
+            .collect()
+    }
+
+    fn bits(values: &[f32]) -> Vec<u32> {
+        values.iter().map(|v| v.to_bits()).collect()
+    }
+
+    fn tensor(values: Vec<f32>, shape: &[usize]) -> Tensor {
+        Tensor::from_vec(values, shape).unwrap()
+    }
+
+    #[test]
+    fn sum_axis_matches_a_plain_sequential_sum_on_every_axis() {
+        let shape = [3usize, 4, 5];
+        for axis in 0..3usize {
+            for keepdim in [false, true] {
+                let x = tensor(noise(60, 1 + axis as u64), &shape).leaf_requiring_grad();
+                let (outer, len, inner) = axis_split(&shape, axis);
+                let mut want = vec![0.0f32; outer * inner];
+                for o in 0..outer {
+                    for i in 0..inner {
+                        for k in 0..len {
+                            want[o * inner + i] += x.data()[(o * len + k) * inner + i];
+                        }
+                    }
+                }
+                let y = x.sum_axis(axis as isize, keepdim).unwrap();
+                assert_eq!(bits(y.data()), bits(&want), "axis {axis}, keepdim {keepdim}");
+                let mut out_shape = shape.to_vec();
+                if keepdim {
+                    out_shape[axis] = 1;
+                } else {
+                    out_shape.remove(axis);
+                }
+                assert_eq!(y.shape(), out_shape.as_slice());
+                // Every input element receives the weight of the output element it was summed into.
+                let w = tensor(noise(outer * inner, 7), y.shape());
+                let grads = y.mul(&w).unwrap().sum_all().backward().unwrap();
+                let want_dx: Vec<f32> = (0..60)
+                    .map(|idx| {
+                        let (o, i) = (idx / (len * inner), idx % inner);
+                        w.data()[o * inner + i]
+                    })
+                    .collect();
+                assert_eq!(
+                    bits(grads.get(&x).unwrap()),
+                    bits(&want_dx),
+                    "axis {axis}, keepdim {keepdim}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_last_axis_of_a_long_row_sums_in_order() {
+        // 0.1 added to a large value is lost unless the additions come in the written order,
+        // so a reordered sum would show here.
+        let mut row = vec![1.0e8f32];
+        row.resize(64, 0.1);
+        let x = tensor(row.clone(), &[1, 64]);
+        let mut want = 0.0f32;
+        for v in &row {
+            want += v;
+        }
+        assert_eq!(x.sum_axis(-1, false).unwrap().data()[0].to_bits(), want.to_bits());
+    }
+
+    /// The strided softmax this crate used before the contiguous fast path, kept as the reference.
+    fn reference_softmax(x: &[f32], shape: &[usize], axis: usize) -> Vec<f32> {
+        let (outer, len, inner) = axis_split(shape, axis);
+        let mut y = vec![0.0f32; x.len()];
+        for o in 0..outer {
+            for i in 0..inner {
+                let base = o * len * inner + i;
+                let mut max = f32::NEG_INFINITY;
+                for k in 0..len {
+                    max = max.max(x[base + k * inner]);
+                }
+                let mut sum = 0.0f32;
+                for k in 0..len {
+                    let e = (x[base + k * inner] - max).exp();
+                    y[base + k * inner] = e;
+                    sum += e;
+                }
+                let inv = 1.0 / sum;
+                for k in 0..len {
+                    y[base + k * inner] *= inv;
+                }
+            }
+        }
+        y
+    }
+
+    #[test]
+    fn softmax_matches_the_strided_reference_bit_for_bit_on_every_axis() {
+        let shape = [3usize, 4, 5];
+        for axis in 0..3usize {
+            let x = tensor(noise(60, 11 + axis as u64), &shape).leaf_requiring_grad();
+            let y = x.softmax(axis as isize).unwrap();
+            let want = reference_softmax(x.data(), &shape, axis);
+            assert_eq!(bits(y.data()), bits(&want), "axis {axis}");
+            // dx = y * (g - sum(g * y)) with g the weights.
+            let w = tensor(noise(60, 21), &shape);
+            let grads = y.mul(&w).unwrap().sum_all().backward().unwrap();
+            let (outer, len, inner) = axis_split(&shape, axis);
+            let mut want_dx = vec![0.0f32; 60];
+            for o in 0..outer {
+                for i in 0..inner {
+                    let base = o * len * inner + i;
+                    let mut dot = 0.0f32;
+                    for k in 0..len {
+                        dot += w.data()[base + k * inner] * want[base + k * inner];
+                    }
+                    for k in 0..len {
+                        let idx = base + k * inner;
+                        want_dx[idx] = want[idx] * (w.data()[idx] - dot);
+                    }
+                }
+            }
+            assert_eq!(bits(grads.get(&x).unwrap()), bits(&want_dx), "axis {axis}");
+        }
+    }
+
+    #[test]
+    fn softmax_over_a_single_element_axis_is_one() {
+        let x = tensor(noise(6, 3), &[6, 1]);
+        assert_eq!(x.softmax(-1).unwrap().to_vec(), vec![1.0; 6]);
     }
 }

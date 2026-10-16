@@ -12,6 +12,9 @@ workspace = true
 [lib]
 name = "midman_bench"
 path = "src/lib.rs"
+# The library holds the C wrappers and their tests, which `cargo test` runs. Without this,
+# `cargo bench` also runs the library as a bench harness, which rejects criterion's options.
+bench = false
 
 [dependencies]
 midman-foundation   = { path = "../../crates/midman-foundation" }

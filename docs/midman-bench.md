@@ -1,7 +1,7 @@
 # midman-bench
 
 ## Overview
-Criterion benchmarks for the midman-ai crates, in a package of their own under `benches/`. Four bench targets hold 63 benchmarks in 26 groups: tensor kernels and the cost of autograd, the `midman-nn` layers, whole-model forward and training steps, and the optimizer. The package also compiles a small set of C kernels (`c/baseline_kernels.c`), so the Rust kernels can be compared with a plain C implementation of the same operation.
+Criterion benchmarks for the midman-ai crates, in a package of their own under `benches/`. Four bench targets hold 71 benchmarks in 30 groups: tensor kernels and the cost of autograd, the `midman-nn` layers, whole-model forward and training steps, and the optimizer. The package also compiles a small set of C kernels (`c/baseline_kernels.c`), so the Rust kernels can be compared with a plain C implementation of the same operation.
 
 The package is separate because criterion pulls in `clap_builder`, which needs a Cargo that understands edition 2024 (about 1.85 or newer). Cargo resolves a package's whole manifest, dev-dependencies included, before it builds any target from it, so a criterion dev-dependency inside a library crate would raise the toolchain requirement for that crate's tests as well. Kept here, the requirement stops at this package. See "Toolchain walls" in `docs/workspace-cargo.md`.
 
@@ -28,6 +28,7 @@ The C comparison numbers below come from a second local run on the same sandbox,
 - The MLP group has three variants of one computation: `unit-forward-untracked` (no graph is built), `forward-tracked` (a graph is built and dropped) and `forward-backward`. The first two show the cost of recording the graph, the third the cost of `backward`.
 - Sizes follow the Smoke preset (width 64, 4 heads, feed-forward width 176).
 - The matrix product, softmax, SiLU and broadcast add each have `baseline-c-*` variants. The product has two: `baseline-c-ijk` (the same loop order as the Rust baseline) and `baseline-c-ikj` (inner loop along a row, which a compiler can vectorize). Both sum every element in the same order as the Rust baseline, so they give bit-identical results to each other. The fastest C variant is the reference in the `vs fastest C` column, so for the product it is the ikj version, the best plain C a person would write.
+- Four groups track the operations that the performance work changed. `matmul_backward_smoke_gate` and `matmul_backward_smoke_head` time a linear layer's forward product (`unit-forward`) and the forward pass plus the backward pass (`forward-backward`), so the ratio between them is what the backward pass costs in forward passes; it includes a `sum_all`, which is small. `mean_last_axis_512x64` compares `mean_axis` with a plain row-sum loop. `broadcast_mul_column_512x64` compares a multiply by a per-row column, the form RMSNorm uses, with a plain Rust loop. Both of those check the plain loop against the tensor operation before timing.
 
 **Benchmarks:** (one noisy local run, see above)
 - Matrix product, 32 / 96 / 192 square: 4.9 us / 91.5 us / 875 us against 24.8 us / 637 us / 5.42 ms for the baseline, which is 5 to 7 times faster, at 13 to 19 GFLOP/s against 2.6 to 2.8.
@@ -40,6 +41,7 @@ The C comparison numbers below come from a second local run on the same sandbox,
 - Against plain C (second local run): `midman-tensor` is 1.13, 1.16 and 1.12 times the C ikj product at 32, 96 and 192 (4.5 / 97.8 / 774 us against 4.0 / 84.0 / 690 us). C ijk is 0.71 to 0.91 times the Rust i-j-k baseline, so the C compiler beats the Rust compiler by 10 to 30 percent on the same loop.
 - Softmax over 256 rows of 128: C 165 us, Rust baseline 117 us, `midman-tensor` 202 us (1.23 times C). SiLU over 65,536 values: C 247 us, Rust baseline 164 us, `midman-tensor` 181 us (0.74 times C). Both C versions are slower than the Rust baselines, which is the opposite of the product; why has not been checked.
 - Broadcast add: C 25.7 us, Rust baseline 112 us (4.35 times C), `midman-tensor` 317 us (12.3 times C).
+- After the performance changes (a local before and after run with the same settings on the same machine; unchanged reference rows moved by up to 50 percent between the runs, so read the ratios): broadcast add 375 to 31 us (12.1 times faster, level with the C loop at 26 us); softmax 257 to 119 us (2.17 times, now faster than both baselines at 133 and 132 us); broadcast multiply by a column 111 to 14 us (8.1 times); mean over the last axis 176 to 8 us (21.7 times, level with the baseline). The forward-backward cost of a linear layer fell from 5.1 to 4.0 forward passes at the Smoke gate shape and from 7.0 to 3.1 at the head shape (1.21 to 0.86 ms and 2.26 to 1.20 ms).
 
 **Tests:** The baselines, Rust and C, are checked against the tensor operations in the setup (matrix product 1e-4, softmax 1e-5, SiLU 1e-5, broadcast add 1e-6, relative to magnitude). Correctness of the operations themselves is covered by the `midman-tensor` tests, and the C kernels have their own tests in `lib.rs`.
 
@@ -56,6 +58,7 @@ The C comparison numbers below come from a second local run on the same sandbox,
 - RMSNorm over 512 rows of 64: 305 us against 22 us for the baseline (13.9 times slower).
 - Rotary embeddings at T=128: 116 us. SwiGLU at T=64: 556 us.
 - RMSNorm against plain C (second local run): C 23.5 us, Rust baseline 23.8 us (parity), `midman-nn` 216 us (9.2 times C). The two baselines agree, so the gap is not an artifact of how the baseline was written.
+- After the performance changes: `midman-nn` 640 to 41 us (15.7 times faster) against 31 us for the Rust baseline and 26 us for C. Run on its own in a harness, the layer took between 93 and 110 us in some runs, and the difference was page faults from the allocator; see `docs/midman-tensor.md`.
 
 **Tests:** Both RMSNorm baselines are checked against the layer in the setup (1e-4). Layer correctness is covered by the `midman-nn` tests.
 
@@ -85,6 +88,7 @@ The C comparison numbers below come from a second local run on the same sandbox,
 - AdamW: 78 us against 54 us for the baseline at 65,536 values, and 1.26 ms against 870 us at 1,048,576 values (1.44 and 1.45 times).
 - Global norm over one million values: 747 us. Clip and rescale: 1.16 ms.
 - AdamW against plain C (second local run): C 63.9 us and 930 us, Rust baseline 54.3 us and 854 us, `midman-optim` 80.9 us and 1.295 ms. That is 1.27 and 1.39 times the C loop, and 1.49 and 1.52 times the Rust loop. The C loop is the slower of the two loops here.
+- After the performance changes: 91.0 to 68.4 us at 65,536 values (1.33 times faster) and 1.416 to 1.228 ms at 1,048,576 (1.15 times), against plain loops at 48 to 58 us and 0.86 to 0.96 ms.
 
 **Tests:** Both AdamW baselines are checked against the optimizer in the setup. Optimizer correctness is covered by the `midman-optim` tests.
 
@@ -142,17 +146,18 @@ The C comparison numbers below come from a second local run on the same sandbox,
 - **`missing_docs` fired on the macro-generated function.** `criterion_group!` expands to an undocumented `pub fn`, so the workspace's `missing_docs = "warn"` failed `clippy -D warnings`. Each bench file now opens with `#![allow(missing_docs)]` and a comment saying why.
 - **The first lockfile update bumped `Cargo.lock` to version 4.** Cargo 1.91 rewrote the version 3 lockfile as version 4 when it added criterion's packages, and Cargo 1.75 cannot read version 4, which would have extended the toolchain requirement to every crate. The lockfile is version 3 again, and Cargo 1.91 keeps it that way on later commands. After a `cargo update` with a new Cargo, check that the line still says `version = 3`.
 - **Adding `cc` did it again.** The first build after adding the build dependency rewrote the lockfile as version 4 once more. The line was set back to 3 by hand, `cargo metadata --locked` and `cargo test -p midman-foundation --locked` were checked on Rust 1.75 afterwards, and the three new packages (`cc`, `shlex`, `find-msvc-tools`) are in the lockfile.
+- **The library target ran as a bench harness.** Library targets are benchable by default, so `cargo bench -p midman-bench -- --warm-up-time 0.3` also passed criterion's options to the library's test harness, which rejected them, and `--benches` still included the library. `[lib]` now has `bench = false`. A plain `cargo bench -p midman-bench`, as `benchmarks.yml` runs it, printed the library's 17 tests as ignored and was otherwise unaffected. Found while running before and after comparisons by hand.
 
 ### `tensor_ops.rs`
-- **Open, not diagnosed: two kernels are slower than a plain loop.** Softmax is 1.64 times and the broadcast add is 2.39 times slower than their baselines. RMSNorm in `nn_layers.rs` uses two broadcasts, so the broadcast path is a suspect for it, but that is a guess and nothing here has profiled any of them.
+- **Diagnosed and fixed: softmax and the broadcast add were slower than a plain loop.** The broadcast add paid for an index walk that moved once per element (365 us against 16 us for a row loop); the softmax paid for strided indexing and for a maximum loop the compiler does not vectorize (75 of 175 us). Both are fixed in `midman-tensor`, and the broadcast add is now level with plain C. See `docs/midman-tensor.md`.
 - **The C loop shows the Rust broadcast baseline was not a floor.** The plain Rust baseline for the broadcast add (a `flat_map` over `zip`) is itself 4.35 times slower than the same loop in C, so the 2.39 above understated the gap: `midman-tensor`'s broadcast add is 12.3 times the C loop. The Rust baseline is kept as it is, because it is the one the history of this benchmark is measured against.
-- **Open, not diagnosed: the C softmax and SiLU are slower than the Rust baselines.** C takes 165 us against 117 us for softmax and 247 us against 164 us for SiLU, while the C matrix product and broadcast add are faster than their Rust baselines. Both slow cases call `expf` for every value. Whether the two compilers handle that call differently has not been checked.
+- **Open, not diagnosed: the C softmax and SiLU are slower than the Rust baselines.** C takes 165 us against 117 us for softmax and 247 us against 164 us for SiLU, while the C matrix product and broadcast add are faster than their Rust baselines. Both slow cases call `expf` for every value. Whether the two compilers handle that call differently has not been checked. A vectorizable polynomial `exp` written in plain Rust was only 1.1 to 1.4 times faster than libm in a harness, even with AVX2 and FMA, so exp is not where the time is.
 
 ### `nn_layers.rs`
-- **Open, not diagnosed: RMSNorm is 13.9 times slower than a plain loop.** The layer is built from six tensor operations, two of them broadcasts, and records a graph. How the 13.9 divides between those has not been measured. The plain C loop runs in the same time as the plain Rust loop (23.5 us and 23.8 us), so the target for a fix is the same either way.
+- **Diagnosed and mostly fixed: RMSNorm was 13.9 times slower than a plain loop.** Timing its six operations one at a time showed the two broadcast multiplies (153 us) and `mean_axis` (66 us) as the cost, all fixed in `midman-tensor`; it is now 1.3 times the plain loop in the bench run. What remains in some runs is allocator page faults, an open item in `docs/midman-tensor.md`.
 
 ### `model_step.rs`
 - **First version had no `unit-*` convention.** The forward pass was named `baseline-forward`, so the summary showed `4.06x` with a failure badge for backward costing four forward passes, which is expected. Forward-only variants are now `unit-forward` and get a plain multiple.
 
 ### `optim_step.rs`
-- **Open, not diagnosed: AdamW is 1.45 times slower than the plain-loop baseline.** Unlike the baseline, `step` validates every gradient for non-finite values and every parameter for size and name before it changes anything, which costs an extra pass over the gradients. Whether that explains the gap has not been measured.
+- **Diagnosed and partly fixed: AdamW was 1.45 times slower than the plain-loop baseline.** The early-exit gradient check was 28 of 77 us; it is now a single vectorizable pass and the step is 1.33 times faster at 65,536 values. See `docs/midman-optim.md`.
