@@ -121,6 +121,14 @@ jobs:
           set -o pipefail
           read -r -a sel <<< "$PKG_FLAGS"
           cargo clippy "${sel[@]}" --all-targets -- -D warnings 2>&1 | tee clippy-raw.txt
+          # midman-tensor has an optional `avx` feature. A workspace build gets it switched
+          # on by midman-bench, so also lint the crate on its own, where it is off. Linting
+          # that one crate alone gets the opposite configuration, so lint it with the feature.
+          if [ "$PACKAGE" = "workspace" ]; then
+            cargo clippy --package midman-tensor --all-targets -- -D warnings 2>&1 | tee -a clippy-raw.txt
+          elif [ "$PACKAGE" = "midman-tensor" ]; then
+            cargo clippy --package midman-tensor --features avx --all-targets -- -D warnings 2>&1 | tee -a clippy-raw.txt
+          fi
 
       - name: Build
         id: build
@@ -137,6 +145,13 @@ jobs:
           set -o pipefail
           read -r -a sel <<< "$PKG_FLAGS"
           cargo test "${sel[@]}" --no-fail-fast 2>&1 | tee test-raw.txt
+          # The same two configurations of midman-tensor as in the Clippy step: with the
+          # avx feature on (a workspace run) and off, or the reverse for that crate alone.
+          if [ "$PACKAGE" = "workspace" ]; then
+            cargo test --package midman-tensor --no-fail-fast 2>&1 | tee -a test-raw.txt
+          elif [ "$PACKAGE" = "midman-tensor" ]; then
+            cargo test --package midman-tensor --features avx --no-fail-fast 2>&1 | tee -a test-raw.txt
+          fi
 
       - name: Summarize
         if: always()
