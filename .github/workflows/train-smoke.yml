@@ -12,6 +12,10 @@
 # loss can differ in its last digits between platforms, and the summary of each leg shows
 # the numbers side by side. ubuntu-only is the fast default.
 #
+# On x86_64 the test runs twice: once with the default scalar matrix kernels and once with
+# midman-tensor's avx feature. The AVX kernels are bit-identical to the scalar ones, so run 2
+# must print the same loss and accuracy as run 1. The summary lists them as Run 1 and Run 2.
+#
 # Helper script: scripts/train_smoke_summary.py, tested by scripts/test_train_smoke_summary.py.
 # Notes: docs/ci-and-workflows.md.
 
@@ -87,7 +91,14 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          cargo test --release -p midman-model --test overfit -- --ignored --nocapture 2>&1 | tee smoke-raw.txt
+          echo "run 1: scalar matrix kernels (default build)" | tee smoke-raw.txt
+          cargo test --release -p midman-model --test overfit -- --ignored --nocapture 2>&1 | tee -a smoke-raw.txt
+          # On x86_64, run again with midman-tensor's avx feature. The AVX kernels give the same
+          # bits as the scalar ones, so run 2 must print the same loss and accuracy as run 1.
+          if [ "$(uname -m)" = "x86_64" ]; then
+            echo "run 2: AVX matrix kernels (midman-tensor/avx)" | tee -a smoke-raw.txt
+            cargo test --release -p midman-model --test overfit --features midman-tensor/avx -- --ignored --nocapture 2>&1 | tee -a smoke-raw.txt
+          fi
 
       - name: Summarize
         if: always()
