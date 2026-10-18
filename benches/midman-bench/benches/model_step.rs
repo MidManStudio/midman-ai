@@ -9,6 +9,13 @@
 //! reports tokens per second. A variant named `baseline-*` is a reference
 //! implementation (badged by `scripts/bench_summary.py`) and one named `unit-*` is a
 //! cost denominator (a plain multiple).
+//!
+//! This package builds `midman-tensor` with its `avx` feature, so on a CPU with AVX the
+//! step benchmarks run the AVX matrix kernels. `full-step-scalar` repeats the full step
+//! with the scalar kernels forced, so one run shows what AVX changes for a whole step;
+//! its multiple is still against `unit-forward`, which runs on AVX. The setup checks
+//! first that both backends give the same loss bits. Where AVX is not in use, the
+//! scalar variant is left out.
 
 // `criterion_group!` expands to an undocumented `pub fn`, which `missing_docs` flags.
 #![allow(missing_docs)]
@@ -19,6 +26,7 @@ use midman_model::MidManModel;
 use midman_model_config::{ModelConfig, Preset};
 use midman_nn::Module;
 use midman_optim::{clip_global_norm, gather_gradients, AdamW};
+use midman_tensor::kernels::{self, Backend};
 use std::time::Duration;
 
 fn train_step(
@@ -48,6 +56,17 @@ fn step_group(c: &mut Criterion, name: &str, preset: Preset, batch: usize, seq: 
     let mut optimizer = AdamW::new(0.9, 0.999, 1e-8, 0.1).unwrap();
     let inputs = random_tokens(&config, batch * seq, 2);
     let targets = random_tokens(&config, batch * seq, 3);
+    let avx = kernels::backend() == Backend::Avx;
+    if avx {
+        let loss_bits = |m: &MidManModel| {
+            m.loss(&inputs, &targets, batch, seq).unwrap().item().unwrap().to_bits()
+        };
+        let on = loss_bits(&model);
+        kernels::set_force_scalar(true);
+        let off = loss_bits(&model);
+        kernels::set_force_scalar(false);
+        assert_eq!(on, off, "the AVX and scalar kernels disagree on the loss");
+    }
 
     let mut group = c.benchmark_group(name);
     group.throughput(Throughput::Elements((batch * seq) as u64));
@@ -63,6 +82,13 @@ fn step_group(c: &mut Criterion, name: &str, preset: Preset, batch: usize, seq: 
     group.bench_function("full-step", |bench| {
         bench.iter(|| train_step(&mut model, &mut optimizer, &inputs, &targets, batch, seq))
     });
+    if avx {
+        group.bench_function("full-step-scalar", |bench| {
+            kernels::set_force_scalar(true);
+            bench.iter(|| train_step(&mut model, &mut optimizer, &inputs, &targets, batch, seq));
+            kernels::set_force_scalar(false);
+        });
+    }
     group.finish();
 }
 

@@ -19,7 +19,11 @@ bench = false
 [dependencies]
 midman-foundation   = { path = "../../crates/midman-foundation" }
 midman-model-config = { path = "../../crates/midman-model-config" }
-midman-tensor       = { path = "../../crates/midman-tensor" }
+# The `avx` feature makes the matrix-product benchmarks run the AVX kernels when the CPU
+# has them, next to scalar twins that force the scalar kernels. Cargo unifies features
+# across the workspace, so a build that includes this package also gets them for the
+# library crates; the library crates' own `cargo test -p` runs do not.
+midman-tensor       = { path = "../../crates/midman-tensor", features = ["avx"] }
 midman-nn           = { path = "../../crates/midman-nn" }
 midman-model        = { path = "../../crates/midman-model" }
 midman-optim        = { path = "../../crates/midman-optim" }

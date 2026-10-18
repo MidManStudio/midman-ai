@@ -29,9 +29,22 @@
 //! cross-entropy, matrix multiplication, and shape operations. The [`check`]
 //! module compares any of them against finite differences. This crate is CPU
 //! only; see `docs/midman-tensor.md` for the design and its limits.
+//!
+//! Matrix products run on plain scalar loops by default. The optional `avx`
+//! feature adds AVX kernels for x86_64 that are chosen at run time when the CPU
+//! has AVX and give the same results bit for bit; see [`kernels`].
+
+// The `avx` feature compiles intrinsics, which are unsafe to call. This is the one
+// place the crate opts out of the workspace's `unsafe_code = "deny"`, and only when
+// that feature is on, so a default build still denies it. The unsafe code is all in
+// `kernels_avx.rs`; every block there carries a SAFETY comment.
+#![cfg_attr(all(feature = "avx", target_arch = "x86_64"), allow(unsafe_code))]
 
 mod autograd;
 pub mod check;
+pub mod kernels;
+#[cfg(all(feature = "avx", target_arch = "x86_64"))]
+mod kernels_avx;
 mod ops_elementwise;
 mod ops_matmul;
 mod ops_reduce;

@@ -13,7 +13,7 @@ Why it exists: the project decision is to build the tensor, autograd and kernel 
 
 | Group | Operations |
 | --- | --- |
-| Matrix products | three loop kernels: `A*B`, `A*B^T`, `A^T*B`, applied per batch |
+| Matrix products | three kernels: `A*B`, `A*B^T`, `A^T*B`, applied per batch. Scalar loops are the reference; the optional `avx` feature adds AVX kernels for x86_64 with the same bits |
 | Elementwise | `add`, `sub`, `mul`, `div` with broadcasting; `scale`, `add_scalar`, `neg`, `exp`, `ln`, `sqrt`, `powf`, `tanh`, `sigmoid`, `relu`, `silu`, `gelu` |
 | Reductions | `sum_all`, `mean_all`, `sum_axis`, `mean_axis`, `softmax`, `log_softmax`, `cross_entropy` |
 | Data movement | `reshape`, `permute`, `transpose`, `narrow`, `concat`, `repeat_interleave`, `embedding` (gather, with scatter-add backward) |
@@ -22,7 +22,7 @@ Every backward pass is written in terms of the same kinds of kernels (for exampl
 
 **Limits.**
 - CPU and `f32` only. There is no device abstraction yet and no GPU design. When a second backend arrives, the tensor storage has to be generalized, and every operation will need a kernel for it.
-- The kernels are plain single-threaded loops, written so the compiler can vectorize them: no intrinsics and no threads. They are the reference first and fast second. `docs/midman-bench.md` has the measured speed, including a comparison with plain C.
+- The default kernels are plain single-threaded loops, written so the compiler can vectorize them. They are the reference first and fast second. The only intrinsics are the optional AVX matrix-product kernels behind the `avx` feature (see `kernels_avx.rs`); nothing uses threads, and there is no NEON or AVX-512 kernel. `docs/midman-bench.md` has the measured speed, including a comparison with plain C.
 - Zero-sized axes are rejected. No operation needs them yet, and rejecting them keeps every kernel free of empty-slice cases.
 - There are no in-place operations. `reshape` shares data with its input; `permute`, `narrow` and the rest copy.
 - There is no no-grad mode. Use `Tensor::detach` or a plain `Tensor::from_vec` to run without building a graph.
@@ -32,6 +32,10 @@ Every backward pass is written in terms of the same kinds of kernels (for exampl
 
 ### `lib.rs`
 **What it does:** Crate root. Declares the modules and re-exports `Tensor`, `Grads` and `Parameter`. The crate docs include a runnable example that differentiates a sum of squares.
+
+**Decisions:**
+- The crate has one Cargo feature, `avx`, off by default. `lib.rs` carries the only opt-out from the workspace's `unsafe_code = "deny"`, written as `cfg_attr(all(feature = "avx", target_arch = "x86_64"), allow(unsafe_code))`, so a default build still denies unsafe code and the exception shows in one line, as `docs/RUST_AND_CRATE_GUIDELINES.md` in mid-engine asks. The allowance covers the whole crate when the feature is on; the unsafe code itself is all in `kernels_avx.rs`.
+- `kernels` is public so that benchmarks can read the backend and switch it. The kernels themselves stay crate-private.
 
 ### `shape.rs`
 **What it does:** Shape arithmetic shared by every operation: element counts, row-major strides, NumPy-style broadcasting (`broadcast_shapes`), negative-axis handling (`normalize_axis`), the zero-axis check, the `(outer, len, inner)` split used to walk any axis, row-by-row iteration over strided offsets (`for_each_row`, `for_each_row2`), `sum_to_shape` (the adjoint of broadcasting) and `permute_data`.
@@ -91,8 +95,55 @@ Every backward pass is written in terms of the same kinds of kernels (for exampl
 - When the reduced axis is the last one, which is the common case, `sum_axis` and `softmax` and their backward passes work on contiguous slices. Every sum is added in the same order as in the strided loop, so the results are bit-for-bit the same. Tests compare against the strided loop on every axis. `log_softmax` still uses the strided loops; it has not been measured.
 - The softmax maximum is a `fold`, not a `for` loop with a running maximum. The compiler vectorizes the first form and not the second, and the difference was 75 of the 175 microseconds of a `[256, 128]` softmax.
 
+### `kernels.rs`
+**What it does:** The three matrix-product kernels (`C += A*B`, `C += A*B^T`, `C += A^T*B`) and the choice of implementation. The `scalar` module holds the plain loops, which are the reference every other backend must match bit for bit and are always compiled. The functions the rest of the crate calls try the AVX kernels first when the `avx` feature is on and fall back to the scalar ones. The public items are `Backend`, `backend()` and `set_force_scalar()`.
+
+**Decisions:**
+- Dispatch is checked at run time, once per product, with `is_x86_feature_detected!("avx")` (the standard library caches the answer), so one binary runs on a CPU without AVX, such as the 2010 MacBook.
+- `set_force_scalar` is a process-wide atomic switch that exists so a benchmark can time both backends in one process. The results are bit-identical either way, so flipping it while other threads multiply matrices changes their speed and nothing else.
+- `A*B^T` still copies `B` into a transposed temporary and calls the `A*B` kernel, so it gets the AVX kernel too. See `ops_matmul.rs` for why it is not a dot product per element.
+- The kernels moved here from `ops_matmul.rs` unchanged.
+
+**Tests:** The dispatching kernels give the scalar answer bit for bit on whichever backend is active, and the force switch selects the scalar backend and restores the automatic choice. The existing `ops_matmul.rs` tests exercise the dispatching functions.
+
+### `kernels_avx.rs`
+**What it does:** AVX versions of `C += A*B` and `C += A^T*B`, compiled only with the `avx` feature on x86_64. Both share one routine that reads `A` through a row stride and a column stride, so the transposed form needs no second kernel.
+
+**Decisions:**
+- AVX, not AVX2 and not FMA. The kernel needs only 256-bit float loads, broadcasts, multiplies, adds and stores plus masked loads and stores, all of which are AVX. A fused multiply-add rounds once where the scalar loop rounds twice, and would change the last bits of every result, so the kernel uses a separate multiply and add. The project keeps its speed-ups bit-identical; an FMA variant would be faster still, and trading numerics for speed is a decision the project has not made.
+- Each element of `C` starts from its current value and adds `A[i][p] * B[p][j]` for `p` in ascending order, exactly as the scalar loop does, so every result is bit-for-bit the scalar one.
+- The kernel keeps a tile of `C` in registers across the whole inner loop instead of reading and writing `C` for every `p`. A full tile is four rows by sixteen columns: eight accumulators of eight lanes. Columns left over after the sixteen- and eight-wide tiles use masked loads and stores, so nothing outside the matrices is read or written. Rows left over after the four-row tiles use tiles of three, two or one row.
+- The tile loops are plain index loops over constant bounds, not iterator adapters; see Fixes and Problems for what the adapters cost without LTO.
+- The tile shape was chosen to fit the sixteen vector registers with room for the `B` vectors and the broadcast, and to give eight independent add chains. The generated code was not inspected for spills, and other tile shapes were not measured.
+- The public-facing wrapper validates that the three slices have exactly the lengths of the shapes, and otherwise returns `false` without writing, so the scalar kernel handles unusual inputs with its old behavior (including its panic on a zero-sized dimension). Only after that does it enter the `unsafe` kernel, in one block with a SAFETY comment; each `unsafe fn` has a `# Safety` section.
+- Not done, and not measured: cache blocking or packing for matrices much larger than the current shapes (`B` is read with a stride of one row per step), an AVX-512 kernel, and a NEON kernel for aarch64. aarch64 builds keep the scalar kernels, which the compiler vectorizes with NEON.
+
+**Benchmarks:** Sandbox numbers from a release build with fat LTO, 2026-10-17, on a virtualized Xeon at 2.1 GHz with one noisy CPU, so read the ratios, not the microseconds. Review date: 2027-01-17. These are to be replaced by the figures from `benchmarks.yml` once it has run with this change.
+
+| Case | Scalar | AVX | Speedup |
+| --- | --- | --- | --- |
+| square 32 | 13.8 GFLOP/s | 47.5 GFLOP/s | 3.45x |
+| square 96 | 19.7 | 58.2 | 2.95x |
+| square 192 | 15.9 | 49.1 | 3.09x |
+| square 384 | 16.2 | 44.2 | 2.72x |
+| Smoke gate 128x64x176 | 19.7 | 57.5 | 2.92x |
+| Smoke head 128x64x256 | 16.4 | 55.1 | 3.36x |
+| Tiny up 32x128x352 | 16.3 | 56.8 | 3.48x |
+| Tiny down 32x352x128 | 17.0 | 59.1 | 3.48x |
+| attention scores, T=32 | 14.1 | 49.0 | 3.48x |
+| attention scores, T=128 | 18.3 | 50.2 | 2.75x |
+| forward and backward of the four linear shapes | 13.5 to 16.8 | 32.4 to 47.3 | 2.40x to 3.01x |
+| Smoke training step (b4, t32) | 7.5 to 7.6 ms | 3.8 ms | 1.93x to 2.02x |
+| Tiny training step (b1, t32) | 33.1 to 33.7 ms | 21.5 to 21.7 ms | 1.54x to 1.55x |
+
+The same harness with LTO off and 16 codegen units (the weak profile) gives the same AVX speeds, 45 to 57 GFLOP/s on the square sizes and the Smoke gate, and a 2.81x faster Smoke step and 1.69x faster Tiny step. The matrix products show larger speedups there (3.1x to 8.1x) only because the scalar kernel is slower in that profile.
+
+A Smoke training step of six updates ended on the same loss bits for both backends, and so did a Tiny one. The ignored overfit test printed `loss 5.5674 -> 0.0005, accuracy 1.000` on both and took 2.52 s on the scalar kernels and 1.29 s on AVX.
+
+**Tests:** Six tests in the file. The `A*B` and `A^T*B` kernels are compared with the scalar kernels bit for bit for every height from 1 to 9 and every width from 1 to 41 (which crosses every tile and every masked tail), for four inner sizes, starting from a nonzero `C`, on values of mixed magnitude so a change in summation order shows in the low bits. Others cover the shapes of the Smoke and Tiny presets plus a head 259 wide, signed zeros, infinities and NaN, guard values on both sides of `C` that must survive the masked tail, and slice lengths that do not match the shapes. The suite was mutation-tested: ten plausible bugs were injected one at a time (a shifted tail mask, a wrong leftover-row tile, the inner index run backwards, swapped strides in the transposed form, an unmasked tail store, accumulators that ignore the starting `C` in either tile, a dropped length check in either wrapper, a skipped eight-wide tile) and every one made a test fail.
+
 ### `ops_matmul.rs`
-**What it does:** The three matrix-product loop kernels and `Tensor::matmul`.
+**What it does:** `Tensor::matmul` and its gradients. The kernels it calls live in `kernels.rs`.
 
 **Supported forms:** `[.., m, k] x [k, n]` (a linear layer: one matrix applied at every leading position) and `[b.., m, k] x [b.., k, n]` (batched matrices, for example attention scores).
 
@@ -100,7 +151,7 @@ Every backward pass is written in terms of the same kinds of kernels (for exampl
 - Forward uses `A*B`. The backward pass uses `A*B^T` for the left operand's gradient and `A^T*B` for the right operand's gradient.
 - `A*B^T` copies `B` into a transposed temporary and runs the `A*B` kernel. The alternative, one dot product per output element, is a strictly ordered float sum that the compiler may not vectorize. It ran at 3.6 to 5.2 GFLOP/s against 16 to 20 for the other two kernels, and an AVX2 and FMA build did not change that. Each output element still adds its products in the same order, so the gradients are bit-for-bit those of the dot-product form: six training steps were compared on every loss, every gradient and every updated parameter. The kernel needs its output to start at zero, as it does at every call site, and a debug assertion checks that.
 - For the linear-layer form, the right operand's gradient is a single product over all flattened leading positions, which sums the batch contributions correctly.
-- The kernels are the reference for any future backend.
+- The scalar kernels in `kernels.rs` are the reference for any other backend.
 
 ### `ops_shape.rs`
 **What it does:** `reshape` (shares data), `permute`, `transpose`, `narrow`, `concat`, `repeat_interleave` and `embedding`.
@@ -143,9 +194,17 @@ The workspace workflows in `.github/workflows` cover this crate through the pack
 - **`mean_axis` over a short last axis was slow.** It cost 66 us for 32,768 values (a `[512, 64]` input) because the general loop went through one-element chunks. The contiguous path takes 8 us, level with a plain loop, with the same bits.
 - **The softmax maximum loop cost 75 microseconds.** A `for` loop with a running maximum is not vectorized by the compiler, and the equivalent `fold` is. Found by counting instructions per source line with callgrind, which showed about 7 per element in `f32::max`. A softmax over `[256, 128]` went from 182 to 103 us in the harness.
 
+### `kernels.rs`
+- **The kernels moved here from `ops_matmul.rs`, unchanged.** The scalar loops, the transposed-`B` form of `A*B^T` and their documentation are the same; the only addition is the run-time choice between them and the AVX kernels.
+
+### `kernels_avx.rs`
+- **The scalar matrix kernels were the cost of a training step.** A callgrind profile attributed about 71 percent of a Smoke step's instructions to them and their backward closures, and the scalar `A*B` kernel ran at 14 to 20 GFLOP/s in the sandbox. The AVX kernels run at 32 to 59, and a whole step is 1.5 to 2.0 times faster. How much of that comes from the wider vectors and how much from keeping `C` in registers was not separated.
+- **The first version was fast only under fat LTO.** The tiles were written with iterator adapters (`iter_mut().enumerate()` and `zip`). With LTO off and 16 codegen units, `Zip::new` was not inlined, which forced the accumulators onto the stack, and the kernel ran at 8 GFLOP/s, slower than the scalar kernel, against 46 to 59 under fat LTO. The disassembly showed 20 calls to `Zip::new` inside the kernel. The tiles are plain index loops over constant bounds now, with no calls in the kernel, and run at the same speed in both profiles. This is the same trap as the one under `ops_elementwise.rs`. The local benchmark run under the weak profile is what showed it; the first CI run would not have, because it uses fat LTO.
+- **Open: the Tiny step gains less than its matrix products do.** The matrix products are 2.7 to 3.5 times faster, but the Tiny step only 1.5 times. With glibc told not to return memory to the operating system, the AVX Tiny step went from 21.7 to 18.1 ms and the scalar one from 33.7 to 30.2 ms, so the page-fault cost described under `tensor.rs` is a larger share of a step now. Measured on glibc in the sandbox only.
+
 ### `ops_matmul.rs`
 - **`A*B^T` ran at a quarter of the speed of the other kernels.** See the design notes. By itself this change took a Smoke training step from 15.0 to 9.9 ms in a harness, and the matrix kernels with their backward closures were about 71 percent of the instructions of a training step in a callgrind profile, so the slowest of the three kernels sat on the hottest path. A debug-only assertion that the output starts at zero guards the one assumption the transposed form adds.
 
 ### `tensor.rs`
-- **Open: large intermediates cost page faults.** Tensors of 128 KB or more that are allocated and freed in a sequence make glibc return memory to the operating system, and the next call takes page faults to get it back. RMSNorm over `[512, 64]` took 93 us with about 943,000 page faults over a harness run, and 29.6 us with 323 when glibc was told not to trim. The Smoke training step, whose tensors are all under 128 KB, changed by 3 percent with the same setting. Not fixed. The options are a reusable buffer pool in this crate, or setting glibc's thresholds in the binaries; the first changes the data model and the second is Linux-specific. Measured on glibc only.
+- **Open: large intermediates cost page faults.** Tensors of 128 KB or more that are allocated and freed in a sequence make glibc return memory to the operating system, and the next call takes page faults to get it back. RMSNorm over `[512, 64]` took 93 us with about 943,000 page faults over a harness run, and 29.6 us with 323 when glibc was told not to trim. The Smoke training step, whose tensors are all under 128 KB, changed by 3 percent with the same setting. With the AVX matrix kernels the Tiny training step, which has larger tensors, changed by 17 percent (21.7 to 18.1 ms in the sandbox). Not fixed. The options are a reusable buffer pool in this crate, or setting glibc's thresholds in the binaries; the first changes the data model and the second is Linux-specific. Measured on glibc only.
 - **Stack overflow when dropping a deep graph.** With the default recursive drop, releasing a 20,000-node chain of operations overflowed the stack and aborted the process (the `deep_chains_do_not_overflow_the_stack` test reproduces it). `Inner` now has an iterative `Drop` that unlinks parents onto a work list. `backward` already used an iterative search, so only the drop needed this.

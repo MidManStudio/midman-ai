@@ -2,60 +2,20 @@
 // NOTICE: Full documentation, design decisions, and fix history for this file
 // live in docs/midman-tensor.md, section "ops_matmul.rs"
 // ============================================================================
-//! Matrix multiplication: the three kernels and the differentiable operation.
+//! Matrix multiplication: the differentiable operation.
 //!
-//! The kernels are plain loops over row-major slices. They are the reference
-//! implementation every future backend must match, not an optimized one.
+//! The three kernels (`C += A*B`, `C += A*B^T`, `C += A^T*B`) live in
+//! [`crate::kernels`], which also chooses between the scalar and AVX
+//! implementations. This file is the shape handling and the gradients.
 
 use std::sync::Arc;
 
 use midman_foundation::{Error, Result};
 
 use crate::autograd::make_op;
+use crate::kernels::{gemm_nn, gemm_nt, gemm_tn};
 use crate::shape::numel;
 use crate::tensor::Tensor;
-
-/// `C[m,n] += A[m,k] * B[k,n]`, with `m` implied by the slice lengths.
-fn gemm_nn(a: &[f32], b: &[f32], c: &mut [f32], k: usize, n: usize) {
-    for (a_row, c_row) in a.chunks_exact(k).zip(c.chunks_exact_mut(n)) {
-        for (&a_ip, b_row) in a_row.iter().zip(b.chunks_exact(n)) {
-            for (c_ij, &b_pj) in c_row.iter_mut().zip(b_row) {
-                *c_ij += a_ip * b_pj;
-            }
-        }
-    }
-}
-
-/// `C[m,n] += A[m,k] * B[n,k]^T`, with `m` implied by the slice lengths. `C` must
-/// start at zero, as it does at every call site.
-///
-/// `B` is copied once into a `[k, n]` layout and the product is done by
-/// [`gemm_nn`], whose inner loop runs along a row and vectorizes. The obvious form,
-/// one dot product per element of `C`, is a strictly ordered float sum that the
-/// compiler may not vectorize, and it ran at a quarter of the speed. Each `C[i][j]`
-/// still adds `A[i][p] * B[j][p]` for `p` in ascending order, starting from zero, so
-/// the result is bit-for-bit the dot-product form.
-fn gemm_nt(a: &[f32], b: &[f32], c: &mut [f32], k: usize, n: usize) {
-    debug_assert!(c.iter().all(|&v| v == 0.0), "gemm_nt needs a zeroed C");
-    let mut b_t = vec![0.0f32; k * n];
-    for (j, b_row) in b.chunks_exact(k).enumerate() {
-        for (p, &v) in b_row.iter().enumerate() {
-            b_t[p * n + j] = v;
-        }
-    }
-    gemm_nn(a, &b_t, c, k, n);
-}
-
-/// `C[m,n] += A[k,m]^T * B[k,n]`, with `k` implied by the slice lengths.
-fn gemm_tn(a: &[f32], b: &[f32], c: &mut [f32], m: usize, n: usize) {
-    for (a_row, b_row) in a.chunks_exact(m).zip(b.chunks_exact(n)) {
-        for (&a_pi, c_row) in a_row.iter().zip(c.chunks_exact_mut(n)) {
-            for (c_ij, &b_pj) in c_row.iter_mut().zip(b_row) {
-                *c_ij += a_pi * b_pj;
-            }
-        }
-    }
-}
 
 impl Tensor {
     /// Matrix product over the last two axes.

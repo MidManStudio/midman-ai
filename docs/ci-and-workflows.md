@@ -29,6 +29,8 @@ The workflows call the scripts, so `scripts/` has to be in the repository before
 
 **Script:** `scripts/ci_summary.py`.
 
+`midman-tensor` has an optional `avx` feature, and the Clippy and Test steps cover both configurations. A workspace run gets the feature switched on by `midman-bench`, because Cargo unifies features across the packages of one build, so the extra commands lint and test `midman-tensor` alone, where it is off, and append their output to the same raw logs. A run for `midman-tensor` alone gets the feature off, so there the extra commands add `--features avx`. Other packages get no extra command. Without these, the default build of the crate would not be checked by a workspace run.
+
 ### `docs.yml`
 **What it does:** Runs `scripts/check_docs.py`, then builds rustdoc for the workspace with `RUSTDOCFLAGS=-D warnings`.
 
@@ -55,7 +57,7 @@ The HTML is not deployed anywhere. There is no docs hosting target for this repo
 
 **Output:** a job summary per runner, plus artifact `bench-results-<run>-<runner>` with the raw log and `bench-results.json` (30 days).
 
-Criterion needs a Cargo that understands edition 2024, so the workflow uses the latest stable. See "Toolchain walls" in `docs/workspace-cargo.md`. Runs on shared runners are noisy, so compare like with like and use `baseline_note` to say what changed. `platforms: all` is for checking that a number is not an artifact of one runner type. There is no ISA matrix, because the kernels are plain Rust with no dispatched SIMD or GPU backends to compare; add one when a crate gets those.
+Criterion needs a Cargo that understands edition 2024, so the workflow uses the latest stable. See "Toolchain walls" in `docs/workspace-cargo.md`. Runs on shared runners are noisy, so compare like with like and use `baseline_note` to say what changed. `platforms: all` is for checking that a number is not an artifact of one runner type. There is no ISA matrix. `midman-tensor`'s AVX kernels are chosen at run time from what the CPU reports, not by a compile-time target feature, so one build covers every tier, and the `-scalar` twins in the matrix-product and step groups show the AVX kernels and the scalar ones in the same run. The runners do not have AVX-512 and no such kernel exists. Add an ISA matrix when a crate gets backends selected by compile-time flags.
 
 The benchmark package also compiles plain C versions of several kernels (`benches/midman-bench/c/`) with the `cc` crate, so the runner needs a C compiler: `gcc` on the Ubuntu runners and `clang` on macOS, both preinstalled. The job summary header names the compiler, read from a line the benches print at the start of the run, and a group that has `baseline-c-*` variants gets a `vs fastest C` column. The workflow file itself did not change for this; the macOS and ARM legs have not been run with the C kernels yet.
 
@@ -67,6 +69,8 @@ The benchmark package also compiles plain C versions of several kernels (`benche
 **Output:** a job summary per runner with the start and end loss and the accuracy, plus artifact `train-smoke-<run>-<runner>` with the raw log and `train-smoke-results.json` (30 days).
 
 A smaller version of the same test runs in every `cargo test`, so ordinary CI covers the training path. This workflow exists because the larger one is too slow in a debug build. It uses the workspace release profile (fat LTO, one codegen unit), so most of its time is compiling. The workflow file was checked with actionlint 1.7.12 and shellcheck. Its first run on GitHub (`ubuntu-latest`, Rust 1.99.0) passed, with loss 5.5674 to 0.0005 and 100% accuracy, the same as the local run on Rust 1.75 without LTO. The matrix and the new inputs have not been run on GitHub yet.
+
+On x86_64 the step runs the test twice, the second time with `--features midman-tensor/avx`, and prints a line naming each run into the raw log. The AVX kernels are bit-identical to the scalar ones, so the summary's Run 2 row must show the same loss and accuracy as Run 1; the summary does not label which is which, so Run 1 is the scalar build and Run 2 the AVX one. The ARM legs run only the scalar build, because the feature does nothing there. The second run has not been run on GitHub.
 
 ### `midman-api-ffi.yml`
 **What it does:** Tests the C ABI of `midman-api` the way a C or C++ program uses it, in this order: the crate's Rust tests (`cargo test -p midman-api`); `crates/midman-api/ffi-smoke-test/test.c` compiled as C11 with `-Wall -Wextra -Wpedantic -Werror` and run against the shared library, then against the static library; `cxx_check.cpp`, which includes the header from C++17; `test.c` rebuilt with AddressSanitizer and UndefinedBehaviorSanitizer; and, on Linux, `test.c` under valgrind with a leak check for definitely lost blocks.

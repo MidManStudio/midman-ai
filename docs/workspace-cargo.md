@@ -7,7 +7,9 @@ Notes on the root `Cargo.toml`, `rust-toolchain.toml`, `rustfmt.toml`, and `.car
 18 library crates under `crates/`, 3 binary crates under `apps/` and 1 benchmark package under `benches/`, listed explicitly. The root manifest is virtual, so it has no package of its own.
 
 ## [workspace.lints] and [workspace.dependencies]
-`unsafe_code` is `deny` and `missing_docs` is `warn`, with clippy's `undocumented_unsafe_blocks` at `warn`. Every crate opts in with `[lints] workspace = true`. A crate that needs unsafe code opts back out with `#![allow(unsafe_code)]` at its crate root, so the exception is visible in one line.
+`unsafe_code` is `deny` and `missing_docs` is `warn`, with clippy's `undocumented_unsafe_blocks` at `warn`. Every crate opts in with `[lints] workspace = true`. A crate that needs unsafe code opts back out with `#![allow(unsafe_code)]` at its crate root, so the exception is visible in one line. `midman-tensor` opts out conditionally, with `cfg_attr(all(feature = "avx", target_arch = "x86_64"), allow(unsafe_code))`, so a default build of it still denies unsafe code.
+
+Cargo features: `midman-tensor` has one, `avx`, off by default. `midman-bench` depends on `midman-tensor` with it turned on. Cargo unifies features across the packages of one build, so a `--workspace` build compiles `midman-tensor` with `avx`, while `-p midman-tensor` alone does not; `ci.yml` checks both. Features do not appear in `Cargo.lock`.
 
 `midman-api` builds as `rlib` and `cdylib` and also compiles to `wasm32-unknown-unknown` for the web lab; it has no external dependencies and builds on Rust 1.75.
 

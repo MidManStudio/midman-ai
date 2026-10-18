@@ -13,3 +13,11 @@ crate-type = ["lib"]
 
 [dependencies]
 midman-foundation = { path = "../midman-foundation" }
+
+[features]
+default = []
+# AVX matrix-product kernels for x86_64, chosen at run time only when the CPU has AVX,
+# with a scalar fallback that is always compiled. Off by default, as
+# platform-optimization.md requires for AVX. Results are bit-identical to the scalar
+# kernels. Has no effect on other architectures.
+avx = []

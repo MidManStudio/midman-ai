@@ -14,17 +14,63 @@
 //! C (`c/baseline_kernels.c`); the summary also shows every variant's ratio against
 //! the fastest C one. The Rust baseline is registered first, so it stays the
 //! group's denominator.
+//!
+//! This package builds `midman-tensor` with its `avx` feature, so on a CPU with AVX the
+//! `midman-tensor` variants of the matrix-product groups run the AVX kernels. Each of
+//! them has a `midman-tensor-scalar` twin that forces the scalar kernels, so one run
+//! shows what AVX changes. Before timing, the setup checks that both give the same
+//! bits. Where AVX is not in use (another architecture, or a CPU without it) the twins
+//! are left out.
 
 // `criterion_group!` expands to an undocumented `pub fn`, which `missing_docs` flags.
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use criterion::measurement::WallTime;
+use criterion::{criterion_group, criterion_main, BenchmarkGroup, Criterion, Throughput};
 use midman_foundation::Rng;
+use midman_tensor::kernels::{self, Backend};
 use midman_tensor::{Parameter, Tensor};
 use std::hint::black_box;
 
 fn uniform(shape: &[usize], seed: u64) -> Tensor {
     Tensor::uniform(shape, -1.0, 1.0, &mut Rng::seed_from_u64(seed)).unwrap()
+}
+
+/// True when the matrix-product kernels are running on AVX, so a scalar twin of a
+/// benchmark is worth timing.
+fn avx_active() -> bool {
+    kernels::backend() == Backend::Avx
+}
+
+/// Checks that the AVX and scalar kernels give the same bits for `product`, which is
+/// what lets the twin benchmarks compare speed and nothing else.
+fn assert_backends_agree(product: impl Fn() -> Tensor) {
+    if !avx_active() {
+        return;
+    }
+    let on = product();
+    kernels::set_force_scalar(true);
+    let off = product();
+    kernels::set_force_scalar(false);
+    let bits = |t: &Tensor| t.data().iter().map(|v| v.to_bits()).collect::<Vec<u32>>();
+    assert_eq!(bits(&on), bits(&off), "the AVX and scalar kernels disagree");
+}
+
+/// Registers `id` as a copy of `routine` that runs with the scalar kernels forced, when
+/// AVX is in use. The switch is restored before the next benchmark starts.
+fn scalar_twin<R>(
+    group: &mut BenchmarkGroup<'_, WallTime>,
+    id: &str,
+    mut routine: impl FnMut() -> R,
+) {
+    if !avx_active() {
+        return;
+    }
+    group.bench_function(id, |bench| {
+        kernels::set_force_scalar(true);
+        bench.iter(&mut routine);
+        kernels::set_force_scalar(false);
+    });
 }
 
 fn assert_close(reference: &[f32], got: &[f32], tol: f32) {
@@ -93,6 +139,7 @@ fn matmul_square(c: &mut Criterion) {
         assert_close(&reference, a.matmul(&b).unwrap().data(), 1e-4);
         assert_close(&reference, &midman_bench::matmul_ijk(&a_data, &b_data, n), 1e-4);
         assert_close(&reference, &midman_bench::matmul_ikj(&a_data, &b_data, n), 1e-4);
+        assert_backends_agree(|| a.matmul(&b).unwrap());
 
         let mut group = c.benchmark_group(format!("matmul_square_{n}"));
         group.throughput(Throughput::Elements(2 * (n * n * n) as u64));
@@ -108,6 +155,7 @@ fn matmul_square(c: &mut Criterion) {
         group.bench_function("midman-tensor", |bench| {
             bench.iter(|| a.matmul(black_box(&b)).unwrap())
         });
+        scalar_twin(&mut group, "midman-tensor-scalar", || a.matmul(black_box(&b)).unwrap());
         group.finish();
     }
 }
@@ -118,11 +166,13 @@ fn matmul_linear(c: &mut Criterion) {
     for (name, d_in, d_out) in cases {
         let x = uniform(&[4, 32, d_in], 3);
         let w = uniform(&[d_in, d_out], 4);
+        assert_backends_agree(|| x.matmul(&w).unwrap());
         let mut group = c.benchmark_group(format!("matmul_linear_{name}"));
         group.throughput(Throughput::Elements(2 * (4 * 32 * d_in * d_out) as u64));
         group.bench_function("midman-tensor", |bench| {
             bench.iter(|| x.matmul(black_box(&w)).unwrap())
         });
+        scalar_twin(&mut group, "midman-tensor-scalar", || x.matmul(black_box(&w)).unwrap());
         group.finish();
     }
 }
@@ -132,11 +182,13 @@ fn matmul_batched_scores(c: &mut Criterion) {
     for t in [32usize, 128] {
         let q = uniform(&[2, 4, t, 16], 5);
         let kt = uniform(&[2, 4, 16, t], 6);
+        assert_backends_agree(|| q.matmul(&kt).unwrap());
         let mut group = c.benchmark_group(format!("matmul_batched_scores_t{t}"));
         group.throughput(Throughput::Elements(2 * (2 * 4 * t * t * 16) as u64));
         group.bench_function("midman-tensor", |bench| {
             bench.iter(|| q.matmul(black_box(&kt)).unwrap())
         });
+        scalar_twin(&mut group, "midman-tensor-scalar", || q.matmul(black_box(&kt)).unwrap());
         group.finish();
     }
 }
