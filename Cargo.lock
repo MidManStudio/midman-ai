@@ -311,6 +311,13 @@ dependencies = [
 [[package]]
 name = "midman-checkpoint"
 version = "0.0.1"
+dependencies = [
+ "midman-foundation",
+ "midman-model",
+ "midman-model-config",
+ "midman-nn",
+ "midman-tensor",
+]
 
 [[package]]
 name = "midman-cli"

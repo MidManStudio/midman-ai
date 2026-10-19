@@ -37,7 +37,7 @@ Test status when this was written: 56 unit tests, 9 gradient-check tests and 1 d
 **What it does:** `Linear`, `y = x * W` with `W` of shape `[in_features, out_features]` and no bias. The weight is named `"{name}.weight"`.
 
 **Decisions:**
-- The layout is `[in, out]`, the transpose of PyTorch's `nn.Linear`. This only matters if a checkpoint is ever exchanged with another tool.
+- The layout is `[in, out]`, the transpose of PyTorch's `nn.Linear`. Checkpoints written by `midman-checkpoint` keep this layout, so a PyTorch loader would have to transpose Linear weights; no such conversion exists.
 - `x` needs at least two axes, because it goes through the shared-right-operand form of `matmul`.
 
 **Tests:** Unit tests for the product at every position, leading axes, naming and sizing, seeded reproducibility, the measured spread of the weights, and bad arguments.

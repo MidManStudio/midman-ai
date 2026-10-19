@@ -12,4 +12,11 @@ name       = "midman_checkpoint"
 crate-type = ["lib"]
 
 [dependencies]
-# Intentionally empty. The crate dependency graph is not settled yet.
+midman-foundation = { path = "../midman-foundation" }
+midman-tensor     = { path = "../midman-tensor" }
+
+[dev-dependencies]
+# For the end-to-end test that saves and loads a real model.
+midman-model        = { path = "../midman-model" }
+midman-model-config = { path = "../midman-model-config" }
+midman-nn           = { path = "../midman-nn" }
