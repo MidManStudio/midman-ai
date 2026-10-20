@@ -223,10 +223,11 @@ fn rms_norm_from_primitives() {
 
 #[test]
 fn rms_norm_output_has_unit_rms_before_the_weight() {
-    let x = rand_t(&[4, 8], 102, -3.0, 3.0);
-    let y = rms_norm(&x, &Tensor::ones(&[8]).unwrap(), 1e-6).unwrap();
-    for row in y.data().chunks_exact(8) {
-        let ms: f32 = row.iter().map(|v| v * v).sum::<f32>() / 8.0;
+    let dim = 8;
+    let x = rand_t(&[4, dim], 102, -3.0, 3.0);
+    let y = rms_norm(&x, &Tensor::ones(&[dim]).unwrap(), 1e-6).unwrap();
+    for row in y.data().chunks_exact(dim) {
+        let ms: f32 = row.iter().map(|v| v * v).sum::<f32>() / dim as f32;
         assert!((ms - 1.0).abs() < 1e-3, "mean square {ms}");
     }
 }
@@ -329,9 +330,10 @@ fn rotary_embedding() {
 #[test]
 fn rotary_embedding_preserves_vector_length() {
     let (cos, sin) = rope_tables(5, 3);
-    let x = rand_t(&[1, 1, 5, 6], 121, -1.0, 1.0);
+    let dim = 6;
+    let x = rand_t(&[1, 1, 5, dim], 121, -1.0, 1.0);
     let y = rope(&x, &cos, &sin).unwrap();
-    for (a, b) in x.data().chunks_exact(6).zip(y.data().chunks_exact(6)) {
+    for (a, b) in x.data().chunks_exact(dim).zip(y.data().chunks_exact(dim)) {
         let na: f32 = a.iter().map(|v| v * v).sum();
         let nb: f32 = b.iter().map(|v| v * v).sum();
         assert!((na - nb).abs() < 1e-4, "{na} vs {nb}");

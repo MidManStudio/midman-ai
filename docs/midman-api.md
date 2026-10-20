@@ -98,6 +98,7 @@ Test status when this was written: 24 unit tests, 16 tests of the C ABI, 1 docte
 ## Fixes and Problems
 
 ### `lab.rs`
+- **Clippy `chunks_exact_to_as_chunks` on a constant chunk size in the attention-map test.** The size is now a local variable, which the lint does not flag. See `docs/workspace-cargo.md`, section "Toolchain".
 - **`Option::is_none_or` needs Rust 1.82.** The first version used it for the token limit and would not have built on 1.75. It is a `matches!` now.
 
 ### `test.c`
@@ -105,5 +106,6 @@ Test status when this was written: 24 unit tests, 16 tests of the C ABI, 1 docte
 - **A failed check printed stale text.** The library call sits inside the check, and the results were copied out only after it, so the `text:` and `error:` lines under a failure showed the previous call's results. A failed check now copies the buffers before it prints them.
 
 ### `tests/c_abi.rs`
+- **Clippy `chunks_exact_to_as_chunks` on a constant chunk size in the lab test.** The size is now a local variable, which the lint does not flag. See `docs/workspace-cargo.md`, section "Toolchain".
 - **Clippy `manual_is_multiple_of` on `len % 3 == 0`.** Only newer clippy flags it. It is written `(len / 3) * 3 == len`, as elsewhere in the workspace.
 - **A clumsy placeholder assertion** was replaced with a plain check that an odd head size gives a negative status and a message.

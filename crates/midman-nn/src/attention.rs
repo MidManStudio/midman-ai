@@ -344,8 +344,9 @@ mod tests {
             causal_attention_weights(&rand_t(&[2, 4, 5, 3], 50), &rand_t(&[2, 2, 5, 3], 51))
                 .unwrap();
         assert_eq!(weights.shape(), &[2, 4, 5, 5]);
-        for matrix in weights.data().chunks_exact(5 * 5) {
-            for (i, row) in matrix.chunks_exact(5).enumerate() {
+        let seq = weights.shape()[3];
+        for matrix in weights.data().chunks_exact(seq * seq) {
+            for (i, row) in matrix.chunks_exact(seq).enumerate() {
                 assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5, "row {i} sums to {row:?}");
                 assert!(
                     row[i + 1..].iter().all(|&p| p == 0.0),
@@ -378,7 +379,8 @@ mod tests {
         let (traced, probs) = attn.forward_traced(&x, &rope).unwrap();
         assert_eq!(plain.data(), traced.data());
         assert_eq!(probs.shape(), &[2, 2, 6, 6]);
-        for row in probs.data().chunks_exact(6) {
+        let seq = probs.shape()[3];
+        for row in probs.data().chunks_exact(seq) {
             assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5);
         }
     }

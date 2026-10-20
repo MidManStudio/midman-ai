@@ -151,6 +151,9 @@ The C comparison numbers below come from a second local run on the same sandbox,
 - **Adding `cc` did it again.** The first build after adding the build dependency rewrote the lockfile as version 4 once more. The line was set back to 3 by hand, `cargo metadata --locked` and `cargo test -p midman-foundation --locked` were checked on Rust 1.75 afterwards, and the three new packages (`cc`, `shlex`, `find-msvc-tools`) are in the lockfile.
 - **The library target ran as a bench harness.** Library targets are benchable by default, so `cargo bench -p midman-bench -- --warm-up-time 0.3` also passed criterion's options to the library's test harness, which rejected them, and `--benches` still included the library. `[lib]` now has `bench = false`. A plain `cargo bench -p midman-bench`, as `benchmarks.yml` runs it, printed the library's 17 tests as ignored and was otherwise unaffected. Found while running before and after comparisons by hand.
 
+### `lib.rs`
+- **Clippy `chunks_exact_to_as_chunks` on a constant chunk size in the softmax test.** The size is now a local variable, which the lint does not flag. See `docs/workspace-cargo.md`, section "Toolchain".
+
 ### `tensor_ops.rs`
 - **The scalar twins caught an AVX kernel that was slow without LTO.** A local run with LTO off and 16 codegen units showed `midman-tensor` slower than `midman-tensor-scalar` (406 us against 190 us for the Smoke gate product), the opposite of the fat-LTO result. The cause was iterator adapters in the kernel's inner loop; see `kernels_avx.rs` in `docs/midman-tensor.md`. It is fixed, and the same shapes now run at the same speed in both profiles. CI uses the fat-LTO bench profile and would not have shown it.
 - **No CI figures for the AVX kernels yet.** The numbers in `docs/midman-tensor.md` come from the sandbox. The first `benchmarks.yml` run with this change gives the reference figures, and the AMD runners are the ones that matter.

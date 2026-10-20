@@ -111,12 +111,17 @@ Covered by the workspace workflows in `docs/ci-and-workflows.md`. This crate has
 ## Fixes and Problems
 
 ### `attention.rs`
+- **Clippy `chunks_exact_to_as_chunks` on a constant chunk size in two tests (the size is read from the tensor's shape).** The size is now a local variable, which the lint does not flag. See `docs/workspace-cargo.md`, section "Toolchain".
 - **A mutation run found that dropping the `1/sqrt(d)` scale went unnoticed.** Eighteen plausible bugs were injected across this crate, `midman-model` and `midman-optim`, one at a time, and the tests were expected to fail for each. Five survived the first version of the tests. A gradient check cannot catch a missing scale, because the gradient stays consistent with the wrong function. A known-answer test now pins the scaling.
 - **A batch-independence check and a huge-score check were added** after the mutation run, because the layer's batch handling and softmax stability had no direct test.
 
 ### `norm.rs`
+- **Clippy `chunks_exact_to_as_chunks` on a constant chunk size in two tests.** The size is now a local variable, which the lint does not flag. See `docs/workspace-cargo.md`, section "Toolchain".
 - **A mutation run found that ignoring `eps` went unnoticed.** `eps` is negligible on ordinary inputs, so nothing noticed it was missing. A test with a tiny input now fails without it.
 - **The slowness was in the tensor operations it is built from, not in the layer.** Timing the six operations one at a time, the two broadcast multiplies took 153 us and `mean_axis` 66 us of a 307 us call, and all three were fixed in `midman-tensor` (see its "Fixes and Problems"). Between 40 and 110 us remain, depending on the run, against 20 to 31 us for a plain loop. The stages add up to only 34 us, and the rest of a harness run was page faults: with glibc told not to trim freed memory the call took 29.6 us. That is an open item in `midman-tensor`, not something this layer can fix without changing its own structure (for example by fusing the six operations into one kernel with its own backward pass, which would also remove four intermediate allocations).
+
+### `rope.rs`
+- **Clippy `chunks_exact_to_as_chunks` on a constant chunk size in the length-preservation test.** The size is now a local variable, which the lint does not flag. See `docs/workspace-cargo.md`, section "Toolchain".
 
 ### `mlp.rs`
 - **The first known-value test could not tell `silu` from `sigmoid`.** It used input 1, where `silu(1)` equals `sigmoid(1)`, so a mutant that swapped them survived. The test now uses input 2.

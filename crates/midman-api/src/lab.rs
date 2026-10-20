@@ -484,8 +484,9 @@ mod tests {
         let maps = lab.attention(1).unwrap();
         assert_eq!((maps.layers, maps.heads, maps.seq), (2, 2, 12));
         assert_eq!(maps.data.len(), 2 * 2 * 12 * 12);
-        for matrix in maps.data.chunks_exact(12 * 12) {
-            for (i, row) in matrix.chunks_exact(12).enumerate() {
+        let seq = maps.seq;
+        for matrix in maps.data.chunks_exact(seq * seq) {
+            for (i, row) in matrix.chunks_exact(seq).enumerate() {
                 assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5);
                 assert!(row[i + 1..].iter().all(|&p| p == 0.0));
             }

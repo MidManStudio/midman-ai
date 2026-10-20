@@ -140,7 +140,8 @@ fn a_lab_runs_from_creation_to_destruction() {
     assert_eq!(midman_lab_step(handle, 5), STATUS_OK);
     let records = floats();
     assert_eq!(records.len(), 15, "three values per step");
-    assert!(records.chunks_exact(3).all(|r| r[0].is_finite() && r[1] > 0.0 && r[2] > 0.0));
+    let per_step = 3;
+    assert!(records.chunks_exact(per_step).all(|r| r[0].is_finite() && r[1] > 0.0 && r[2] > 0.0));
     assert!((records[0] - 12f32.ln()).abs() < 0.3, "the first loss is near ln(vocab)");
 
     assert_eq!(midman_lab_eval(handle), STATUS_OK);

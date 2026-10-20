@@ -73,6 +73,7 @@ Limits:
 - **Reviewing the mutants found the nesting boundary untested.** A limit written as `depth > MAX_DEPTH + 1` would have passed every test, because the test nested two levels past the limit. The test now nests exactly one past it, and the mutant is caught.
 
 ### `safetensors.rs`
+- **Clippy `chunks_exact_to_as_chunks` on `chunks_exact(ELEMENT_BYTES)`.** This was the one library site, and it failed the `-D warnings` clippy run on Rust 1.99. The element width is now read into a local (`width`) before the call, which the lint does not flag, so the decode loop is unchanged, still builds on Rust 1.75 and runs at the same speed. See `docs/workspace-cargo.md`, section "Toolchain".
 - **A mutation test found aligned headers untested.** Padding written as `8 - len % 8` instead of `(8 - len % 8) % 8` adds eight spaces when a header is already aligned. None of the fixtures happened to be aligned, so every test passed. A test now walks the header through every length modulo eight.
 - **A mutation test found the header limit untested.** A limit that was twice too high still gave an error, because the file was too short, so the test could not tell which check stopped it. The test now checks the message, and checks that a header exactly at the limit is stopped for a different reason.
 - **The reference does not order several metadata entries.** Its output for three entries was `beta`, `alpha`, `gamma`. The test for several entries therefore compares content, and the claim of byte-identical output is limited to one metadata entry.

@@ -54,6 +54,7 @@ Test status when this was written: 6 unit tests, 15 whole-model tests, 3 trainin
 ## Fixes and Problems
 
 ### `tests/wiring.rs`
+- **Clippy `chunks_exact_to_as_chunks` on a constant chunk size in the tracing test.** The size is now a local variable, which the lint does not flag. See `docs/workspace-cargo.md`, section "Toolchain".
 - **The init-scale test first failed on sampling noise.** `v_proj` in the small test model has 128 weights, so its measured spread can be 17% off the true value without anything being wrong. The tolerance was widened from 15% to 30%. The bug the test exists for (residual projections not scaled, a factor of about 2.4 here) is far outside that.
 - **A mutation run found a gap here.** Replacing `Init::scaled` with `Init::uniform` in the model survived the first version of the tests, because nothing measured the weight spread. The init-scale test above was added. See `docs/midman-nn.md` for the other four gaps from the same run.
 - **The gradient check at one position failed, correctly.** With a single position the attention output does not depend on the queries or keys, so their gradients are exactly zero and the test's "gradient too small to check" assertion fired. The test now asserts that expectation instead of rejecting it.

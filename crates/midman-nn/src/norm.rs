@@ -93,10 +93,11 @@ mod tests {
 
     #[test]
     fn rows_come_out_with_unit_root_mean_square() {
-        let x = Tensor::uniform(&[4, 8], -3.0, 3.0, &mut Rng::seed_from_u64(1)).unwrap();
-        let y = RmsNorm::new("n", 8, 1e-6).unwrap().forward(&x).unwrap();
-        for row in y.data().chunks_exact(8) {
-            let ms: f32 = row.iter().map(|v| v * v).sum::<f32>() / 8.0;
+        let dim = 8;
+        let x = Tensor::uniform(&[4, dim], -3.0, 3.0, &mut Rng::seed_from_u64(1)).unwrap();
+        let y = RmsNorm::new("n", dim, 1e-6).unwrap().forward(&x).unwrap();
+        for row in y.data().chunks_exact(dim) {
+            let ms: f32 = row.iter().map(|v| v * v).sum::<f32>() / dim as f32;
             assert!((ms - 1.0).abs() < 1e-3, "mean square {ms}");
         }
     }
@@ -138,10 +139,11 @@ mod tests {
 
     #[test]
     fn the_weight_scales_each_channel() {
-        let x = Tensor::ones(&[2, 3]).unwrap();
-        let w = Tensor::from_vec(vec![1.0, 2.0, 3.0], &[3]).unwrap();
+        let dim = 3;
+        let x = Tensor::ones(&[2, dim]).unwrap();
+        let w = Tensor::from_vec(vec![1.0, 2.0, 3.0], &[dim]).unwrap();
         let y = rms_norm(&x, &w, 1e-9).unwrap();
-        for row in y.data().chunks_exact(3) {
+        for row in y.data().chunks_exact(dim) {
             for (got, want) in row.iter().zip([1.0, 2.0, 3.0]) {
                 assert!((got - want).abs() < 1e-4);
             }

@@ -160,10 +160,11 @@ mod tests {
 
     #[test]
     fn rotation_preserves_vector_length() {
-        let tables = RotaryTables::new(6, 16, 10_000.0).unwrap();
-        let x = Tensor::uniform(&[2, 3, 9, 6], -1.0, 1.0, &mut Rng::seed_from_u64(2)).unwrap();
+        let dim = 6;
+        let tables = RotaryTables::new(dim, 16, 10_000.0).unwrap();
+        let x = Tensor::uniform(&[2, 3, 9, dim], -1.0, 1.0, &mut Rng::seed_from_u64(2)).unwrap();
         let y = tables.apply(&x).unwrap();
-        for (a, b) in x.data().chunks_exact(6).zip(y.data().chunks_exact(6)) {
+        for (a, b) in x.data().chunks_exact(dim).zip(y.data().chunks_exact(dim)) {
             let na: f32 = a.iter().map(|v| v * v).sum();
             let nb: f32 = b.iter().map(|v| v * v).sum();
             assert!((na - nb).abs() < 1e-4, "{na} vs {nb}");

@@ -172,21 +172,22 @@ fn the_traced_forward_returns_the_same_logits_and_one_probability_tensor_per_lay
     let config = small(true);
     let model = MidManModel::with_init_std(&config, 0.3, &mut Rng::seed_from_u64(8)).unwrap();
     let ids = [1usize, 5, 2, 8, 3, 12, 0, 7];
-    let plain = model.forward(&ids, 2, 4).unwrap();
-    let (logits, attention) = model.forward_traced(&ids, 2, 4).unwrap();
+    let seq = 4;
+    let plain = model.forward(&ids, 2, seq).unwrap();
+    let (logits, attention) = model.forward_traced(&ids, 2, seq).unwrap();
     assert_eq!(plain.data(), logits.data());
     assert_eq!(attention.len(), config.n_layers);
     for probs in &attention {
-        assert_eq!(probs.shape(), &[2, config.n_heads, 4, 4]);
-        for matrix in probs.data().chunks_exact(16) {
-            for (i, row) in matrix.chunks_exact(4).enumerate() {
+        assert_eq!(probs.shape(), &[2, config.n_heads, seq, seq]);
+        for matrix in probs.data().chunks_exact(seq * seq) {
+            for (i, row) in matrix.chunks_exact(seq).enumerate() {
                 assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5);
                 assert!(row[i + 1..].iter().all(|&p| p == 0.0));
             }
         }
     }
     // The first position can only read itself.
-    assert!(attention[0].data().chunks_exact(16).all(|m| m[0] == 1.0));
+    assert!(attention[0].data().chunks_exact(seq * seq).all(|m| m[0] == 1.0));
     assert!(model.forward_traced(&ids, 2, 0).is_err());
 }
 

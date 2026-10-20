@@ -291,10 +291,11 @@ mod tests {
 
     #[test]
     fn softmax_matches_the_tensor_kernel_and_rows_sum_to_one() {
-        let x = uniform(&[9, 13], 5);
-        let got = softmax_rows(&x.to_vec(), 13);
+        let cols = 13;
+        let x = uniform(&[9, cols], 5);
+        let got = softmax_rows(&x.to_vec(), cols);
         assert_close(x.softmax(-1).unwrap().data(), &got, 1e-5);
-        for row in got.chunks_exact(13) {
+        for row in got.chunks_exact(cols) {
             assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5);
         }
     }
