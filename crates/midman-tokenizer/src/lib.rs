@@ -2,7 +2,19 @@
 // NOTICE: Full documentation, design decisions, and fix history for this file
 // live in docs/midman-tokenizer.md, section "lib.rs"
 // ============================================================================
-//! midman-tokenizer: Tokenization, vocabulary construction, special tokens,
-//! encoding and decoding, and Ubel-aware token handling.
+//! midman-tokenizer: a byte-level BPE tokenizer, written from scratch.
 //!
-//! Stub crate with no implementation yet. See `docs/midman-tokenizer.md`.
+//! [`Trainer`] learns merges from text, [`Tokenizer`] encodes and decodes with them, and
+//! [`PreTokenizerConfig`] fixes how text is cut into pieces before merging. Every byte
+//! string encodes and decodes exactly, valid UTF-8 or not.
+//!
+//! See `docs/midman-tokenizer.md` for the design, the measurements behind the default
+//! settings, and what is not built yet.
+
+mod pretokenize;
+mod tokenizer;
+mod trainer;
+
+pub use pretokenize::{Pieces, PreTokenizerConfig, WhitespaceRule, WordPrefix, MAX_PIECE_BYTES};
+pub use tokenizer::{SpecialMode, Tokenizer, FIRST_MERGE_ID, FORMAT_VERSION};
+pub use trainer::{TrainStats, Trainer, TrainerConfig};
