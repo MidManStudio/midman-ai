@@ -326,6 +326,9 @@ version = "0.0.1"
 [[package]]
 name = "midman-data"
 version = "0.0.1"
+dependencies = [
+ "midman-foundation",
+]
 
 [[package]]
 name = "midman-foundation"
