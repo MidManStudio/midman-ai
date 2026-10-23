@@ -3,25 +3,27 @@
 ## Overview
 Dataset ingestion, source manifests, filtering, deduplication, packing, sampling and batch construction.
 
-Status: the first part, which decides what text may be used and cleans it. A license policy that reads SPDX expressions, a provenance manifest, a secret scrubber and exact deduplication, with the SHA-256 they need. Not built yet: ingestion (fetching sources), quality filters (very long lines, binary and generated files), near-duplicate detection, packing documents into training sequences, sampling and batch construction. The Cargo spelling of a license (`MIT/Apache-2.0`) is not read; only SPDX expressions are.
+Status: the path from text to batches. A license policy that reads SPDX expressions, a provenance manifest, a secret scrubber and exact deduplication (with the SHA-256 they need) decide what text may be used and clean it; a packer turns it into token shards on disk with an end-of-text token after every document; and a batcher cuts the shards into training sequences and hands them out in a seeded order that a stopped run can resume. Not built yet: ingestion (fetching sources), quality filters (very long lines, binary and generated files), near-duplicate detection, mixing sources by weight, fill-in-the-middle and terminal-session formatting, and a reader for data larger than memory. The Cargo spelling of a license (`MIT/Apache-2.0`) is not read; only SPDX expressions are.
 
-Dependencies: `midman-foundation`, for the shared `Error`. There are no external crates and the tests use no other crate.
+Dependencies: `midman-foundation`, for the shared `Error` and `Rng`, and `midman-tokenizer`, for packing. There are no external crates. One test also uses `midman-model` and `midman-model-config`, to give a batch to the model.
 
-The one decision here that is the user's: the data license policy is permissive plus weak copyleft (the MPL and LGPL families), chosen over permissive only and over any license. Everything else in this document, including which licenses count as permissive and every threshold of the secret scrubber, is the project's own default and has not been confirmed.
+Two decisions here are the user's. The data license policy is permissive plus weak copyleft (the MPL and LGPL families), chosen over permissive only and over any license. The special-token set is the one proposed, with `<|endoftext|>` ending every document (see `docs/midman-tokenizer.md`). Everything else in this document, including which licenses count as permissive, every threshold of the secret scrubber, and the way documents are packed and batched, is the project's own default and has not been confirmed.
 
-The intended order for a document is: the license check on its source (through the manifest), then scrubbing, then deduplication, then tokenizing and packing. Scrubbing comes before deduplication so that two documents that differ only by a secret count as the same document; `tests/pipeline.rs` shows it.
+The order for a document is: the license check on its source (through the manifest), then scrubbing, then deduplication, then tokenizing and packing into shards; training then reads the shards through the batcher. Scrubbing comes before deduplication so that two documents that differ only by a secret count as the same document; `tests/pipeline.rs` shows it, and `examples/build_shards.rs` runs the whole path over files.
 
 Limits:
 - A source is judged by one license string for the whole source. The manifest does not know about files inside a repository that carry another license, and nothing checks that the string is true. It comes from wherever the source was listed.
 - The scrubber finds the shapes listed under `scrub.rs`, not secrets in general. It misses a secret in a shape it does not know, one split over lines or encoded again (a token in base64, say), and a password written in prose. It works on `&str`, so text has to be valid UTF-8 before it gets here.
 - It cannot tell a real key from the made-up one in documentation, so documentation placeholders are replaced too. That is measured below and is the intended behavior: a wrongly replaced string costs a token, a missed key costs more.
 - Exact deduplication compares whole documents byte for byte, through their SHA-256. A trailing newline or a different line ending makes a different document. It keeps 32 bytes per distinct document in memory plus the set's own overhead, and the set is not saved between runs.
-- Everything works on one document at a time on one thread.
+- Everything works on one document at a time on one thread. A shard is read whole into memory: 100 million tokens is 200 MB on disk and 400 MB in memory.
+- Documents are packed one after another and are not kept apart in a training sequence: a window can end one document and start the next, and attention is not masked at the boundary. Where a shard ends with fewer tokens than a whole window, those tokens are not used.
+- Batches draw uniformly from all sequences. Mixing sources by weight (more Rust than shell, say) is not built; it needs the sources kept in separate shard sets.
 
 ## Modules
 
 ### `lib.rs`
-**What it does:** Crate root. Declares the five modules and re-exports their public items: `LicensePolicy`, `LicenseExpr`, `Verdict` and the two license lists; `Manifest`, `Source`, `Partition`, `Rejected` and the version constant; `Scrubber`, `Scrubbed`, `Finding` and `REDACTION`; `ExactDedup`; `sha256`, `Sha256` and `to_hex`.
+**What it does:** Crate root. Declares the modules and re-exports their public items: `LicensePolicy`, `LicenseExpr`, `Verdict` and the two license lists; `Manifest`, `Source`, `Partition`, `Rejected` and the version constant; `Scrubber`, `Scrubbed`, `Finding` and `REDACTION`; `ExactDedup`; `sha256`, `Sha256` and `to_hex`; `TokenShard` and `SHARD_VERSION`; `Packer`; `Sequences`, `Batcher` and `Batch`.
 
 ### `hash.rs`
 **What it does:** `Sha256`, an incremental SHA-256 (`new`, `update`, `finalize`), the one-call `sha256`, and `to_hex`.
@@ -104,6 +106,47 @@ Limits:
 
 **Tests:** Thirty-six tests in the file. Every prefix rule finds a token of its minimum length in three surroundings and refuses one character fewer; longer runs; the word boundary (what may and may not come before a prefix); the specific-before-general order of `sk-` prefixes; webhooks; the JWT shapes; private keys of five labels, with escaped line breaks, with CRLF, with PEM headers, without an END line, and with the documentation mentions that must not match; passwords in URLs and the template forms that must stay; authorization headers and their negatives; fifteen assignment syntaxes (comparisons included) and twenty-five lines of ordinary code that must stay; the exact length limits of the JWT, the credential, the key and the generic rule; the entropy threshold on both sides; arguments, parameters and paths; overlap resolution; offsets and ordering; idempotence; a scan of this crate's own sources, which mention every prefix and keyword and must produce no finding; and 400 random mixtures of secret fragments and multi-byte text checked for panics, boundaries, overlap, preserved text and idempotence. Every test secret is assembled at run time from pieces, and every PEM line from a constant, so that no line of this repository looks like a credential to a scanner: gitleaks reads the whole history, so one committed line that matches would fail the Security workflow for good.
 
+### `shard.rs`
+**What it does:** `TokenShard`, a run of token ids: documents one after another, each followed by the end-of-text token. `new` checks and builds one; `vocab_size`, `eos`, `tokens`, `len`, `is_empty` and `token_width` read it; `to_bytes` and `from_bytes` write and read the file contents; `save` and `load` do it through a file.
+
+**The file (version 1).** All integers are little endian. Eight bytes `MMTOKENS`; the version, the token width (2 or 4), the vocabulary size and the end-of-text id, four bytes each; the token count in eight bytes; the tokens, each in the stated width; and the SHA-256 of everything before it, 32 bytes. The header is 32 bytes. The files are named `.mmtokens`.
+
+**Decisions:**
+- There is one correct encoding. The width is 2 bytes when the vocabulary has at most 65,536 ids and 4 otherwise, and the reader insists on it, so equal shards are equal files, and the planned vocabularies of 4,096 and 32,000 ids cost two bytes per token.
+- The header carries the vocabulary size and the end-of-text id, so a shard made with one tokenizer cannot quietly be trained on with another: `Sequences` refuses a mixture, and a model's configuration can be checked against the shard.
+- The reader checks, in order: the length, the magic, the version, the vocabulary size, the width against the vocabulary, the end-of-text id, that the count and the width account for every byte of the file (counts are checked without overflow, so a count of 2^64-1 is an error and not an allocation), the checksum, and then that every id is below the vocabulary size. Any bit flipped anywhere is an error.
+- `save` writes `<path>.tmp`, flushes and syncs it, then renames it over the target, as the manifest does.
+- A shard is read whole. Reading by pieces or mapping it into memory is not built.
+
+**Tests:** Nine tests in the file. The exact layout of a small shard, written out byte by byte from the specification; the widths on both sides of 65,536 ids; round trips for five vocabulary sizes up to 4,000,000,000 ids and for an empty shard; construction checks; every header field wrong in turn, each with its own message; every possible cut of a file, an extra byte, wrong counts including 2^64-1, 2^63-1 and 2^62; every one of the first and last bit of every byte flipped; a token outside the vocabulary under a correct checksum; and saving, loading, atomic replacement, I/O errors that name the path, and a damaged file on disk.
+
+### `pack.rs`
+**What it does:** `Packer` turns documents into shards. `new` takes the vocabulary size, the end-of-text id and a target shard size; `for_tokenizer` takes them from a tokenizer; `add_document` takes token ids and `add_text` takes text and a tokenizer; both return the shard they completed, if any; `finish` returns what is left; `documents` and `tokens` count.
+
+**Decisions:**
+- A document is its tokens followed by the end-of-text token. There is no start-of-document token.
+- A shard closes at the end of the first document that brings it to the target size or past it, so documents are never cut and shards are a little larger than the target. A document longer than the target is a shard of its own. The last shard, from `finish`, is smaller.
+- Empty documents are ignored and not counted.
+- It is strict. An id outside the vocabulary, or the end-of-text id inside a document (it would end the document early), is an error and nothing from that document is kept.
+- `add_text` always reads special-token text as ordinary text (`SpecialMode::AsText`), so a document that contains the characters `<|endoftext|>` cannot end itself or inject any control token; the test feeds it exactly that. It also refuses a tokenizer whose vocabulary or end-of-text differ from the packer's.
+- `for_tokenizer` needs the tokenizer to have `<|endoftext|>`. A `Tokenizer::bytes_only()` vocabulary (the Smoke preset's 256) has none and is refused, so Smoke-size runs on real shards use a vocabulary that has the special tokens (264 ids at least).
+
+**Tests:** Ten tests in the file. End-of-text after each document and shards closing at the target; a document longer than a shard; closing exactly at the target and not one token before; empty documents; refused documents changing nothing; construction checks; the counters adding up to what the shards hold; a packer made from a tokenizer; text unable to inject control tokens; and a tokenizer without end-of-text or a different one being refused.
+
+### `batch.rs`
+**What it does:** `Sequences`, the training windows in a list of shards, and `Batcher`, which hands them out in batches. `Sequences::window` returns a window of `seq_len + 1` tokens. `Batcher::next_batch` returns a `Batch` of `inputs` and `targets` (each `batch * seq` ids as `usize`, the shape `MidManModel::loss` takes, with the epoch and position it came from); `epoch`, `position` and `seek` save and restore where a run was.
+
+**Decisions:**
+- A sequence is a window of `seq_len + 1` consecutive tokens of one shard, starting every `seq_len` tokens. The first `seq_len` are the inputs and the last `seq_len` the targets, so each target is the token after its input. Neighboring windows share one token, so every token is a target exactly once, and no window crosses from one shard to the next.
+- Each pass over the data visits the sequences in a fresh random order, `batch` at a time. The order of a pass depends only on the seed and the pass number (it is a shuffle made from `Rng::fork(epoch)` of a generator seeded with the seed), so a run that stopped is continued exactly by creating a batcher with the same seed and data and calling `seek(epoch, position)` with the two numbers it saved. A test stops a run after each of thirty batch counts, including the ends of passes, and checks the continuation against the uninterrupted run.
+- When the number of sequences is not a multiple of the batch size, the few left over are skipped in that pass; a different few are skipped in the next, and another test checks that every sequence is used within forty passes.
+- A pass is rolled over lazily, at the next call, so the state after the last batch of a pass is (that pass, all batches done) and `seek` to it behaves.
+- The batcher is endless. There is no separate held-out set yet.
+
+**Tests:** Thirteen tests in the file. Windows start every `seq_len` tokens and overlap by one; every token is a target exactly once and the remainder is dropped; the exact count at the edges; windows never crossing shards; no shards and bad arguments; targets being the next tokens in every row; one pass using each sequence at most once; every sequence being used over enough passes; the order depending on seed and pass alone; resuming after every stopping point; `seek` checks and going backwards; construction checks; and a batch of one sequence per pass.
+
+**Mutation testing:** 45 bugs were injected into `shard.rs`, `pack.rs` and this file (every boundary, counter and check named above, the shuffle's seed and epoch, `seek`, the shift between inputs and targets, and `AsText`); all 45 were caught on the first run.
+
 ### `tests/reference_vectors.rs`
 **What it does:** SHA-256 against digests made by Python's `hashlib`.
 
@@ -124,6 +167,18 @@ Limits:
 
 **Fixtures:** `tests/fixtures/generate_fixtures.py` writes the SHA-256 vectors and, given the SPDX data directory, the two SPDX files, and says how to rerun it. `tests/fixtures/oracle_corpus.py generate DIR` writes the secret corpus and `compare DIR GITLEAKS_JSON OURS_TSV` prints the table of kinds; its header gives the gitleaks and `scan` commands. The corpus is not committed.
 
+### `tests/shards_end_to_end.rs`
+**What it does:** The whole path from text to a model's loss, and a larger check of packing.
+
+**Tests:** Two tests. The first scrubs and deduplicates a corpus of forty distinct functions, ten exact repeats and four scripts that differ only by a token; trains a vocabulary with the eight agreed special tokens; packs into shards of at least 400 tokens; writes them to disk and reads them back; checks that the stream is exactly the kept documents, in order, each ended by end-of-text, with no secret in it; cuts sequences, checks every batch (ids inside the vocabulary, targets being the next tokens); and gives a batch to a Smoke-size model, whose loss at the start has to be within 0.5 of the natural log of the vocabulary. The second packs 2,000 documents of random length (some empty) into shards of 5,000 tokens and checks that they come back exactly, that every closed shard ends with end-of-text and has at least 5,000 tokens, and that the sequence count is what the formula gives.
+
+### `examples/build_shards.rs`
+**What it does:** A command-line tool that does the whole data path over files: `build_shards --tokenizer FILE --out DIR [--shard-tokens N] [--seq-len N] [--no-scrub] < list-of-paths`. Each path is a document. A file that is not valid UTF-8, and one that is empty, is skipped and counted. The rest is scrubbed, compared by hash with the documents already kept (the first copy wins), tokenized and written as `shard-00000.mmtokens`, `shard-00001.mmtokens` and so on. It then reads every shard back, which checks its checksum, and reports the number of sequences of `--seq-len` tokens. It refuses a directory that already holds shards. It does not check licenses: pass it only the paths of sources the manifest and the policy accepted.
+
+**Run on real files.** The files were this project's neighbors on the sandbox: the user's repositories, the skills repository and the source of the crates in the Cargo registry, 8,424 files. A vocabulary of 4,096 ids with the eight special tokens was trained on 7,571 of them (92 MB; the other 853 held out by a hash of the path) with `midman-tokenizer`'s `train`: 3,832 merges, which with 256 bytes and 8 special tokens is exactly 4,096, in 22 seconds. On the held-out files it reached 2.02 bytes per token, but six of them are binary files (2.2 MB) that the shard builder skips; on the 845 UTF-8 files it reached 2.99. `build_shards` on all of the files, with shards of 5 million tokens and sequences of 256: 73 files not UTF-8, 6 empty, 169 duplicates after scrubbing, 96 secrets replaced (59 URL passwords, 17 generic, 8 authorization headers, 4 each of Anthropic keys and AWS key ids, 2 GitHub tokens, 1 each of OpenAI and Stripe; one of the 59 is the example URL in this document's own source, which the scrubber reads as a password), 8,176 documents kept, 75.6 MB, 25.7 million tokens at 2.94 bytes per token, in six shards (five of about 10.0 MB and one of 1.3 MB, two bytes per token) holding 100,319 sequences. It took 7.4 s, 10.3 MB/s for the whole path on one thread, which is mostly the tokenizer (about 11 MB/s on its own, with no cache). These are figures for whatever text was on this machine, not for the training corpus: that is not chosen yet, and the production vocabulary has to be trained on it.
+
+**Does a model learn from it?** A one-off check outside the repository: a model of the Smoke preset's size with a vocabulary of 4,096 ids, trained for 300 steps on batches of 8 sequences of 128 tokens from these shards, through the batcher. Its loss began at 8.325, the natural log of 4,096 being 8.318, and fell to a mean of 6.3 over the last 49 steps. That shows that shards, batcher and model fit together, and nothing about model quality.
+
 ## CI and Workflows
 `ci.yml` can select this crate by name. Nothing else runs it specially. It has not been run on GitHub yet. `security.yml` runs gitleaks over the repository history with the pinned version; the new files were checked with that version and report nothing.
 
@@ -143,6 +198,15 @@ Limits:
 ### `license.rs`
 - Found by rereading before the first build: the identifier check had two identical branches and accepted an empty `LicenseRef-`; both fixed.
 - Not handled: the legacy `MIT/Apache-2.0` slash spelling used by Cargo manifests. A source listed that way is a parse error until a reader for it exists.
+
+### `shard.rs`
+- **Open:** a shard is read whole into memory, so a shard of 100 million tokens needs 400 MB. Reading by pieces or mapping the file is not built, and shards are kept below that size for now.
+
+### `pack.rs`
+- **Open:** there is no start-of-document token and documents are not kept apart in a sequence, so a window can hold the end of one document and the start of the next. Masking attention at the boundary is not built and has not been chosen.
+
+### `batch.rs`
+- **Open:** batches draw uniformly from every sequence, so the mix of sources is whatever the shards hold; weighting needs the sources in separate shard sets. There is no held-out split yet.
 
 ### `hash.rs`
 - Mutation testing: replacing `>=` with `>` in the full-block loop of `update` changes nothing observable. A full block is then kept in the buffer and compressed by the next call or by `finalize`, and the digest is the same. The mutant is equivalent, so no test can tell it apart, and it is the one survivor of the 80.

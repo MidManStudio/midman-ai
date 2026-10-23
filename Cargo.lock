@@ -328,6 +328,9 @@ name = "midman-data"
 version = "0.0.1"
 dependencies = [
  "midman-foundation",
+ "midman-model",
+ "midman-model-config",
+ "midman-tokenizer",
 ]
 
 [[package]]

@@ -78,19 +78,26 @@ Caveats. The Rust text is mostly crates.io code, not a sample of GitHub. The ter
 
 Speed in the sandbox (one virtualized Xeon, noisy): reading and counting 78 MB took 1.4 to 1.8 seconds, learning 31,744 merges took 2.3 to 4.0 seconds (the settings with ANSI handling have the most distinct pieces, about 290,000, and took 3.4 to 4.0), and encoding the 6.2 MB held-out set took 0.50 to 0.58 seconds, which is where the 11 MB/s comes from. These are single runs, not benchmarks.
 
-## Proposed special tokens
-Not decided, and nothing in the code depends on this list; the trainer takes any list. For discussion, the set suggested by the work this project is meant to do:
-- `<|endoftext|>`: the end of a document or sequence.
+## Special tokens
+The set was chosen by the user on 2026-10-21, as proposed, and is in `special.rs`. The tokens take the last ids, in this order, so `<|endoftext|>` is the first id after the merges (256 when there are none):
+- `<|endoftext|>`: the end of a document. The data pipeline writes it after every document.
 - `<|pad|>`: padding in a batch.
 - `<|fim_prefix|>`, `<|fim_middle|>`, `<|fim_suffix|>`: fill-in-the-middle code completion.
 - `<|command|>`, `<|output|>`, `<|exit_status|>`: a terminal session, where the exit status is written as text after its marker.
 
-Chat and agent turn markers (system, user, assistant, tool call, tool result) are left out until the format is chosen. Every token added takes one id from the merge budget of a fixed-size vocabulary, so a later addition either needs a retrained embedding table or room reserved now.
+Chat and agent turn markers (system, user, assistant, tool call, tool result) are left out until the format is chosen. Every token takes one id from the merge budget of a fixed-size vocabulary, so a later addition either needs a retrained embedding table or room reserved now. The tokenizer and the trainer still accept any list; only the data pipeline needs `<|endoftext|>` to be there. With these eight, a vocabulary of 4,096 (the Tiny preset) has 3,832 merges, which is what training on real code produced (see `docs/midman-data.md`).
 
 ## Modules
 
 ### `lib.rs`
-**What it does:** Crate root. Declares the modules and re-exports the public types: `Tokenizer`, `SpecialMode`, `Trainer`, `TrainerConfig`, `TrainStats`, `PreTokenizerConfig`, `WordPrefix`, `WhitespaceRule`, `Pieces`, and the constants `MAX_PIECE_BYTES`, `FIRST_MERGE_ID` and `FORMAT_VERSION`.
+**What it does:** Crate root. Declares the modules and re-exports the public types: `Tokenizer`, `SpecialMode`, `Trainer`, `TrainerConfig`, `TrainStats`, `PreTokenizerConfig`, `WordPrefix`, `WhitespaceRule`, `Pieces`, the constants `MAX_PIECE_BYTES`, `FIRST_MERGE_ID` and `FORMAT_VERSION`, and the special-token names (`END_OF_TEXT`, `PAD`, `FIM_PREFIX`, `FIM_MIDDLE`, `FIM_SUFFIX`, `COMMAND`, `OUTPUT`, `EXIT_STATUS`, `SPECIAL_TOKENS` and `default_special_tokens`).
+
+### `special.rs`
+**What it does:** The agreed special tokens as constants, `SPECIAL_TOKENS` (all eight in id order) and `default_special_tokens`, which returns them as the owned strings that `Tokenizer::new` and `TrainerConfig` take.
+
+**Decisions:** The order is the id order, with `<|endoftext|>` first. The names are constants so that every crate can use them without depending on the data pipeline. Nothing here is enforced by the tokenizer; a vocabulary made with another list works, and `Packer::for_tokenizer` in `midman-data` asks for `<|endoftext|>` by name.
+
+**Tests:** Four tests. The set is the agreed eight in order; it is a valid special-token list and takes consecutive ids after the merges (vocabulary 264 with no merges); it survives saving and loading; and every marker encodes to its own id when recognized and to plain bytes, which decode back to the same text, when read as text.
 
 ### `pretokenize.rs`
 **What it does:** Splits text into pieces that merges never cross. `PreTokenizerConfig::pieces` returns an iterator of slices that concatenate back to the input exactly, none empty and none over 128 bytes.

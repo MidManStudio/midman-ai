@@ -13,3 +13,9 @@ crate-type = ["lib"]
 
 [dependencies]
 midman-foundation = { path = "../midman-foundation" }
+midman-tokenizer  = { path = "../midman-tokenizer" }
+
+[dev-dependencies]
+# Only the end-to-end test uses them: it feeds a real batch to the model's loss.
+midman-model        = { path = "../midman-model" }
+midman-model-config = { path = "../midman-model-config" }

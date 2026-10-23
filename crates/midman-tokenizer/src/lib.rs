@@ -12,9 +12,14 @@
 //! settings, and what is not built yet.
 
 mod pretokenize;
+mod special;
 mod tokenizer;
 mod trainer;
 
 pub use pretokenize::{Pieces, PreTokenizerConfig, WhitespaceRule, WordPrefix, MAX_PIECE_BYTES};
+pub use special::{
+    default_special_tokens, COMMAND, END_OF_TEXT, EXIT_STATUS, FIM_MIDDLE, FIM_PREFIX, FIM_SUFFIX,
+    OUTPUT, PAD, SPECIAL_TOKENS,
+};
 pub use tokenizer::{SpecialMode, Tokenizer, FIRST_MERGE_ID, FORMAT_VERSION};
 pub use trainer::{TrainStats, Trainer, TrainerConfig};
