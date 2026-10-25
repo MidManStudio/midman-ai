@@ -1,0 +1,77 @@
+accepted	rust-lang/hashbrown	rust	MIT OR Apache-2.0
+accepted	dtolnay/syn	rust	MIT OR Apache-2.0
+accepted	rust-random/getrandom	rust	MIT OR Apache-2.0
+accepted	bitflags/bitflags	rust	MIT OR Apache-2.0
+accepted	rust-lang-nursery/rand	rust	MIT OR Apache-2.0
+accepted	rust-lang/libc	rust	MIT OR Apache-2.0
+accepted	dtolnay/quote	rust	MIT OR Apache-2.0
+accepted	dtolnay/proc-macro2	rust	MIT OR Apache-2.0
+accepted	marshallpierce/rust-base64	rust	MIT OR Apache-2.0
+accepted	indexmap-rs/indexmap	rust	Apache-2.0 OR MIT
+accepted	rust-itertools/itertools	rust	MIT OR Apache-2.0
+accepted	dtolnay/thiserror	rust	MIT OR Apache-2.0
+accepted	rust-lang/cfg-if	rust	MIT OR Apache-2.0
+accepted	BurntSushi/memchr	rust	Unlicense OR MIT
+accepted	rust-lang/regex	rust	MIT OR Apache-2.0
+accepted	serde-rs/serde	rust	MIT OR Apache-2.0
+accepted	dtolnay/unicode-ident	rust	(MIT OR Apache-2.0) AND Unicode-3.0
+accepted	dtolnay/itoa	rust	MIT OR Apache-2.0
+accepted	serde-rs/json	rust	MIT OR Apache-2.0
+accepted	withoutboats/heck	rust	MIT OR Apache-2.0
+accepted	cuviper/autocfg	rust	Apache-2.0 OR MIT
+accepted	matklad/once_cell	rust	MIT OR Apache-2.0
+accepted	rust-lang/log	rust	MIT OR Apache-2.0
+accepted	rust-lang/cc-rs	rust	MIT OR Apache-2.0
+accepted	rust-lang/socket2	rust	MIT OR Apache-2.0
+accepted	servo/rust-smallvec	rust	MIT OR Apache-2.0
+accepted	bytecodealliance/rustix	rust	Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
+accepted	BurntSushi/aho-corasick	rust	Unlicense OR MIT
+accepted	clap-rs/clap	rust	MIT OR Apache-2.0
+accepted	dtolnay/ryu	rust	Apache-2.0 OR BSL-1.0
+accepted	RustCrypto/traits	rust	MIT OR Apache-2.0
+accepted	Amanieu/parking_lot	rust	MIT OR Apache-2.0
+accepted	RustCrypto/utils	rust	MIT OR Apache-2.0
+accepted	rapidfuzz/strsim-rs	rust	MIT
+accepted	tokio-rs/bytes	rust	MIT
+accepted	tokio-rs/mio	rust	MIT
+accepted	taiki-e/pin-project-lite	rust	Apache-2.0 OR MIT
+accepted	obra/superpowers	shell	MIT
+accepted	mattpocock/skills	shell	MIT
+accepted	ohmyzsh/ohmyzsh	shell	MIT
+accepted	msitarzewski/agency-agents	shell	MIT
+accepted	d3/d3	shell	ISC
+accepted	nvm-sh/nvm	shell	MIT
+accepted	base/node	shell	MIT
+accepted	romkatv/powerlevel10k	shell	MIT
+accepted	dockur/windows	shell	MIT
+accepted	omacom/omarchy	shell	MIT
+accepted	pyenv/pyenv	shell	MIT
+accepted	dylanaraps/pure-bash-bible	shell	MIT
+accepted	inkonchain/node	shell	MIT
+accepted	zsh-users/zsh-autosuggestions	shell	MIT
+accepted	VSCodium/vscodium	shell	MIT
+accepted	mathiasbynens/dotfiles	shell	MIT
+accepted	community-scripts/ProxmoxVE	shell	MIT
+accepted	shengxinjing/programmer-job-blacklist	shell	MIT
+accepted	Donchitos/Claude-Code-Game-Studios	shell	MIT
+accepted	a2aproject/A2A	shell	Apache-2.0
+accepted	yuaotian/go-cursor-help	shell	MIT
+accepted	VoltAgent/awesome-claude-code-subagents	shell	MIT
+accepted	gpakosz/.tmux	shell	MIT
+accepted	dylanaraps/neofetch	shell	MIT
+rejected	papers-we-love/papers-we-love	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	tw93/Mole	shell	GPL-3.0	`GPL-3.0` is not on the allow list
+rejected	youngyangyang04/leetcode-master	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	pi-hole/pi-hole	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	sickcodes/Docker-OSX	shell	GPL-3.0	`GPL-3.0` is not on the allow list
+rejected	acmesh-official/acme.sh	shell	GPL-3.0	`GPL-3.0` is not on the allow list
+rejected	open-guides/og-aws	shell	CC-BY-4.0	`CC-BY-4.0` is not on the allow list
+rejected	MichaelCade/90DaysOfDevOps	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	233boy/v2ray	shell	GPL-3.0	`GPL-3.0` is not on the allow list
+rejected	hwdsl2/setup-ipsec-vpn	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	mbadolato/iTerm2-Color-Schemes	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	nvie/gitflow	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	lxgw/LxgwWenKai	shell	OFL-1.1	`OFL-1.1` is not on the allow list
+rejected	powerline/fonts	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	eip-work/kuboard-press	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	kholia/OSX-KVM	shell	NOASSERTION	no license was identified (`NOASSERTION`)

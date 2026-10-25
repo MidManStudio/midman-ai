@@ -1,0 +1,636 @@
+{
+  "all_bytes": 395898703,
+  "all_files": 17872,
+  "categories": {
+    "rust": {
+      "bytes": 29885896,
+      "files": 3151,
+      "long_line_files": 1,
+      "not_utf8": 0,
+      "sources": 37,
+      "sources_without_files": 0
+    },
+    "shell": {
+      "bytes": 13550207,
+      "files": 2894,
+      "long_line_files": 1,
+      "not_utf8": 0,
+      "sources": 24,
+      "sources_without_files": 0
+    }
+  },
+  "extensions": [
+    {
+      "bytes": 86196373,
+      "extension": ".mp4",
+      "files": 19
+    },
+    {
+      "bytes": 51542220,
+      "extension": ".txt",
+      "files": 199
+    },
+    {
+      "bytes": 50124004,
+      "extension": ".webp",
+      "files": 130
+    },
+    {
+      "bytes": 33549996,
+      "extension": ".md",
+      "files": 4908
+    },
+    {
+      "bytes": 31534005,
+      "extension": ".rs",
+      "files": 3155
+    },
+    {
+      "bytes": 26882268,
+      "extension": ".jpg",
+      "files": 20
+    },
+    {
+      "bytes": 20976326,
+      "extension": ".png",
+      "files": 183
+    },
+    {
+      "bytes": 10920532,
+      "extension": ".sh",
+      "files": 2433
+    },
+    {
+      "bytes": 9701724,
+      "extension": ".json",
+      "files": 390
+    },
+    {
+      "bytes": 8933688,
+      "extension": ".ico",
+      "files": 59
+    },
+    {
+      "bytes": 8871671,
+      "extension": ".xml",
+      "files": 36
+    },
+    {
+      "bytes": 7596825,
+      "extension": "(none)",
+      "files": 1717
+    }
+  ],
+  "schema": "midman-ingest-results/1",
+  "sources": [
+    {
+      "bytes": 823017,
+      "category": "rust",
+      "files": 39,
+      "id": "rust-lang/hashbrown",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "00c175652a71039ff146110b30dd30c52578e21f"
+    },
+    {
+      "bytes": 2390629,
+      "category": "rust",
+      "files": 133,
+      "id": "dtolnay/syn",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "9ff9287583767e53dcfb70e3b1b350996908bd8b"
+    },
+    {
+      "bytes": 104639,
+      "category": "rust",
+      "files": 41,
+      "id": "rust-random/getrandom",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "aa04c59adb35a3fb7e62fefea15700a61c7b4d8e"
+    },
+    {
+      "bytes": 232016,
+      "category": "rust",
+      "files": 106,
+      "id": "bitflags/bitflags",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "8384f6f6e1fd1ab3f448ccf17d400a9e1d6a5280"
+    },
+    {
+      "bytes": 401255,
+      "category": "rust",
+      "files": 44,
+      "id": "rust-lang-nursery/rand",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "9e7d328f60d6372ae22927f37d1a816fc980f25e"
+    },
+    {
+      "bytes": 4649300,
+      "category": "rust",
+      "files": 507,
+      "id": "rust-lang/libc",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "e959e8ce1997c73808a77abf5d773bf979bf5597"
+    },
+    {
+      "bytes": 109466,
+      "category": "rust",
+      "files": 20,
+      "id": "dtolnay/quote",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "27be8db3c8eb07e7ccd83c2e695d5297c2466253"
+    },
+    {
+      "bytes": 241221,
+      "category": "rust",
+      "files": 27,
+      "id": "dtolnay/proc-macro2",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "4626ab98d794f0ff1c3da3fdaf1d6b6e8e6d269c"
+    },
+    {
+      "bytes": 334012,
+      "category": "rust",
+      "files": 31,
+      "id": "marshallpierce/rust-base64",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "5b98ee180cc7c2a64af6cb12c724b1721550e0d0"
+    },
+    {
+      "bytes": 482221,
+      "category": "rust",
+      "files": 36,
+      "id": "indexmap-rs/indexmap",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "41a870887c4c77adf665886e63df08f406bfe37a"
+    },
+    {
+      "bytes": 729085,
+      "category": "rust",
+      "files": 76,
+      "id": "rust-itertools/itertools",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "fb3d996d813b07fb6cc83dc600518fde42170c3c"
+    },
+    {
+      "bytes": 150099,
+      "category": "rust",
+      "files": 68,
+      "id": "dtolnay/thiserror",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "3b29f0107e7900860c7a061c069958569eb458e7"
+    },
+    {
+      "bytes": 6930,
+      "category": "rust",
+      "files": 2,
+      "id": "rust-lang/cfg-if",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "14432a28e180ec717933714aed7828fc7ed2fd29"
+    },
+    {
+      "bytes": 615552,
+      "category": "rust",
+      "files": 63,
+      "id": "BurntSushi/memchr",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "bd6068c30e9074a90c285e47912fa0b047d07597"
+    },
+    {
+      "bytes": 5561756,
+      "category": "rust",
+      "files": 227,
+      "id": "rust-lang/regex",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "80b9d14e4be9f0b703a742d11c064abce05f210b"
+    },
+    {
+      "bytes": 1246310,
+      "category": "rust",
+      "files": 208,
+      "id": "serde-rs/serde",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "0db9b3b504bcb0a7fa9cf001429869519afd3e9a"
+    },
+    {
+      "bytes": 163331,
+      "category": "rust",
+      "files": 17,
+      "id": "dtolnay/unicode-ident",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "c1ac3afb721f3cea6527bc2255340a04d0de3ca0"
+    },
+    {
+      "bytes": 21419,
+      "category": "rust",
+      "files": 5,
+      "id": "dtolnay/itoa",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "1577ed901354d0d7448ac162328f9dbf5183124c"
+    },
+    {
+      "bytes": 705702,
+      "category": "rust",
+      "files": 72,
+      "id": "serde-rs/json",
+      "long_line_files": 1,
+      "not_utf8": 0,
+      "revision": "8c535a260ce561eaab4111aafc29038eb9f77ff3"
+    },
+    {
+      "bytes": 27607,
+      "category": "rust",
+      "files": 9,
+      "id": "withoutboats/heck",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "252c1906cefefb8d13ecad7fce7b8f27ce6437e0"
+    },
+    {
+      "bytes": 46374,
+      "category": "rust",
+      "files": 17,
+      "id": "cuviper/autocfg",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "2799b09c24e6632f8e653c5cd8fc303e85a906ba"
+    },
+    {
+      "bytes": 123665,
+      "category": "rust",
+      "files": 20,
+      "id": "matklad/once_cell",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "80fe900b21f6d76c1a2ed74d3343e8a3a88c46d0"
+    },
+    {
+      "bytes": 193965,
+      "category": "rust",
+      "files": 13,
+      "id": "rust-lang/log",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "b408d2ca4edcd5544658e3d1db79aa86b0b8197f"
+    },
+    {
+      "bytes": 795748,
+      "category": "rust",
+      "files": 58,
+      "id": "rust-lang/cc-rs",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "8d06fcb73f6938c35c9bc59edbdcb9fb56f04d71"
+    },
+    {
+      "bytes": 351585,
+      "category": "rust",
+      "files": 7,
+      "id": "rust-lang/socket2",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "8b8b96fdaa1301698fd2b6f4de188635df4a8bd1"
+    },
+    {
+      "bytes": 201524,
+      "category": "rust",
+      "files": 46,
+      "id": "servo/rust-smallvec",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "442ac643d4b9403eaed48f718d338359d11bed06"
+    },
+    {
+      "bytes": 2729920,
+      "category": "rust",
+      "files": 456,
+      "id": "bytecodealliance/rustix",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "a1c13cc103454c4cc14c86e771794d85a05daf29"
+    },
+    {
+      "bytes": 816157,
+      "category": "rust",
+      "files": 40,
+      "id": "BurntSushi/aho-corasick",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "6c0abf5681bfc30bb9d8f7f52b68a350b436fffa"
+    },
+    {
+      "bytes": 2595019,
+      "category": "rust",
+      "files": 337,
+      "id": "clap-rs/clap",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "ccc89b83875474399e9d9d70841163f6319d1a41"
+    },
+    {
+      "bytes": 141547,
+      "category": "rust",
+      "files": 30,
+      "id": "dtolnay/ryu",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "75f9e707e77c89717ffb9c2a01fe2c28a016cc82"
+    },
+    {
+      "bytes": 453401,
+      "category": "rust",
+      "files": 75,
+      "id": "RustCrypto/traits",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "f3c174e1a693e17363884a358137543253e79136"
+    },
+    {
+      "bytes": 625780,
+      "category": "rust",
+      "files": 45,
+      "id": "Amanieu/parking_lot",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "85827ffa2ffb0b60d416e2e2a091f36b0e8e5a91"
+    },
+    {
+      "bytes": 508103,
+      "category": "rust",
+      "files": 95,
+      "id": "RustCrypto/utils",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "9f408239aa4f55af4ce9a26ce04cdc5a63686c22"
+    },
+    {
+      "bytes": 40981,
+      "category": "rust",
+      "files": 3,
+      "id": "rapidfuzz/strsim-rs",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "dacc84c0dc61eff0ee0ff66962bcf2e17018ad26"
+    },
+    {
+      "bytes": 385211,
+      "category": "rust",
+      "files": 34,
+      "id": "tokio-rs/bytes",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "d38faf7c9d003d6074405dd480db6bdb813cb80f"
+    },
+    {
+      "bytes": 711983,
+      "category": "rust",
+      "files": 82,
+      "id": "tokio-rs/mio",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "a88e5e119172e4fb1638926faf65a4fe889e05b1"
+    },
+    {
+      "bytes": 169366,
+      "category": "rust",
+      "files": 62,
+      "id": "taiki-e/pin-project-lite",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "89df232181961a9abefab5b3ede9ac1399409ece"
+    },
+    {
+      "bytes": 261163,
+      "category": "shell",
+      "files": 50,
+      "id": "obra/superpowers",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b"
+    },
+    {
+      "bytes": 13729,
+      "category": "shell",
+      "files": 5,
+      "id": "mattpocock/skills",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "5beb35b040e3de97e54fa9e386d7e42d15c295c2"
+    },
+    {
+      "bytes": 1558773,
+      "category": "shell",
+      "files": 410,
+      "id": "ohmyzsh/ohmyzsh",
+      "long_line_files": 1,
+      "not_utf8": 0,
+      "revision": "2100c630ba4bd67bb48802c3e7da893a4fdaa1a0"
+    },
+    {
+      "bytes": 246552,
+      "category": "shell",
+      "files": 31,
+      "id": "msitarzewski/agency-agents",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "b37b5bb33b78f2c1d6567d98e25ca818e3259219"
+    },
+    {
+      "bytes": 55315,
+      "category": "shell",
+      "files": 1,
+      "id": "d3/d3",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "3d1a90c30805c17b79eb24c13c5aa45454534850"
+    },
+    {
+      "bytes": 248536,
+      "category": "shell",
+      "files": 11,
+      "id": "nvm-sh/nvm",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "e780535240ee3ba67048b434cec6f7f509ee7b31"
+    },
+    {
+      "bytes": 2198,
+      "category": "shell",
+      "files": 1,
+      "id": "base/node",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "36cedd9185512d8664721ab3fd89381ddd0fcd97"
+    },
+    {
+      "bytes": 952650,
+      "category": "shell",
+      "files": 18,
+      "id": "romkatv/powerlevel10k",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "d05a1b00f9a61f9578bf9dc19b8451942dde8734"
+    },
+    {
+      "bytes": 470598,
+      "category": "shell",
+      "files": 13,
+      "id": "dockur/windows",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "013ea27498e0e820a46b3861a0fa047d5b19d846"
+    },
+    {
+      "bytes": 4436702,
+      "category": "shell",
+      "files": 818,
+      "id": "omacom/omarchy",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "2fca7fe073e5ef71cd066ddb0d2294ad067deaf5"
+    },
+    {
+      "bytes": 244568,
+      "category": "shell",
+      "files": 61,
+      "id": "pyenv/pyenv",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "0effba62c4bbf8f8ca2ad8f0eabbfd8221cc7bc6"
+    },
+    {
+      "bytes": 6805,
+      "category": "shell",
+      "files": 2,
+      "id": "dylanaraps/pure-bash-bible",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "8c19d0b482b04d8d50fb72b4c5148b41ce605c6d"
+    },
+    {
+      "bytes": 9400,
+      "category": "shell",
+      "files": 5,
+      "id": "inkonchain/node",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "3ea9d0027b706a95362d1879461804aa62d87448"
+    },
+    {
+      "bytes": 54372,
+      "category": "shell",
+      "files": 16,
+      "id": "zsh-users/zsh-autosuggestions",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5"
+    },
+    {
+      "bytes": 79813,
+      "category": "shell",
+      "files": 27,
+      "id": "VSCodium/vscodium",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "be70704abf84fc6c7721f94478dfcccd2dc6163e"
+    },
+    {
+      "bytes": 3055,
+      "category": "shell",
+      "files": 2,
+      "id": "mathiasbynens/dotfiles",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "b7c7894e7bb2de5d60bfb9a2f5e46d01a61300ea"
+    },
+    {
+      "bytes": 3824720,
+      "category": "shell",
+      "files": 1354,
+      "id": "community-scripts/ProxmoxVE",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "80cc9edf9cc556571d977830c98ea18cf660981d"
+    },
+    {
+      "bytes": 104,
+      "category": "shell",
+      "files": 1,
+      "id": "shengxinjing/programmer-job-blacklist",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "8ec837e7941808d688d9eb8e4b86152c0220c23e"
+    },
+    {
+      "bytes": 816691,
+      "category": "shell",
+      "files": 52,
+      "id": "Donchitos/Claude-Code-Game-Studios",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "05ad7c8a5b8aa2aa86bbd3439ae7cf7295cac418"
+    },
+    {
+      "bytes": 21340,
+      "category": "shell",
+      "files": 9,
+      "id": "a2aproject/A2A",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "98279d62316361ba8451eaef300f72b72e169185"
+    },
+    {
+      "bytes": 213633,
+      "category": "shell",
+      "files": 3,
+      "id": "yuaotian/go-cursor-help",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "2d00ebc01eb977b2575589d19f4201de9757368e"
+    },
+    {
+      "bytes": 21015,
+      "category": "shell",
+      "files": 2,
+      "id": "VoltAgent/awesome-claude-code-subagents",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "408d3c9eee2d0c75c12a3abb5de29e53c2ca6b9e"
+    },
+    {
+      "bytes": 8057,
+      "category": "shell",
+      "files": 1,
+      "id": "gpakosz/.tmux",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "58a3dcc0d718ec0fa1c0d5a2fddd640a1ad7a5b7"
+    },
+    {
+      "bytes": 418,
+      "category": "shell",
+      "files": 1,
+      "id": "dylanaraps/neofetch",
+      "long_line_files": 0,
+      "not_utf8": 0,
+      "revision": "ccd5d9f52609bbdcd5d8fa78c4fdb0f12954125f"
+    }
+  ]
+}

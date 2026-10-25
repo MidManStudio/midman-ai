@@ -510,5 +510,282 @@ class CommandTests(unittest.TestCase):
             self.assertIn(ingest.CANDIDATES_SCHEMA, err)
 
 
+class MeasureHelperTests(unittest.TestCase):
+    def test_extension_keys(self):
+        self.assertEqual(ingest.extension_of("lib.rs"), ".rs")
+        self.assertEqual(ingest.extension_of("LIB.RS"), ".rs")
+        self.assertEqual(ingest.extension_of("Makefile"), "Makefile")
+        self.assertEqual(ingest.extension_of("Dockerfile"), "Dockerfile")
+        self.assertEqual(ingest.extension_of("LICENSE"), "(none)")
+        self.assertEqual(ingest.extension_of(".gitignore"), "(none)")
+        self.assertEqual(ingest.extension_of("a.tar.gz"), ".gz")
+
+    def test_file_stats(self):
+        with tempfile.TemporaryDirectory() as root:
+            def put(name, data):
+                path = os.path.join(root, name)
+                with open(path, "wb") as handle:
+                    handle.write(data)
+                return path
+
+            self.assertEqual(ingest.file_stats(put("a", b"hello\n")), (6, True, False))
+            self.assertEqual(ingest.file_stats(put("b", b"\xff\xfe\n")), (3, False, False))
+            self.assertEqual(ingest.file_stats(put("c", b"")), (0, True, False))
+            at = b"x" * ingest.LONG_LINE
+            self.assertEqual(ingest.file_stats(put("d", at + b"\nshort\n")), (len(at) + 7, True, False))
+            over = b"x" * (ingest.LONG_LINE + 1)
+            self.assertEqual(ingest.file_stats(put("e", b"short\n" + over))[2], True)
+            self.assertIsNone(ingest.file_stats(os.path.join(root, "missing")))
+
+    def test_extension_table_skips_what_selection_skips(self):
+        with tempfile.TemporaryDirectory() as root:
+            def put(rel, data=b"12345"):
+                path = os.path.join(root, rel)
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "wb") as handle:
+                    handle.write(data)
+
+            put("src/a.rs")
+            put("src/b.RS", b"123")
+            put("docs/x.md", b"1")
+            put("Makefile", b"12")
+            put(".midman-revision")
+            put(".git/config")
+            put("target/x.rs")
+            put("node_modules/y.js")
+            os.symlink(os.path.join(root, "src/a.rs"), os.path.join(root, "link.rs"))
+            table = ingest.extension_table(root)
+            self.assertEqual(table, {".rs": [2, 8], ".md": [1, 1], "Makefile": [1, 2]})
+
+    def test_measure_source_counts_what_list_would_take(self):
+        with tempfile.TemporaryDirectory() as root:
+            def put(rel, data):
+                with open(os.path.join(root, rel), "wb") as handle:
+                    handle.write(data)
+
+            put("a.rs", b"fn a() {}\n")
+            put("c.rs", b"fn c() {}\n")
+            put("b.rs", b"fn b() {}\n" + b"x" * 2000 + b"\n")
+            put("bad.rs", b"\xff\xff")
+            put("empty.rs", b"")
+            put("readme.md", b"text")
+            got = ingest.measure_source(root, "rust", 1_000_000)
+            self.assertEqual(
+                got, {"files": 3, "bytes": 10 + 10 + 10 + 2001, "not_utf8": 1, "long_line_files": 1}
+            )
+            self.assertEqual(
+                ingest.measure_source(root, "shell", 1_000_000),
+                {"files": 0, "bytes": 0, "not_utf8": 0, "long_line_files": 0},
+            )
+
+
+class MeasureSummaryTests(unittest.TestCase):
+    def source(self, ident, category, files, size, bad=0, long_lines=0):
+        return {"id": ident, "category": category, "revision": "a" * 40, "files": files,
+                "bytes": size, "not_utf8": bad, "long_line_files": long_lines}
+
+    def test_categories_add_up_and_empty_sources_are_counted(self):
+        sources = [
+            self.source("a/x", "rust", 3, 300, 1, 1),
+            self.source("a/y", "rust", 0, 0),
+            self.source("b/z", "shell", 2, 50, 0, 2),
+        ]
+        out = ingest.summarize_measurements(sources, {".rs": [4, 400], ".md": [1, 100]})
+        self.assertEqual(out["schema"], ingest.RESULTS_SCHEMA)
+        self.assertEqual(
+            out["categories"]["rust"],
+            {"sources": 2, "sources_without_files": 1, "files": 3, "bytes": 300,
+             "not_utf8": 1, "long_line_files": 1},
+        )
+        self.assertEqual(out["categories"]["shell"]["sources_without_files"], 0)
+        self.assertEqual(out["categories"]["shell"]["long_line_files"], 2)
+        self.assertEqual(out["all_files"], 5)
+        self.assertEqual(out["all_bytes"], 500)
+        self.assertEqual(out["sources"], sources)
+
+    def test_extensions_rank_by_bytes_then_name_and_are_cut(self):
+        # Inserted in reverse, so only the tie-break puts `.a` first.
+        table = {"." + chr(97 + i): [1, 10] for i in reversed(range(20))}
+        table[".big"] = [1, 99]
+        out = ingest.summarize_measurements([], table)
+        names = [e["extension"] for e in out["extensions"]]
+        self.assertEqual(len(names), ingest.TOP_EXTENSIONS)
+        self.assertEqual(names[:3], [".big", ".a", ".b"])
+        self.assertEqual(out["all_files"], 21)
+
+    def test_real_results_are_self_consistent(self):
+        doc = json.loads(fixture("ingest-results.json"))
+        again = ingest.summarize_measurements(doc["sources"], {})
+        self.assertEqual(again["categories"], doc["categories"])
+        self.assertEqual(doc["categories"]["rust"]["sources"], 37)
+        self.assertEqual(doc["categories"]["shell"]["sources"], 24)
+        self.assertEqual(len(doc["sources"]), 61)
+        self.assertEqual(sum(s["files"] for s in doc["sources"]), 3151 + 2894)
+
+    def test_markdown_from_real_results(self):
+        doc = json.loads(fixture("ingest-results.json"))
+        text = ingest.results_markdown(doc, "a note")
+        self.assertTrue(text.startswith("## midman-ai ingest"))
+        self.assertIn("\na note\n", text)
+        self.assertIn("| rust | 37 | 0 | 3151 | 29.9 | 0 | 1 |", text)
+        self.assertIn("| shell | 24 | 0 | 2894 | 13.6 | 0 | 1 |", text)
+        self.assertIn("| `rust-lang/regex` | rust | 227 | 5.6 |", text)
+        self.assertIn("| `.mp4` | 19 | 86.2 | 21.8% |", text)
+        self.assertTrue(text.endswith("All files fetched: 17872, 395.9 MB.\n\n"))
+        self.assertNotIn("Sources with no file of their category", text)
+        self.assertEqual(text.count("\n| `"), 15 + ingest.TOP_EXTENSIONS)
+
+    def test_markdown_lists_sources_without_files_and_omits_an_empty_note(self):
+        sources = [self.source("a/x", "rust", 0, 0), self.source("a/y", "rust", 1, 2_500_000)]
+        doc = ingest.summarize_measurements(sources, {".rs": [1, 2_500_000]})
+        text = ingest.results_markdown(doc)
+        self.assertIn("### Sources with no file of their category\n\n- `a/x` (rust)\n", text)
+        self.assertIn("| rust | 2 | 1 | 1 | 2.5 | 0 | 0 |", text)
+        self.assertTrue(text.startswith("## midman-ai ingest: what was fetched and what would be used\n\n| Category"))
+        self.assertEqual(ingest.megabytes(0), "0.0")
+        self.assertEqual(ingest.megabytes(1_049_999), "1.0")
+        self.assertEqual(ingest.megabytes(1_050_000), "1.1")
+
+
+class PolicyReportTests(unittest.TestCase):
+    def test_real_report_is_read(self):
+        report = ingest.parse_policy_report(fixture("ingest-policy-report.tsv"))
+        self.assertEqual(len(report["accepted"]), 61)
+        self.assertEqual(len(report["rejected"]), 16)
+        first = report["rejected"][0]
+        self.assertEqual(first["id"], "papers-we-love/papers-we-love")
+        self.assertEqual(first["category"], "shell")
+        self.assertEqual(first["license"], "NOASSERTION")
+        self.assertEqual(first["reason"], "no license was identified (`NOASSERTION`)")
+        rust = [s for s in report["accepted"] if s["category"] == "rust"]
+        self.assertEqual(len(rust), 37)
+        self.assertEqual(report["accepted"][0]["id"], "rust-lang/hashbrown")
+
+    def test_other_lines_are_ignored(self):
+        text = "accepted\tonly/three\tfields\nrejected\ta\tb\tc\nnoise\n\naccepted\ta/b\trust\tMIT\n"
+        report = ingest.parse_policy_report(text)
+        self.assertEqual(report["accepted"], [{"id": "a/b", "category": "rust", "license": "MIT"}])
+        self.assertEqual(report["rejected"], [])
+
+    def test_markdown_from_the_real_report(self):
+        report = ingest.parse_policy_report(fixture("ingest-policy-report.tsv"))
+        text = ingest.policy_markdown(report, "a note")
+        self.assertTrue(text.startswith("## midman-ai ingest: license policy\n\na note\n\n| Category"))
+        self.assertIn("| rust | 37 | 0 |", text)
+        self.assertIn("| shell | 24 | 16 |", text)
+        self.assertIn("| all | 61 | 16 |", text)
+        self.assertIn("| `tw93/Mole` | shell | GPL-3.0 | `GPL-3.0` is not on the allow list |", text)
+        self.assertEqual(text.count("\n| `"), 16)
+        # A blank line ends it, so whatever is appended next starts a new block.
+        self.assertTrue(text.endswith("|\n\n"))
+
+    def test_no_refusals_means_no_table_and_pipes_are_escaped(self):
+        report = {"accepted": [{"id": "a/b", "category": "rust", "license": "MIT"}], "rejected": []}
+        text = ingest.policy_markdown(report)
+        self.assertTrue(text.startswith("## midman-ai ingest: license policy\n\n| Category"))
+        self.assertNotIn("### Refused", text)
+        self.assertIn("| all | 1 | 0 |", text)
+        report["rejected"].append({"id": "c/d", "category": "rust", "license": "A | B", "reason": "x|y"})
+        text = ingest.policy_markdown(report)
+        self.assertIn("| `c/d` | rust | A \\| B | x\\|y |", text)
+
+    def test_report_command_appends(self):
+        with tempfile.TemporaryDirectory() as root:
+            report = os.path.join(root, "r.tsv")
+            summary = os.path.join(root, "s.md")
+            with open(report, "w", encoding="utf-8") as handle:
+                handle.write(fixture("ingest-policy-report.tsv"))
+            with open(summary, "w", encoding="utf-8") as handle:
+                handle.write("before\n")
+            err = io.StringIO()
+            with redirect_stdout(io.StringIO()), redirect_stderr(err):
+                code = ingest.main(["report", "--report", report, "--markdown", summary, "--note", "n"])
+            self.assertEqual(code, 0)
+            self.assertIn("report: 61 accepted, 16 rejected", err.getvalue())
+            with open(summary, encoding="utf-8") as handle:
+                text = handle.read()
+            self.assertTrue(text.startswith("before\n## midman-ai ingest: license policy"))
+
+
+class MeasureCommandTests(unittest.TestCase):
+    def test_measure_after_fetch(self):
+        with tempfile.TemporaryDirectory() as root:
+            repo = os.path.join(root, "repo")
+            os.makedirs(repo)
+            git(["init", "-q", "-b", "main"], repo)
+            with open(os.path.join(repo, "lib.rs"), "w", encoding="utf-8") as handle:
+                handle.write("pub fn f() {}\n")
+            with open(os.path.join(repo, "bad.rs"), "wb") as handle:
+                handle.write(b"\xff\xfe")
+            with open(os.path.join(repo, "README.md"), "w", encoding="utf-8") as handle:
+                handle.write("hello\n")
+            git(["add", "."], repo)
+            git(["commit", "-q", "-m", "x"], repo)
+            record = {
+                "id": "t/repo", "url": "file://" + repo,
+                "revision": subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, check=True,
+                                           capture_output=True, text=True).stdout.strip(),
+                "license": "MIT", "fetched": "2026-10-25", "category": "rust",
+            }
+            manifest = os.path.join(root, "m.txt")
+            accepted = os.path.join(root, "a.txt")
+            dest = os.path.join(root, "src")
+            with open(manifest, "w", encoding="utf-8") as handle:
+                handle.write(ingest.manifest_text([record]))
+            with open(accepted, "w", encoding="utf-8") as handle:
+                handle.write("t/repo\n")
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                self.assertEqual(
+                    ingest.main(["fetch", "--manifest", manifest, "--accepted", accepted, "--dest", dest]), 0)
+            result_path = os.path.join(root, "r.json")
+            summary = os.path.join(root, "s.md")
+            policy = os.path.join(root, "p.tsv")
+            with open(policy, "w", encoding="utf-8") as handle:
+                handle.write("accepted\tt/repo\trust\tMIT\n")
+            with open(summary, "w", encoding="utf-8") as handle:
+                handle.write("earlier text\n")
+
+            def run_measure():
+                err = io.StringIO()
+                with redirect_stdout(io.StringIO()), redirect_stderr(err):
+                    code = ingest.main(["measure", "--manifest", manifest, "--accepted", accepted,
+                                        "--dest", dest, "--out", result_path, "--markdown", summary,
+                                        "--report", policy, "--note", "hello"])
+                return code, err.getvalue()
+
+            code, err = run_measure()
+            self.assertEqual(code, 0, err)
+            self.assertIn("measure: rust: 1 sources, 1 files", err)
+            with open(result_path, encoding="utf-8") as handle:
+                doc = json.load(handle)
+            self.assertEqual(doc["sources"][0]["id"], "t/repo")
+            self.assertEqual(doc["sources"][0]["files"], 1)
+            self.assertEqual(doc["sources"][0]["not_utf8"], 1)
+            self.assertEqual(doc["sources"][0]["revision"], record["revision"])
+            extensions = {e["extension"]: e["files"] for e in doc["extensions"]}
+            self.assertEqual(extensions, {".rs": 2, ".md": 1})
+            with open(summary, encoding="utf-8") as handle:
+                text = handle.read()
+            self.assertTrue(text.startswith("earlier text\n## midman-ai ingest: license policy"))
+            self.assertIn("## midman-ai ingest: what was fetched", text)
+            # The summary file is appended to, as $GITHUB_STEP_SUMMARY has to be.
+            run_measure()
+            with open(summary, encoding="utf-8") as handle:
+                self.assertEqual(handle.read().count("## midman-ai ingest: license policy"), 2)
+
+            with open(accepted, "w", encoding="utf-8") as handle:
+                handle.write("t/unknown\n")
+            code, err = run_measure()
+            self.assertEqual(code, 1)
+            self.assertIn("t/unknown", err)
+            with open(accepted, "w", encoding="utf-8") as handle:
+                handle.write("t/repo\n")
+            os.rename(os.path.join(dest, "t__repo"), os.path.join(dest, "elsewhere"))
+            code, err = run_measure()
+            self.assertEqual(code, 1)
+            self.assertIn("has not been fetched", err)
+
+
 if __name__ == "__main__":
     unittest.main()

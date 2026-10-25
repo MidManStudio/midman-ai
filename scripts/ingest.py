@@ -13,6 +13,9 @@ Standard library only (plus the `git` program). Four commands:
                        [--exclude ID ...]
     ingest.py fetch    --manifest manifest.txt --accepted ids.txt --dest DIR
     ingest.py list     --dest DIR --category C [--max-bytes N]
+    ingest.py measure  --manifest manifest.txt --accepted ids.txt --dest DIR --out results.json
+                       [--markdown FILE] [--report check_manifest.tsv] [--note TEXT]
+    ingest.py report   --report check_manifest.tsv --markdown FILE [--note TEXT]
 
 The license policy is NOT decided here. This script only records what the listing says
 (crates.io for Rust, the GitHub API for the rest). The Rust example `check_manifest` reads
@@ -32,6 +35,10 @@ import urllib.parse
 import urllib.request
 
 CANDIDATES_SCHEMA = "midman-ingest-candidates/1"
+RESULTS_SCHEMA = "midman-ingest-results/1"
+# A line longer than this many bytes marks a file as possibly minified or generated.
+LONG_LINE = 1000
+TOP_EXTENSIONS = 12
 MANIFEST_HEADER = "midman-data-manifest 1"
 USER_AGENT = "midman-ai-ingest (https://github.com/MidManStudio/midman-ai)"
 CRATES_API = "https://crates.io/api/v1"
@@ -286,6 +293,190 @@ def select_files(dest, category, max_bytes):
     return sorted(found)
 
 
+def source_dir(dest, ident):
+    """Where `fetch` puts a source: DIR/<owner>__<repo>."""
+    return os.path.join(dest, ident.replace("/", "__"))
+
+
+def file_stats(path):
+    """(bytes, is_utf8, has_long_line) for one file, or None if it cannot be read."""
+    try:
+        with open(path, "rb") as handle:
+            data = handle.read()
+    except OSError:
+        return None
+    try:
+        data.decode("utf-8")
+        utf8 = True
+    except UnicodeDecodeError:
+        utf8 = False
+    long_line = any(len(line) > LONG_LINE for line in data.split(b"\n"))
+    return len(data), utf8, long_line
+
+
+def extension_of(name):
+    """The key a file is counted under in the extension table."""
+    if name in ("Makefile", "makefile", "GNUmakefile", "Dockerfile"):
+        return name
+    ext = os.path.splitext(name)[1]
+    return ext.lower() if ext else "(none)"
+
+
+def extension_table(root):
+    """Files and bytes by extension over everything under `root` outside SKIP_DIRS."""
+    table = {}
+    for base, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
+        for name in files:
+            path = os.path.join(base, name)
+            if os.path.islink(path) or name == ".midman-revision":
+                continue
+            try:
+                size = os.path.getsize(path)
+            except OSError:
+                continue
+            entry = table.setdefault(extension_of(name), [0, 0])
+            entry[0] += 1
+            entry[1] += size
+    return table
+
+
+def measure_source(root, category, max_bytes):
+    """What `list` would take from one fetched source, counted."""
+    files = bytes_ = not_utf8 = long_line_files = 0
+    for path in select_files(root, category, max_bytes):
+        stats = file_stats(path)
+        if stats is None:
+            continue
+        size, utf8, long_line = stats
+        if not utf8:
+            not_utf8 += 1
+            continue
+        files += 1
+        bytes_ += size
+        if long_line:
+            long_line_files += 1
+    return {
+        "files": files,
+        "bytes": bytes_,
+        "not_utf8": not_utf8,
+        "long_line_files": long_line_files,
+    }
+
+
+def summarize_measurements(sources, extensions):
+    """The results document: per source, per category and the extension table."""
+    categories = {}
+    for source in sources:
+        entry = categories.setdefault(
+            source["category"],
+            {"sources": 0, "sources_without_files": 0, "files": 0, "bytes": 0,
+             "not_utf8": 0, "long_line_files": 0},
+        )
+        entry["sources"] += 1
+        if source["files"] == 0:
+            entry["sources_without_files"] += 1
+        for key in ("files", "bytes", "not_utf8", "long_line_files"):
+            entry[key] += source[key]
+    ranked = sorted(extensions.items(), key=lambda item: (-item[1][1], item[0]))
+    all_bytes = sum(v[1] for v in extensions.values())
+    return {
+        "schema": RESULTS_SCHEMA,
+        "sources": sources,
+        "categories": categories,
+        "all_files": sum(v[0] for v in extensions.values()),
+        "all_bytes": all_bytes,
+        "extensions": [
+            {"extension": ext, "files": v[0], "bytes": v[1]} for ext, v in ranked[:TOP_EXTENSIONS]
+        ],
+    }
+
+
+def parse_policy_report(text):
+    """Reads the standard output of `check_manifest` (tab-separated, one source per line)."""
+    accepted = []
+    rejected = []
+    for line in text.splitlines():
+        parts = line.split("\t")
+        if parts[0] == "accepted" and len(parts) == 4:
+            accepted.append({"id": parts[1], "category": parts[2], "license": parts[3]})
+        elif parts[0] == "rejected" and len(parts) == 5:
+            rejected.append(
+                {"id": parts[1], "category": parts[2], "license": parts[3], "reason": parts[4]}
+            )
+    return {"accepted": accepted, "rejected": rejected}
+
+
+def cell(text):
+    """Text safe inside a markdown table cell."""
+    return text.replace("|", "\\|")
+
+
+def policy_markdown(report, note=""):
+    """The license policy's verdicts as markdown: counts by category, then every refusal."""
+    lines = ["## midman-ai ingest: license policy", ""]
+    if note:
+        lines += [note, ""]
+    categories = {}
+    for key in ("accepted", "rejected"):
+        for source in report[key]:
+            categories.setdefault(source["category"], {"accepted": 0, "rejected": 0})[key] += 1
+    lines += ["| Category | Accepted | Rejected |", "|---|---:|---:|"]
+    for name in sorted(categories):
+        lines.append("| %s | %d | %d |" % (name, categories[name]["accepted"], categories[name]["rejected"]))
+    lines.append("| all | %d | %d |" % (len(report["accepted"]), len(report["rejected"])))
+    lines.append("")
+    if report["rejected"]:
+        lines += ["### Refused", "", "| Source | Category | License | Reason |", "|---|---|---|---|"]
+        for source in report["rejected"]:
+            lines.append(
+                "| `%s` | %s | %s | %s |"
+                % (source["id"], source["category"], cell(source["license"]), cell(source["reason"]))
+            )
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def megabytes(count):
+    return "%.1f" % (count / 1_000_000)
+
+
+def results_markdown(results, note=""):
+    """The results as a markdown summary (tables only, no claims beyond the numbers)."""
+    lines = ["## midman-ai ingest: what was fetched and what would be used", ""]
+    if note:
+        lines += [note, ""]
+    lines += [
+        "| Category | Sources | Without files | Files | MB | Not UTF-8 | Long-line files |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for name in sorted(results["categories"]):
+        c = results["categories"][name]
+        lines.append(
+            "| %s | %d | %d | %d | %s | %d | %d |"
+            % (name, c["sources"], c["sources_without_files"], c["files"],
+               megabytes(c["bytes"]), c["not_utf8"], c["long_line_files"])
+        )
+    lines += ["", "Long-line files hold a line over %d bytes (possibly minified or generated)." % LONG_LINE, ""]
+    empty = [s for s in results["sources"] if s["files"] == 0]
+    if empty:
+        lines += ["### Sources with no file of their category", ""]
+        lines += ["- `%s` (%s)" % (s["id"], s["category"]) for s in empty]
+        lines.append("")
+    lines += ["### Largest sources", "", "| Source | Category | Files | MB |", "|---|---|---:|---:|"]
+    biggest = sorted(results["sources"], key=lambda s: (-s["bytes"], s["id"]))[:15]
+    for s in biggest:
+        lines.append("| `%s` | %s | %d | %s |" % (s["id"], s["category"], s["files"], megabytes(s["bytes"])))
+    lines += ["", "### Everything fetched, by extension (top %d by size)" % TOP_EXTENSIONS, "",
+              "| Extension | Files | MB | Share |", "|---|---:|---:|---:|"]
+    total = results["all_bytes"] or 1
+    for e in results["extensions"]:
+        lines.append("| `%s` | %d | %s | %.1f%% |" % (e["extension"], e["files"], megabytes(e["bytes"]),
+                                                      100.0 * e["bytes"] / total))
+    lines += ["", "All files fetched: %d, %s MB." % (results["all_files"], megabytes(results["all_bytes"])), ""]
+    return "\n".join(lines) + "\n"
+
+
 # ---------------------------------------------------------------------------
 # Network and git (not unit tested: they need the network)
 # ---------------------------------------------------------------------------
@@ -503,7 +694,7 @@ def cmd_fetch(args):
         record = records.get(ident)
         if record is None:
             raise IngestError("`" + ident + "` is not in the manifest")
-        target = os.path.join(args.dest, ident.replace("/", "__"))
+        target = source_dir(args.dest, ident)
         marker = os.path.join(target, ".midman-revision")
         if os.path.exists(marker):
             with open(marker, encoding="utf-8") as handle:
@@ -527,6 +718,55 @@ def cmd_fetch(args):
         sys.stderr.write("FAILED " + ident + ": " + why + "\n")
     if failed:
         raise IngestError(str(len(failed)) + " of " + str(len(wanted)) + " sources failed")
+
+
+def cmd_measure(args):
+    with open(args.manifest, encoding="utf-8") as handle:
+        records = {r["id"]: r for r in read_manifest(handle.read())}
+    with open(args.accepted, encoding="utf-8") as handle:
+        wanted = [line.strip() for line in handle if line.strip()]
+    sources = []
+    extensions = {}
+    for ident in wanted:
+        record = records.get(ident)
+        if record is None:
+            raise IngestError("`" + ident + "` is not in the manifest")
+        root = source_dir(args.dest, ident)
+        if not os.path.isdir(root):
+            raise IngestError("`" + ident + "` has not been fetched into " + args.dest)
+        entry = {"id": ident, "category": record["category"], "revision": record["revision"]}
+        entry.update(measure_source(root, record["category"], args.max_bytes))
+        sources.append(entry)
+        for ext, (count, size) in extension_table(root).items():
+            slot = extensions.setdefault(ext, [0, 0])
+            slot[0] += count
+            slot[1] += size
+    results = summarize_measurements(sources, extensions)
+    write_json(args.out, results)
+    if args.markdown:
+        text = ""
+        if args.report:
+            with open(args.report, encoding="utf-8") as handle:
+                text = policy_markdown(parse_policy_report(handle.read()))
+        text += results_markdown(results, args.note)
+        with open(args.markdown, "a", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+    for name in sorted(results["categories"]):
+        c = results["categories"][name]
+        sys.stderr.write(
+            "measure: %s: %d sources, %d files, %s MB (%d sources without files)\n"
+            % (name, c["sources"], c["files"], megabytes(c["bytes"]), c["sources_without_files"])
+        )
+
+
+def cmd_report(args):
+    with open(args.report, encoding="utf-8") as handle:
+        report = parse_policy_report(handle.read())
+    with open(args.markdown, "a", encoding="utf-8", newline="\n") as handle:
+        handle.write(policy_markdown(report, args.note))
+    sys.stderr.write(
+        "report: %d accepted, %d rejected\n" % (len(report["accepted"]), len(report["rejected"]))
+    )
 
 
 def cmd_list(args):
@@ -565,6 +805,23 @@ def build_parser():
     fetch.add_argument("--accepted", required=True, help="file with one source id per line")
     fetch.add_argument("--dest", required=True)
     fetch.set_defaults(run=cmd_fetch)
+
+    measure = sub.add_parser("measure", help="count what fetched sources would contribute")
+    measure.add_argument("--manifest", required=True)
+    measure.add_argument("--accepted", required=True, help="file with one source id per line")
+    measure.add_argument("--dest", required=True)
+    measure.add_argument("--out", required=True, help="results JSON")
+    measure.add_argument("--markdown", help="append a markdown summary to this file")
+    measure.add_argument("--report", help="check_manifest output; adds the license policy section")
+    measure.add_argument("--note", default="", help="a line shown at the top of the summary")
+    measure.add_argument("--max-bytes", type=int, default=1024 * 1024)
+    measure.set_defaults(run=cmd_measure)
+
+    report = sub.add_parser("report", help="markdown summary of check_manifest's verdicts")
+    report.add_argument("--report", required=True, help="the standard output of check_manifest")
+    report.add_argument("--markdown", required=True, help="append the summary to this file")
+    report.add_argument("--note", default="")
+    report.set_defaults(run=cmd_report)
 
     listing = sub.add_parser("list", help="print the paths of one category's files")
     listing.add_argument("--dest", required=True)
