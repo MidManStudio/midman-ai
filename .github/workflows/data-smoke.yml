@@ -1,0 +1,248 @@
+# .github/workflows/data-smoke.yml
+#
+# midman-ai data smoke test: runs the whole data path on the runner, over this repository's
+# own text files: train a vocabulary with the agreed special tokens, scrub, deduplicate,
+# tokenize and pack into shards, read the shards back, and make batches.
+#
+# ci.yml already runs the unit tests of midman-data and midman-tokenizer. This workflow adds
+# what a unit test cannot: the real command-line path on GitHub's machines, with numbers
+# (documents, tokens, bytes per token, speed), and two checks that need a second tool or a
+# second machine:
+#
+#   - On x86_64 Linux the secret scrubber is compared with gitleaks (the version security.yml
+#     pins) on a made-up corpus of 288 secrets of 24 kinds. The scrubber must find every
+#     sample and nothing outside them.
+#   - With `platforms: all`, a last job compares the three runners. The corpus is the same
+#     files at the same commit, and every step is integer arithmetic or a fixed algorithm
+#     (the trainer, SHA-256, the shuffle), so the vocabulary, every shard and the digest of
+#     the first batches must be byte-for-byte the same on ubuntu-latest, macos-latest and
+#     ubuntu-24.04-arm. The scrubber's entropy test uses the platform's log2, so in a rare
+#     borderline case a difference here would point at that.
+#
+# Helper script: scripts/data_smoke_summary.py, tested by scripts/test_data_smoke_summary.py.
+# Notes: docs/ci-and-workflows.md.
+
+name: midman-ai Data Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_note:
+        description: 'Free-text label for this run, shown in the summary'
+        type: string
+        default: ''
+      platforms:
+        description: 'ubuntu-only is the fast default; all adds macos-latest and ubuntu-24.04-arm and compares the three'
+        type: choice
+        default: ubuntu-only
+        options:
+          - ubuntu-only
+          - all
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  smoke:
+    name: scrub, dedup, pack, batch (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.platforms == 'all' && '["ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["ubuntu-latest"]') }}
+    env:
+      BASELINE_NOTE: ${{ inputs.baseline_note }}
+      GITLEAKS_VERSION: '8.30.1'
+      GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Parser self-test
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Toolchain info
+        id: toolchain
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          echo "version=$(rustc --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-data-smoke-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-data-smoke-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Build the tools
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== build ===" | tee data-smoke-raw.txt
+          cargo build --release --locked \
+            -p midman-tokenizer -p midman-data \
+            --example train --example build_shards --example scan 2>&1 | tee -a data-smoke-raw.txt
+
+      # The corpus is every tracked text file under 1 MB, in sorted order, so it is the same
+      # on every runner. Files that are not valid UTF-8 and names with spaces are left out.
+      - name: List the corpus
+        id: corpus
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== corpus ===" | tee -a data-smoke-raw.txt
+          python3 - <<'PY' 2>&1 | tee -a data-smoke-raw.txt
+          import subprocess
+          names = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
+          keep = []
+          for name in sorted(n for n in names if n):
+              if any(c.isspace() for c in name):
+                  continue
+              try:
+                  with open(name, "rb") as handle:
+                      data = handle.read()
+                  data.decode("utf-8")
+              except (OSError, UnicodeDecodeError):
+                  continue
+              if 0 < len(data) < 1_000_000:
+                  keep.append(name)
+          with open("corpus-files.txt", "w", encoding="utf-8") as out:
+              out.write("\n".join(keep) + "\n")
+          print(f"corpus: {len(keep)} files")
+          PY
+
+      - name: Train a vocabulary
+        id: train
+        if: steps.build.outcome == 'success' && steps.corpus.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== train ===" | tee -a data-smoke-raw.txt
+          files=$(cat corpus-files.txt)
+          # The file names are listed by the step above and have no spaces, so splitting is intended.
+          # shellcheck disable=SC2086
+          ./target/release/examples/train --vocab 1024 --out tokenizer.txt \
+            --special '<|endoftext|>' --special '<|pad|>' \
+            --special '<|fim_prefix|>' --special '<|fim_middle|>' --special '<|fim_suffix|>' \
+            --special '<|command|>' --special '<|output|>' --special '<|exit_status|>' \
+            $files 2>&1 | tee -a data-smoke-raw.txt
+
+      - name: Scrub, deduplicate, tokenize and pack
+        id: shards
+        if: steps.train.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== shards ===" | tee -a data-smoke-raw.txt
+          ./target/release/examples/build_shards --tokenizer tokenizer.txt --out shards \
+            --shard-tokens 200000 --seq-len 128 < corpus-files.txt 2>&1 | tee -a data-smoke-raw.txt
+
+      - name: Time the scrubber
+        id: speed
+        if: steps.build.outcome == 'success' && steps.corpus.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== scrub speed ===" | tee -a data-smoke-raw.txt
+          ./target/release/examples/scan speed < corpus-files.txt 2>&1 | tee -a data-smoke-raw.txt
+
+      - name: Compare the scrubber with gitleaks
+        id: oracle
+        if: runner.os == 'Linux' && runner.arch == 'X64' && steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== oracle ===" | tee -a data-smoke-raw.txt
+          curl -fsSL -o "$RUNNER_TEMP/gitleaks.tgz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/gitleaks-bin" oracle
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP/gitleaks-bin" gitleaks
+          "$RUNNER_TEMP/gitleaks-bin/gitleaks" version 2>&1 | sed 's/^/gitleaks /' | tee -a data-smoke-raw.txt
+          python3 crates/midman-data/tests/fixtures/oracle_corpus.py generate oracle 2>&1 | tee -a data-smoke-raw.txt
+          "$RUNNER_TEMP/gitleaks-bin/gitleaks" dir oracle/corpus.txt --no-banner --log-level error \
+            --report-format json --report-path oracle/gitleaks.json --exit-code 0
+          ./target/release/examples/scan lines oracle/corpus.txt > oracle/ours.tsv
+          python3 crates/midman-data/tests/fixtures/oracle_corpus.py compare \
+            oracle oracle/gitleaks.json oracle/ours.tsv 2>&1 | tee -a data-smoke-raw.txt
+
+      - name: Summarize
+        if: always()
+        env:
+          BUILD_NUM: ${{ github.run_number }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          RUST_VERSION: ${{ steps.toolchain.outputs.version }}
+          RUNNER_LABEL: ${{ matrix.os }} (${{ runner.os }} ${{ runner.arch }})
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},corpus=${{ steps.corpus.outcome }},train=${{ steps.train.outcome }},shards=${{ steps.shards.outcome }},speed=${{ steps.speed.outcome }},oracle=${{ steps.oracle.outcome }}
+        run: |
+          python3 scripts/data_smoke_summary.py \
+            --log data-smoke-raw.txt --outcomes "$STEP_OUTCOMES" \
+            --tokenizer tokenizer.txt --shards shards \
+            --build "$BUILD_NUM" --branch "$BRANCH" --commit "$COMMIT" \
+            --rust-version "$RUST_VERSION" \
+            --json data-smoke-results.json --md "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload raw log, results and output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: data-smoke-${{ github.run_number }}-${{ matrix.os }}
+          path: |
+            data-smoke-raw.txt
+            data-smoke-results.json
+            tokenizer.txt
+            shards/*.mmtokens
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Fail if a check failed
+        if: always()
+        env:
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},corpus=${{ steps.corpus.outcome }},train=${{ steps.train.outcome }},shards=${{ steps.shards.outcome }},speed=${{ steps.speed.outcome }},oracle=${{ steps.oracle.outcome }}
+        run: |
+          set -eu
+          if ! python3 -c "import json, sys; sys.exit(0 if json.load(open('data-smoke-results.json'))['ok'] else 1)"; then
+            echo "::error title=midman-ai Data Smoke::a check failed (step outcomes: $STEP_OUTCOMES)"
+            exit 1
+          fi
+
+  compare:
+    name: same output on every platform
+    if: ${{ always() && inputs.platforms == 'all' }}
+    needs: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download every runner's result
+        uses: actions/download-artifact@v7
+        with:
+          pattern: data-smoke-${{ github.run_number }}-*
+          path: smoke-artifacts
+
+      - name: Compare
+        run: python3 scripts/data_smoke_summary.py --compare smoke-artifacts --md "$GITHUB_STEP_SUMMARY"
