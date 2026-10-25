@@ -1,0 +1,68 @@
+{
+ "version": {
+  "audit_actions": [
+   {
+    "action": "publish",
+    "time": "2026-02-16T02:46:44.304053Z",
+    "user": {
+     "avatar": "https://avatars.githubusercontent.com/u/1940490?v=4",
+     "created_at": "2012-07-09T03:55:40Z",
+     "github_username_matches": true,
+     "id": 3618,
+     "login": "dtolnay",
+     "name": "David Tolnay",
+     "url": "https://github.com/dtolnay"
+    }
+   }
+  ],
+  "bin_names": [],
+  "checksum": "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75",
+  "crate": "unicode-ident",
+  "crate_size": 49298,
+  "created_at": "2026-02-16T02:46:44.304053Z",
+  "description": "Determine whether characters have the XID_Start or XID_Continue properties according to Unicode Standard Annex #31",
+  "dl_path": "/api/v1/crates/unicode-ident/1.0.24/download",
+  "documentation": "https://docs.rs/unicode-ident",
+  "downloads": 446955577,
+  "edition": "2021",
+  "features": {},
+  "has_lib": true,
+  "homepage": null,
+  "id": 2031783,
+  "lib_links": null,
+  "license": "(MIT OR Apache-2.0) AND Unicode-3.0",
+  "linecounts": {
+   "languages": {
+    "Rust": {
+     "code_lines": 672,
+     "comment_lines": 5,
+     "files": 2
+    }
+   },
+   "total_code_lines": 672,
+   "total_comment_lines": 5
+  },
+  "links": {
+   "authors": "/api/v1/crates/unicode-ident/1.0.24/authors",
+   "dependencies": "/api/v1/crates/unicode-ident/1.0.24/dependencies",
+   "version_downloads": "/api/v1/crates/unicode-ident/1.0.24/downloads"
+  },
+  "num": "1.0.24",
+  "published_by": {
+   "avatar": "https://avatars.githubusercontent.com/u/1940490?v=4",
+   "created_at": "2012-07-09T03:55:40Z",
+   "github_username_matches": true,
+   "id": 3618,
+   "login": "dtolnay",
+   "name": "David Tolnay",
+   "url": "https://github.com/dtolnay"
+  },
+  "readme_path": "/api/v1/crates/unicode-ident/1.0.24/readme",
+  "repository": "https://github.com/dtolnay/unicode-ident",
+  "rust_version": "1.71",
+  "trustpub_data": null,
+  "updated_at": "2026-02-16T02:46:44.304053Z",
+  "yank_message": null,
+  "yanked": false
+ }
+}

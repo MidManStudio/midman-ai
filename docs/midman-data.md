@@ -3,7 +3,7 @@
 ## Overview
 Dataset ingestion, source manifests, filtering, deduplication, packing, sampling and batch construction.
 
-Status: the path from text to batches. A license policy that reads SPDX expressions, a provenance manifest, a secret scrubber and exact deduplication (with the SHA-256 they need) decide what text may be used and clean it; a packer turns it into token shards on disk with an end-of-text token after every document; and a batcher cuts the shards into training sequences and hands them out in a seeded order that a stopped run can resume. Not built yet: ingestion (fetching sources), quality filters (very long lines, binary and generated files), near-duplicate detection, mixing sources by weight, fill-in-the-middle and terminal-session formatting, and a reader for data larger than memory. The Cargo spelling of a license (`MIT/Apache-2.0`) is not read; only SPDX expressions are.
+Status: the path from text to batches. A license policy that reads SPDX expressions, a provenance manifest, a secret scrubber and exact deduplication (with the SHA-256 they need) decide what text may be used and clean it; a packer turns it into token shards on disk with an end-of-text token after every document; and a batcher cuts the shards into training sequences and hands them out in a seeded order that a stopped run can resume. A first cut of ingestion lives next to the crate: `scripts/ingest.py` lists repositories, pins each to a commit and writes the manifest, and `examples/check_manifest.rs` applies the license policy to it and names the sources `ingest.py fetch` may take. Not built yet: the final source list, quality filters (very long lines, binary and generated files), near-duplicate detection, mixing sources by weight, fill-in-the-middle and terminal-session formatting, and a reader for data larger than memory. The Cargo spelling of a license (`MIT/Apache-2.0`) is not read; only SPDX expressions are.
 
 Dependencies: `midman-foundation`, for the shared `Error` and `Rng`, and `midman-tokenizer`, for packing. There are no external crates. One test also uses `midman-model` and `midman-model-config`, to give a batch to the model.
 
@@ -162,6 +162,13 @@ Limits:
 
 **Tests:** Two tests. A manifest of four sources is written, read back and partitioned: the MIT-or-Apache and the MPL sources are used, the GPL one and the unlicensed one are refused with reasons. Then scrubbing before deduplication: two documents that differ only by a token become one, the document that was seen twice is counted, and the token is in none of the kept text.
 
+### `tests/ingest_manifest.rs`
+**What it does:** Reads a manifest written by `scripts/ingest.py` with this crate's reader and judges it with the license policy. `tests/fixtures/ingest_manifest.txt` is a copy of `scripts/fixtures/ingest-manifest.txt`: four sources (hashbrown, syn, memchr, unicode-ident) from a real run of `ingest.py crates` and `ingest.py manifest` on 2026-10-25, each a repository at a commit id with the license crates.io lists for it.
+
+**Decisions:** The script has its own writer of the manifest format, so there are two writers and one reader. This test is what keeps them from drifting apart: the Rust reader must accept the script's file, and the Rust writer must give the same bytes back.
+
+**Tests:** Four tests. The reader accepts the file and finds the four ids in order with category `rust`, the fetch date, a 40-digit revision and a GitHub URL; writing the manifest again gives the file byte for byte; the policy accepts all four licenses, among them `(MIT OR Apache-2.0) AND Unicode-3.0` and `Unlicense OR MIT`; and the same file with one license changed to `GPL-3.0-only` is valid and has exactly that source refused.
+
 ### `examples/scan.rs`
 **What it does:** Runs the scrubber over files and reports. `lines FILE` prints `line`, rule and the start of the match for each finding; `files` does the same for the paths on standard input and ends with totals; `speed` times the scan, best of five; `--no-generic` turns off the generic rule. Matches are cut to 48 characters, so a report never holds a whole secret. It is what produced the comparison, false-positive and speed figures above.
 
@@ -178,6 +185,13 @@ Limits:
 **Run on real files.** The files were this project's neighbors on the sandbox: the user's repositories, the skills repository and the source of the crates in the Cargo registry, 8,424 files. A vocabulary of 4,096 ids with the eight special tokens was trained on 7,571 of them (92 MB; the other 853 held out by a hash of the path) with `midman-tokenizer`'s `train`: 3,832 merges, which with 256 bytes and 8 special tokens is exactly 4,096, in 22 seconds. On the held-out files it reached 2.02 bytes per token, but six of them are binary files (2.2 MB) that the shard builder skips; on the 845 UTF-8 files it reached 2.99. `build_shards` on all of the files, with shards of 5 million tokens and sequences of 256: 73 files not UTF-8, 6 empty, 169 duplicates after scrubbing, 96 secrets replaced (59 URL passwords, 17 generic, 8 authorization headers, 4 each of Anthropic keys and AWS key ids, 2 GitHub tokens, 1 each of OpenAI and Stripe; one of the 59 is the example URL in this document's own source, which the scrubber reads as a password), 8,176 documents kept, 75.6 MB, 25.7 million tokens at 2.94 bytes per token, in six shards (five of about 10.0 MB and one of 1.3 MB, two bytes per token) holding 100,319 sequences. It took 7.4 s, 10.3 MB/s for the whole path on one thread, which is mostly the tokenizer (about 11 MB/s on its own, with no cache). These are figures for whatever text was on this machine, not for the training corpus: that is not chosen yet, and the production vocabulary has to be trained on it.
 
 **Does a model learn from it?** A one-off check outside the repository: a model of the Smoke preset's size with a vocabulary of 4,096 ids, trained for 300 steps on batches of 8 sequences of 128 tokens from these shards, through the batcher. Its loss began at 8.325, the natural log of 4,096 being 8.318, and fell to a mean of 6.3 over the last 49 steps. That shows that shards, batcher and model fit together, and nothing about model quality.
+
+### `examples/check_manifest.rs`
+**What it does:** `check_manifest MANIFEST [--accepted FILE]`. Reads the manifest with `Manifest::load`, which refuses a file that is not valid and names the line, and judges every source with the permissive-plus-weak-copyleft policy. The report on standard output has one line per source, `accepted` or `rejected`, with id, category and license (and the reason for a refusal); the totals by category go to standard error. With `--accepted FILE` the accepted ids are written there, one per line, in manifest order. The exit status says whether the manifest was valid, not what the policy decided.
+
+**Decisions:** The policy lives only in this crate. `scripts/ingest.py` records the license a listing gives and decides nothing about it, so there is no second copy of the lists to keep in step. The accepted list is a plain file of ids because `ingest.py fetch` reads exactly that.
+
+**Tests:** None of its own. The same calls are tested in `manifest.rs`, `license.rs` and `tests/ingest_manifest.rs`; a run on a manifest of 40 sources (see `ingest.py` in `ci-and-workflows.md`) was checked by hand.
 
 ## CI and Workflows
 `ci.yml` can select this crate by name and runs its unit tests and clippy. `data-smoke.yml` runs the command-line path (`train`, `build_shards` and `scan` over the repository's own files), compares the scrubber with gitleaks on x86_64 Linux, and with `platforms: all` checks that the vocabulary, every shard and the digest of the first batches are byte for byte the same on the three runners; its result is published on the site's Tests page. Neither has been run on GitHub yet. `security.yml` runs gitleaks over the repository history with the pinned version; the new files were checked with that version and report nothing.
@@ -197,7 +211,7 @@ Limits:
 
 ### `license.rs`
 - Found by rereading before the first build: the identifier check had two identical branches and accepted an empty `LicenseRef-`; both fixed.
-- Not handled: the legacy `MIT/Apache-2.0` slash spelling used by Cargo manifests. A source listed that way is a parse error until a reader for it exists.
+- Not handled: the legacy `MIT/Apache-2.0` slash spelling used by Cargo manifests. A source listed that way is a parse error until a reader for it exists. `scripts/ingest.py` rewrites that spelling to `MIT OR Apache-2.0` before it writes a manifest, so the reader never sees it.
 
 ### `shard.rs`
 - **Open:** a shard is read whole into memory, so a shard of 100 million tokens needs 400 MB. Reading by pieces or mapping the file is not built, and shards are kept below that size for now.

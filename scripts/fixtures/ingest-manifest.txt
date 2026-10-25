@@ -1,0 +1,29 @@
+midman-data-manifest 1
+
+id: rust-lang/hashbrown
+url: https://github.com/rust-lang/hashbrown
+revision: f7c44c608517ec79e0134d5747458aeb0aa8b86e
+license: MIT OR Apache-2.0
+fetched: 2026-10-25
+category: rust
+
+id: dtolnay/syn
+url: https://github.com/dtolnay/syn
+revision: 9ff9287583767e53dcfb70e3b1b350996908bd8b
+license: MIT OR Apache-2.0
+fetched: 2026-10-25
+category: rust
+
+id: BurntSushi/memchr
+url: https://github.com/BurntSushi/memchr
+revision: bd6068c30e9074a90c285e47912fa0b047d07597
+license: Unlicense OR MIT
+fetched: 2026-10-25
+category: rust
+
+id: dtolnay/unicode-ident
+url: https://github.com/dtolnay/unicode-ident
+revision: c1ac3afb721f3cea6527bc2255340a04d0de3ca0
+license: (MIT OR Apache-2.0) AND Unicode-3.0
+fetched: 2026-10-25
+category: rust
