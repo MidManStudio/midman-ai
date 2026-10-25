@@ -1,7 +1,7 @@
 # CI and workflows
 
 ## Overview
-Seven GitHub Actions workflows and eight helper scripts cover formatting, linting, tests, docs, security scans, benchmarks, a training smoke test and the C ABI for the whole workspace. Three of the scripts have self-tests that run against real captured output.
+Eight GitHub Actions workflows and nine helper scripts cover formatting, linting, tests, docs, security scans, benchmarks, a training smoke test, a data pipeline smoke test and the C ABI for the whole workspace. Five of the scripts have self-tests that run against real captured output.
 
 Every workflow is manual only (`workflow_dispatch`). There are no push or pull_request triggers, so every run is one you chose to start. Each run writes a job summary and uploads its raw logs and a JSON result as an artifact.
 
@@ -72,6 +72,15 @@ A smaller version of the same test runs in every `cargo test`, so ordinary CI co
 
 On x86_64 the step runs the test twice, the second time with `--features midman-tensor/avx`, and prints a line naming each run into the raw log. The AVX kernels are bit-identical to the scalar ones, so the summary's Run 2 row must show the same loss and accuracy as Run 1; the summary does not label which is which, so Run 1 is the scalar build and Run 2 the AVX one. The ARM legs run only the scalar build, because the feature does nothing there. The second run has not been run on GitHub.
 
+### `data-smoke.yml`
+**What it does:** Runs the whole data path on the runner, over this repository's own text files (every tracked file under 1 MB that is valid UTF-8 and has no space in its name, in sorted order): builds the tools, trains a vocabulary of 1,024 ids with the eight agreed special tokens, runs `build_shards` (scrub, deduplicate, tokenize, pack into shards of about 200,000 tokens, read them back, hash the first 100 batches), and times the scrubber on the same files. On x86_64 Linux it also downloads gitleaks (the version and checksum `security.yml` pins), generates the made-up corpus of 288 secrets of 24 kinds from `crates/midman-data/tests/fixtures/oracle_corpus.py`, and compares gitleaks and the scrubber on it. The scrubber has to find every sample of every kind and nothing outside them.
+
+**Inputs:** `baseline_note` (free text shown in the summary), `platforms` (`ubuntu-only` or `all`).
+
+**Output:** a job summary per runner with the pipeline numbers, the SHA-256 of the vocabulary file, of all the shards and of the first batches, and the comparison table; artifact `data-smoke-<run>-<runner>` with the raw log, `data-smoke-results.json`, the vocabulary file and the shards (30 days). With `platforms: all` a last job, `compare`, downloads the three results and fails unless the vocabulary, every shard, the digest of the first batches and the counts are byte for byte the same on `ubuntu-latest`, `macos-latest` and `ubuntu-24.04-arm`. The corpus is the same files at the same commit and every step is integer arithmetic or a fixed algorithm (the trainer, SHA-256, the shuffle); the scrubber's entropy test uses the platform's `log2`, so a difference in a rare borderline case would point there. `deploy-site.yml` publishes the latest result on the Tests page.
+
+`ci.yml` already runs the unit tests of `midman-data` and `midman-tokenizer`; this workflow adds the command-line path, real numbers on GitHub's machines, the second tool and the second machine. It uses the workspace release profile, so most of its time is compiling. The workflow file was checked with actionlint 1.7.12 and shellcheck, and its steps were run in order in the sandbox on x86_64 Linux with Rust 1.91, where every step passed, including the gitleaks download and checksum and the comparison: 256 files, 760 merges, 713,006 tokens at 2.25 bytes per token, 4 shards, 5,568 sequences, the scrubber at 72 MB/s (sandbox figures, one noisy core). The macOS and ARM legs, the `compare` job and the workflow as a whole have not run on GitHub yet.
+
 ### `midman-api-ffi.yml`
 **What it does:** Tests the C ABI of `midman-api` the way a C or C++ program uses it, in this order: the crate's Rust tests (`cargo test -p midman-api`); `crates/midman-api/ffi-smoke-test/test.c` compiled as C11 with `-Wall -Wextra -Wpedantic -Werror` and run against the shared library, then against the static library; `cxx_check.cpp`, which includes the header from C++17; `test.c` rebuilt with AddressSanitizer and UndefinedBehaviorSanitizer; and, on Linux, `test.c` under valgrind with a leak check for definitely lost blocks.
 
@@ -84,7 +93,7 @@ The static library is built on request with `cargo rustc --crate-type staticlib`
 The workflow file was checked with actionlint 1.7.12 and shellcheck. Every command in it was run in a sandbox with gcc 13.3, Rust 1.91 and valgrind 3.22, in both profiles, with 90 passing checks from `test.c` in each of the shared, static, sanitizer and valgrind runs. The workflow as a whole, the macOS and ARM legs and the `native-static-libs` output on those platforms have not run on GitHub yet.
 
 ### `deploy-site.yml`
-**What it does:** Publishes the site to Cloudflare Pages. Manual dispatch only: it never runs on a push. It builds the WebAssembly engine (a SIMD build and a plain build), runs the engine crate's tests, the Node tests (engine against the real binary, charts, the lab page and the two result pages in a headless DOM) and the script tests, builds the docs book with a pinned mdBook v0.4.40, pulls the latest results from the most recent successful `ci.yml`, `benchmarks.yml` and `train-smoke.yml` runs, assembles `dist/`, makes sure the Pages project exists, and deploys.
+**What it does:** Publishes the site to Cloudflare Pages. Manual dispatch only: it never runs on a push. It builds the WebAssembly engine (a SIMD build and a plain build), runs the engine crate's tests, the Node tests (engine against the real binary, charts, the lab page and the two result pages in a headless DOM) and the script tests, builds the docs book with a pinned mdBook v0.4.40, pulls the latest results from the most recent successful `ci.yml`, `benchmarks.yml`, `train-smoke.yml` and `data-smoke.yml` runs, assembles `dist/`, makes sure the Pages project exists, and deploys.
 
 **Inputs:** `run_tests` (default true), `project_name` (default `midman-ai`).
 
@@ -140,6 +149,12 @@ All scripts use only the Python standard library. `check_docs.py` and `repo_hygi
 ### `test_train_smoke_summary.py`
 **What it does:** Self-tests for `train_smoke_summary.py`. They run against `scripts/fixtures/train_smoke_real_run.txt`, a real smoke-test log in the older cargo format, plus synthetic logs for the modern format, failures and a missing log.
 
+### `data_smoke_summary.py`
+**What it does:** Reads the log of `data-smoke.yml`, which has one section per step starting with a line `=== name ===`, and writes `data-smoke-results.json` and a markdown summary: the pipeline numbers (corpus, vocabulary, files read, duplicates, secrets replaced by rule, documents, tokens, shards, sequences, speed), the SHA-256 of the vocabulary file, of every shard and of all the shards together (the files are hashed here, not in the log), and the scrubber-against-gitleaks table. In the JSON the digests are `vocabulary`, `shards` (a plain list, in file-name order) and `combined` (over the names and digests of all the shards). The JSON has `ok`, which is true only if every step that ran succeeded (the gitleaks step may be skipped), the numbers and the batch digest were found in the log, and an oracle that ran agreed. It never fails the job; the last workflow step reads `ok`. With `--compare DIR` it reads every `data-smoke-results.json` below `DIR` and checks that the vocabulary, every shard, the first-batches digest and the counts are the same on every runner; it exits 1 if they differ, if a value is missing, or if fewer than two results are found. If a run failed, the summary shows the end of the raw log from cargo's `Finished` line, capped by size and by lines.
+
+### `test_data_smoke_summary.py`
+**What it does:** Thirty-eight self-tests for `data_smoke_summary.py`. They run against `scripts/fixtures/data-smoke-ubuntu.txt`, a log captured by running the workflow's own `run:` blocks in order, and against logs made from it with one thing changed: every failed or skipped step, a missed sample, a finding outside the samples, a missing digest or speed line, ANSI colour codes, and empty and garbage logs. They also cover the file hashes (including that the combined digest depends on every shard), the markdown, the command line, and the comparison of runners: identical runners agree, each kind of difference is caught, a single shard that differs or is missing is named, and the exit codes. `scripts/fixtures/data-smoke-results.json` is the result of that run, made by running the script over the run's saved outputs (it was made again when the digest layout changed, see Fixes and Problems); `web/tests/test/fixtures/` holds a copy for the page tests.
+
 ### `assemble_site.py`
 **What it does:** Puts the site's parts into `dist/`: the landing page at the root, the lab, tests and benchmarks pages (without their tests and fixtures), the built book as `docs/`, both engine builds into `lab/`, the result files into `data/`, and the headers file. It fails naming what is missing if either engine build or the book is absent, because a site published without them would look fine and not work; missing result files are not an error.
 
@@ -178,6 +193,13 @@ All scripts use only the Python standard library. `check_docs.py` and `repo_hygi
 
 ### `train-smoke.yml`
 - **First version had no `baseline_note` or `platforms` input, no diagnostics, and embedded an unstripped log tail.** All four are fixed to match `benchmarks.yml`.
+
+### `data_smoke_summary.py`
+- **Gitleaks read the first result file as secrets.** The JSON had `"tokenizer": "<64 hex digits>"` and one `"shard-00000.mmtokens": "<64 hex digits>"` entry per shard, and the generic rule of gitleaks takes a key with `token` in its name and a high-entropy value for a secret. Committed once, those lines would have failed the Security workflow, which scans the whole history, for good. It was found by running the pinned gitleaks over the new files before any commit. The vocabulary digest is now under the key `vocabulary`, the shard digests are a plain list, and the shard names are covered by the combined digest.
+
+### `data-smoke.yml`
+- **Written to avoid two portability traps.** A summary script that put a backslash escape inside an f-string expression fails on Python before 3.12, and `mapfile` does not exist in the bash 3.2 of the macOS runner. The script computes such values first, and the workflow lists the corpus files into a plain variable.
+- **Open:** the macOS and ARM legs and the `compare` job have not run on GitHub, so whether the three runners really produce the same bytes is not yet confirmed. The first run with `platforms: all` is the test.
 
 ### `deploy-site.yml`
 - **A scratch directory collided with a tracked one.** The first draft fetched results into `data/`, which is the repository's own tracked directory (it holds `data/README.md`). It uses `site-data/` now, and the scratch directories are in `.gitignore`.

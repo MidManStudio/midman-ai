@@ -2,7 +2,7 @@
 // NOTICE: Full documentation, design decisions, and fix history for this file
 // live in docs/midman-web.md, section "tests/boot.js"
 // ============================================================================
-import { renderCi, renderMissing, renderSmoke } from "./render.js";
+import { renderCi, renderData, renderMissing, renderSmoke } from "./render.js";
 
 async function load(url) {
   const response = await fetch(url);
@@ -19,4 +19,9 @@ try {
   renderSmoke(document, await load("../data/train-smoke-results.json"));
 } catch {
   // The smoke test is optional; its card simply stays hidden.
+}
+try {
+  renderData(document, await load("../data/data-smoke-results.json"));
+} catch {
+  // So is the data smoke test.
 }

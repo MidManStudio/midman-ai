@@ -15,8 +15,10 @@
 //! then compared by SHA-256 with the documents already kept: the first copy wins. What
 //! remains is tokenized with the special-token text read as ordinary text, followed by the
 //! end-of-text token, and written as `shard-00000.mmtokens`, `shard-00001.mmtokens` and so
-//! on. A report goes to standard error. The license check is not done here: pass only paths
-//! of sources the manifest and the license policy accepted.
+//! on. A report goes to standard error, ending with a SHA-256 of the first 100 batches the
+//! batcher makes from the shards (batches of 4, seed 1), which is the same on every platform
+//! if the whole path is. The license check is not done here: pass only paths of sources the
+//! manifest and the license policy accepted.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -24,8 +26,13 @@ use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use midman_data::{ExactDedup, Packer, Scrubber, Sequences, TokenShard};
+use midman_data::{to_hex, Batcher, ExactDedup, Packer, Scrubber, Sequences, Sha256, TokenShard};
 use midman_tokenizer::Tokenizer;
+
+/// Batches hashed for the report digest, and their shape.
+const DIGEST_BATCHES: usize = 100;
+const DIGEST_BATCH_SIZE: usize = 4;
+const DIGEST_SEED: u64 = 1;
 
 const USAGE: &str = "usage: build_shards --tokenizer FILE --out DIR [--shard-tokens N] [--seq-len N] [--no-scrub]  < paths";
 
@@ -134,6 +141,7 @@ fn run() -> Result<(), String> {
         shards.push(TokenShard::load(shard_path(&args.out, n)).map_err(|e| e.to_string())?);
     }
     let sequences = Sequences::new(shards, args.seq_len).map_err(|e| e.to_string())?;
+    let batch_digest = batch_digest(&sequences);
     let seconds = start.elapsed().as_secs_f64();
     let secret_total: u64 = secrets.values().sum();
     eprintln!(
@@ -152,7 +160,29 @@ fn run() -> Result<(), String> {
         args.seq_len,
         bytes_kept as f64 / 1e6 / seconds.max(1e-9)
     );
+    match batch_digest {
+        Some((batches, digest)) => eprintln!(
+            "first {batches} batches ({DIGEST_BATCH_SIZE} x {} tokens, seed {DIGEST_SEED}): sha256 {digest}",
+            args.seq_len
+        ),
+        None => eprintln!("batch digest: fewer than {DIGEST_BATCH_SIZE} sequences, no batches"),
+    }
     Ok(())
+}
+
+/// The SHA-256 of the inputs and targets of the first batches the batcher makes, each id as
+/// four little-endian bytes, and how many batches that was.
+fn batch_digest(sequences: &Sequences) -> Option<(usize, String)> {
+    let mut batcher = Batcher::new(sequences.clone(), DIGEST_BATCH_SIZE, DIGEST_SEED).ok()?;
+    let batches = DIGEST_BATCHES.min(batcher.batches_per_epoch());
+    let mut hasher = Sha256::new();
+    for _ in 0..batches {
+        let batch = batcher.next_batch();
+        for &id in batch.inputs.iter().chain(&batch.targets) {
+            hasher.update(&(id as u32).to_le_bytes());
+        }
+    }
+    Some((batches, to_hex(&hasher.finalize())))
 }
 
 fn main() {

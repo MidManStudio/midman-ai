@@ -12,6 +12,9 @@
 - [midman-nn](midman-nn.md)
 - [midman-model](midman-model.md)
 - [midman-optim](midman-optim.md)
+- [midman-checkpoint](midman-checkpoint.md)
+- [midman-tokenizer](midman-tokenizer.md)
+- [midman-data](midman-data.md)
 - [midman-api](midman-api.md)
 - [midman-bench](midman-bench.md)
 

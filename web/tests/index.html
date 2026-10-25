@@ -22,10 +22,11 @@
 </header>
 <main>
   <h1>Tests</h1>
-  <p class="lede">Results from the latest CI run and the latest training smoke test. The smoke test trains the 117K-parameter preset to memorize random sequences, on three kinds of machine, and the numbers must match.</p>
+  <p class="lede">Results from the latest CI run and the two smoke tests. The training smoke test trains the 117K-parameter preset to memorize random sequences, on three kinds of machine, and the numbers must match. The data smoke test runs the data path (scrub, deduplicate, tokenize, pack, batch) over this repository's own files, compares the secret scrubber with gitleaks, and on three kinds of machine must produce the same bytes.</p>
   <div id="ci" class="card" role="status">Loading…</div>
   <div id="suites" class="card" hidden></div>
   <div id="smoke" class="card" hidden></div>
+  <div id="data" class="card" hidden></div>
 </main>
 <script type="module" src="boot.js"></script>
 </body>

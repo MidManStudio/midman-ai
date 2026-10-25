@@ -95,23 +95,23 @@ Test status when this was written: 60 JavaScript tests across five files (engine
 **What it does:** Tests of the benchmarks renderer against a real result file.
 
 ### `tests/index.html`
-**What it does:** The tests page shell.
+**What it does:** The tests page shell, with a card for the CI results, one for the training smoke test and one for the data pipeline smoke test, and a lede that says what each checks.
 
 **Tests:** `test/render.test.mjs` loads this file.
 
 ### `tests/render.js`
-**What it does:** Renders `ci-results.json` (from `scripts/ci_summary.py`): each check's outcome, the totals, and a table of suites with failures first; and the training smoke test's losses and accuracy.
+**What it does:** Renders `ci-results.json` (from `scripts/ci_summary.py`): each check's outcome, the totals, and a table of suites with failures first; the training smoke test's losses and accuracy; and the data pipeline smoke test (`data-smoke-results.json` from `scripts/data_smoke_summary.py`): the pass or fail line with the runner and commit, a table of the pipeline numbers and the first twelve digits of the output digests, and the scrubber-against-gitleaks line with the kinds where gitleaks found fewer samples. A result with no pipeline numbers still renders and says that the run is incomplete.
 
 ### `tests/boot.js`
-**What it does:** Fetches the two result files and renders them. A missing smoke-test file only hides its card.
+**What it does:** Fetches the result files and renders them. A missing smoke-test file (training or data) only hides its card.
 
 ### `tests/test/render.test.mjs`
-**What it does:** Tests of the tests-page renderer against a real CI result (291 passing tests in 20 suites) and a smoke-test result.
+**What it does:** Tests of the tests-page renderer against a real CI result (291 passing tests in 20 suites), a training smoke-test result and a data smoke-test result (`test/fixtures/data-smoke-results.json`, from a local run of the workflow's steps).
 
-**Tests:** 5 tests.
+**Tests:** 10 tests. The five added are for the data card: a real result with its numbers, digests and gitleaks comparison; a failed run marked FAIL with the note shown; no gitleaks line when the comparison did not run; an incomplete result; and the hidden container and the lede.
 
 ## CI and Workflows
-`deploy-site.yml` builds the engine, runs these tests, builds the book, pulls the latest CI, benchmark and smoke-test results from earlier runs, assembles `dist/` and deploys it. Run the tests locally with `MIDMAN_WASM=path/to/midman_api.wasm node --test web/lab/test/engine.test.mjs` (and the other files). See `docs/ci-and-workflows.md`.
+`deploy-site.yml` builds the engine, runs these tests, builds the book, pulls the latest CI, benchmark and smoke-test (training and data) results from earlier runs, assembles `dist/` and deploys it. Run the tests locally with `MIDMAN_WASM=path/to/midman_api.wasm node --test web/lab/test/engine.test.mjs` (and the other files). See `docs/ci-and-workflows.md`.
 
 ## Fixes and Problems
 

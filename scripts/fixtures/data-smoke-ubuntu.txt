@@ -1,0 +1,52 @@
+=== build ===
+   Compiling midman-foundation v0.0.1 (/home/claude/w/d3run/crates/midman-foundation)
+   Compiling midman-tensor v0.0.1 (/home/claude/w/d3run/crates/midman-tensor)
+   Compiling midman-tokenizer v0.0.1 (/home/claude/w/d3run/crates/midman-tokenizer)
+   Compiling midman-nn v0.0.1 (/home/claude/w/d3run/crates/midman-nn)
+   Compiling midman-model-config v0.0.1 (/home/claude/w/d3run/crates/midman-model-config)
+   Compiling midman-model v0.0.1 (/home/claude/w/d3run/crates/midman-model)
+   Compiling midman-data v0.0.1 (/home/claude/w/d3run/crates/midman-data)
+    Finished `release` profile [optimized] target(s) in 1m 03s
+=== corpus ===
+corpus: 256 files
+=== train ===
+trained on 256 files (0 unreadable): 1607185 bytes, 416321 pieces, 17572 distinct
+learned 760 of 760 merges, vocabulary 1024, the last merge was seen 200 times; saved to tokenizer.txt
+=== shards ===
+files read 256: not UTF-8 0, empty 0, duplicates 0
+secrets replaced 1 {"url-password": 1}
+documents kept 256: 1607187 bytes, 713006 tokens (2.25 bytes per token)
+4 shards in shards; 5568 sequences of 128 tokens; 0.2 s, 8.0 MB/s
+first 100 batches (4 x 128 tokens, seed 1): sha256 f4fdebabe1204c97c083301d8eab933b5a236da0d87e9330d9234b655d56120c
+=== scrub speed ===
+1.6 MB in 0.022 s = 72.1 MB/s
+=== oracle ===
+gitleaks 8.30.1
+1260 lines, 288 samples
+kind             gitleaks  ours  of
+github-pat             12    12  12
+github-oauth           12    12  12
+github-fine            12    12  12
+gitlab-pat             12    12  12
+aws-key-id             12    12  12
+aws-secret             11    12  12
+slack-bot              12    12  12
+slack-webhook          12    12  12
+stripe-live            12    12  12
+google-api             12    12  12
+anthropic              12    12  12
+openai-proj            12    12  12
+npm                    12    12  12
+pypi                   12    12  12
+sendgrid               12    12  12
+huggingface            12    12  12
+jwt                    12    12  12
+private-key            12    12  12
+private-key-ec         12    12  12
+url-password            0    12  12
+auth-bearer            12    12  12
+generic-quoted         11    12  12
+generic-env            12    12  12
+generic-json           12    12  12
+findings of ours outside the samples: 0
+findings of gitleaks outside the samples: 0

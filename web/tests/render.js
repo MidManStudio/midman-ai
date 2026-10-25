@@ -2,8 +2,8 @@
 // NOTICE: Full documentation, design decisions, and fix history for this file
 // live in docs/midman-web.md, section "tests/render.js"
 // ============================================================================
-// Renders ci-results.json (scripts/ci_summary.py) and train-smoke-results.json
-// (scripts/train_smoke_summary.py).
+// Renders ci-results.json (scripts/ci_summary.py), train-smoke-results.json
+// (scripts/train_smoke_summary.py) and data-smoke-results.json (scripts/data_smoke_summary.py).
 
 function el(doc, tag, text, className) {
   const e = doc.createElement(tag);
@@ -84,6 +84,73 @@ export function renderSmoke(doc, data) {
     table.append(row);
   }
   box.append(table);
+  box.hidden = false;
+}
+
+const count = (n) => Number(n).toLocaleString("en-US");
+const prefix = (digest) => (digest ? String(digest).slice(0, 12) : "none");
+
+export function renderData(doc, data) {
+  const box = doc.getElementById("data");
+  const meta = data.meta ?? {};
+  box.replaceChildren(el(doc, "h2", `Data pipeline smoke test, build #${meta.build}`));
+  box.append(
+    el(
+      doc,
+      "p",
+      `${data.ok ? "pass" : "FAIL"} on ${meta.runner}, ${meta.rust_version}, commit ${String(meta.commit).slice(0, 10)}.`,
+      data.ok ? "good" : "bad",
+    ),
+  );
+  if (meta.note) box.append(el(doc, "p", `Note: ${meta.note}`));
+
+  const { train, shards, digests } = data;
+  if (!train || !shards) {
+    box.append(el(doc, "p", "The run is incomplete: the log does not hold the pipeline's numbers.", "bad"));
+  } else {
+    const rows = [
+      ["Corpus", `${count(data.corpus_files)} tracked text files`],
+      ["Vocabulary", `${count(train.vocab_size)} ids, ${count(train.merges)} merges`],
+      ["Files read", `${count(shards.files_read)}: not UTF-8 ${shards.not_utf8}, empty ${shards.empty}, duplicates ${shards.duplicates}`],
+      ["Secrets replaced", String(shards.secrets)],
+      ["Documents kept", count(shards.documents)],
+      ["Tokens", `${count(shards.tokens)} (${shards.bytes_per_token.toFixed(2)} bytes per token)`],
+      ["Shards", `${shards.shard_count}, ${count(shards.sequences)} sequences of ${shards.seq_len} tokens`],
+      ["Whole path", `${shards.seconds.toFixed(1)} s, ${shards.mb_per_s.toFixed(1)} MB/s`],
+    ];
+    if (typeof data.scrub_mb_per_s === "number") rows.push(["Scrubber alone", `${data.scrub_mb_per_s.toFixed(1)} MB/s`]);
+    if (digests) {
+      rows.push(["Vocabulary file (SHA-256)", prefix(digests.vocabulary)]);
+      rows.push([`All ${(digests.shards ?? []).length} shards (SHA-256)`, prefix(digests.combined)]);
+      rows.push([`First ${shards.batches ?? 0} batches (SHA-256)`, prefix(shards.batch_digest)]);
+    }
+    const table = el(doc, "table");
+    const head = el(doc, "tr");
+    for (const h of ["What", "Value"]) head.append(el(doc, "th", h));
+    table.append(head);
+    for (const [what, value] of rows) {
+      const row = el(doc, "tr");
+      row.append(el(doc, "td", what), el(doc, "td", value));
+      table.append(row);
+    }
+    box.append(table);
+  }
+
+  const oracle = data.oracle;
+  if (oracle) {
+    const samples = oracle.kinds.reduce((sum, k) => sum + k.samples, 0);
+    const found = oracle.kinds.reduce((sum, k) => sum + k.ours, 0);
+    const missed = oracle.kinds.filter((k) => k.gitleaks < k.samples).map((k) => `${k.kind} (${k.gitleaks} of ${k.samples})`);
+    box.append(
+      el(
+        doc,
+        "p",
+        `Secret scrubber against gitleaks ${oracle.gitleaks_version}: found ${found} of ${samples} samples of ${oracle.kinds.length} kinds, ${oracle.ours_outside} findings outside them.`,
+        oracle.ok ? "good" : "bad",
+      ),
+    );
+    if (missed.length) box.append(el(doc, "p", `Gitleaks found fewer samples of: ${missed.join(", ")}.`, "muted"));
+  }
   box.hidden = false;
 }
 
