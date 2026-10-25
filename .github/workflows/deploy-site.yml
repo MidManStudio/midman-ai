@@ -7,7 +7,7 @@
 # What it does, in order: builds the WebAssembly engine (a SIMD build and a plain build),
 # runs the tests that guard it (native, in a headless DOM, and for the helper scripts),
 # builds the docs book with a pinned mdBook, pulls the latest CI, benchmark and smoke-test
-# results from earlier runs, assembles dist/, and deploys it. Missing results never block a
+# results (training and data) from earlier runs, assembles dist/, and deploys it. Missing results never block a
 # deploy; the pages say that none are published yet.
 #
 # Secrets: CLOUDFLARE_API_TOKEN (Pages edit) and CLOUDFLARE_ACCOUNT_ID, set on this repository.
@@ -152,6 +152,7 @@ jobs:
           fetch ci.yml ci-results.json ci
           fetch benchmarks.yml bench-results.json bench
           fetch train-smoke.yml train-smoke-results.json smoke
+          fetch data-smoke.yml data-smoke-results.json datasmoke
           find site-data -maxdepth 1 -type f
 
       # ── Assemble and deploy ───────────────────────────────────────────────
