@@ -1,0 +1,337 @@
+# .github/workflows/ingest.yml
+#
+# midman-ai ingest: the first step of the corpus pipeline, on GitHub's machines.
+#
+# Two modes, chosen when you start it:
+#
+#   measure   (default) Reads the committed manifest (data/manifest.txt), applies the license
+#             policy to it with the Rust code that training uses, fetches every accepted
+#             source at exactly its pinned commit, and counts what the sources would give:
+#             files and megabytes by category, sources with no file of their category, files
+#             that are not UTF-8, files with a very long line, and everything fetched by
+#             extension. Nothing is trained and no shard is written.
+#
+#   discover  Builds a NEW proposed manifest: the most downloaded crates on crates.io (Rust)
+#             and a GitHub repository search (shell), each pinned to the commit at the head of
+#             its default branch, with the license policy's verdict for every one. The
+#             manifest, the candidate lists and the verdicts are uploaded as an artifact. It
+#             never changes the repository: to use a proposed manifest, put it at
+#             data/manifest.txt.
+#
+# Helper script: scripts/ingest.py, tested by scripts/test_ingest.py. The license policy is
+# in crates/midman-data (examples/check_manifest.rs); the script decides nothing about
+# licenses. Notes: docs/ci-and-workflows.md.
+
+name: midman-ai Ingest
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'measure: fetch and count the committed manifest. discover: build a proposed manifest'
+        type: choice
+        default: measure
+        options:
+          - measure
+          - discover
+      baseline_note:
+        description: 'Free-text label for this run, shown in the summary'
+        type: string
+        default: ''
+      manifest:
+        description: 'measure: path of the manifest in the repository'
+        type: string
+        default: data/manifest.txt
+      rust_repos:
+        description: 'discover: how many Rust repositories to take from crates.io (about 3 seconds each)'
+        type: string
+        default: '80'
+      shell_query:
+        description: 'discover: GitHub repository search for the shell sources'
+        type: string
+        default: 'language:Shell stars:>1000'
+      shell_repos:
+        description: 'discover: how many shell repositories to take'
+        type: string
+        default: '40'
+      exclude:
+        description: 'discover: source ids to leave out, separated by spaces'
+        type: string
+        default: 'microsoft/windows-rs sunfishcode/linux-raw-sys'
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  measure:
+    name: fetch and measure the manifest
+    if: ${{ inputs.mode == 'measure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BASELINE_NOTE: ${{ inputs.baseline_note }}
+      MANIFEST: ${{ inputs.manifest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Parser self-test
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Toolchain info
+        id: toolchain
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          echo "version=$(rustc --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-ingest-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-ingest-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Build the license check
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== build ===" | tee ingest-raw.txt
+          cargo build --release --locked -p midman-data --example check_manifest 2>&1 | tee -a ingest-raw.txt
+
+      # The report (one line per source) goes to a file; the totals go to the raw log.
+      - name: Apply the license policy
+        id: policy
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== policy ===" | tee -a ingest-raw.txt
+          status=0
+          ./target/release/examples/check_manifest "$MANIFEST" --accepted accepted.txt \
+            > policy-report.tsv 2> policy-totals.txt || status=$?
+          tee -a ingest-raw.txt < policy-totals.txt
+          exit "$status"
+
+      - name: Fetch the accepted sources
+        id: fetch
+        if: steps.policy.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== fetch ===" | tee -a ingest-raw.txt
+          python3 scripts/ingest.py fetch --manifest "$MANIFEST" --accepted accepted.txt \
+            --dest data-src 2>&1 | tee -a ingest-raw.txt
+
+      - name: Measure
+        id: measure
+        if: steps.fetch.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== measure ===" | tee -a ingest-raw.txt
+          note="Run ${{ github.run_number }} on $RUNNER_OS $RUNNER_ARCH, commit ${GITHUB_SHA}, manifest ${MANIFEST}, ${{ steps.toolchain.outputs.version }}"
+          if [ -n "$BASELINE_NOTE" ]; then
+            note="$note. $BASELINE_NOTE"
+          fi
+          python3 scripts/ingest.py measure --manifest "$MANIFEST" --accepted accepted.txt \
+            --dest data-src --out ingest-results.json --report policy-report.tsv \
+            --markdown "$GITHUB_STEP_SUMMARY" --note "$note" 2>&1 | tee -a ingest-raw.txt
+
+      - name: Say what happened
+        if: always()
+        env:
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},measure=${{ steps.measure.outcome }}
+        run: |
+          {
+            echo "### Steps"
+            echo ""
+            echo "$STEP_OUTCOMES" | tr ',' '\n' | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload raw log and results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ingest-measure-${{ github.run_number }}
+          path: |
+            ingest-raw.txt
+            ingest-results.json
+            policy-report.tsv
+            accepted.txt
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Fail if a step failed
+        if: always()
+        env:
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},measure=${{ steps.measure.outcome }}
+        run: |
+          set -eu
+          case "$STEP_OUTCOMES" in
+            *failure*|*cancelled*|*skipped*)
+              echo "::error title=midman-ai Ingest::a step did not succeed (step outcomes: $STEP_OUTCOMES)"
+              exit 1
+              ;;
+          esac
+
+  discover:
+    name: propose a manifest
+    if: ${{ inputs.mode == 'discover' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BASELINE_NOTE: ${{ inputs.baseline_note }}
+      RUST_REPOS: ${{ inputs.rust_repos }}
+      SHELL_QUERY: ${{ inputs.shell_query }}
+      SHELL_REPOS: ${{ inputs.shell_repos }}
+      EXCLUDE: ${{ inputs.exclude }}
+      GITHUB_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Parser self-test
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Toolchain info
+        id: toolchain
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          echo "version=$(rustc --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-ingest-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-ingest-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Build the license check
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== build ===" | tee ingest-raw.txt
+          cargo build --release --locked -p midman-data --example check_manifest 2>&1 | tee -a ingest-raw.txt
+
+      - name: List Rust repositories (crates.io)
+        id: crates
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== crates ===" | tee -a ingest-raw.txt
+          python3 scripts/ingest.py crates --count "$RUST_REPOS" --out candidates-rust.json 2>&1 | tee -a ingest-raw.txt
+
+      - name: List shell repositories (GitHub search)
+        id: shell
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== shell ===" | tee -a ingest-raw.txt
+          python3 scripts/ingest.py github --query "$SHELL_QUERY" --category shell \
+            --count "$SHELL_REPOS" --out candidates-shell.json 2>&1 | tee -a ingest-raw.txt
+
+      - name: Pin every candidate to a commit
+        id: manifest
+        if: steps.crates.outcome == 'success' && steps.shell.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== manifest ===" | tee -a ingest-raw.txt
+          set --
+          for id in $EXCLUDE; do
+            set -- "$@" --exclude "$id"
+          done
+          python3 scripts/ingest.py manifest --candidates candidates-rust.json candidates-shell.json \
+            --out proposed-manifest.txt "$@" 2>&1 | tee -a ingest-raw.txt
+
+      - name: Apply the license policy
+        id: policy
+        if: steps.manifest.outcome == 'success' && steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== policy ===" | tee -a ingest-raw.txt
+          status=0
+          ./target/release/examples/check_manifest proposed-manifest.txt --accepted accepted.txt \
+            > policy-report.tsv 2> policy-totals.txt || status=$?
+          tee -a ingest-raw.txt < policy-totals.txt
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          note="Run ${{ github.run_number }}, commit ${GITHUB_SHA}, ${{ steps.toolchain.outputs.version }}. Rust: top ${RUST_REPOS} crates.io repositories. Shell: ${SHELL_QUERY} (${SHELL_REPOS})."
+          if [ -n "$BASELINE_NOTE" ]; then
+            note="$note $BASELINE_NOTE"
+          fi
+          python3 scripts/ingest.py report --report policy-report.tsv \
+            --markdown "$GITHUB_STEP_SUMMARY" --note "$note" 2>&1 | tee -a ingest-raw.txt
+
+      - name: Say what happened
+        if: always()
+        env:
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},crates=${{ steps.crates.outcome }},shell=${{ steps.shell.outcome }},manifest=${{ steps.manifest.outcome }},policy=${{ steps.policy.outcome }}
+        run: |
+          {
+            echo "### Steps"
+            echo ""
+            echo "$STEP_OUTCOMES" | tr ',' '\n' | sed 's/^/- /'
+            echo ""
+            echo "The proposed manifest is in the artifact. To use it, put it at data/manifest.txt."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the proposed manifest and the evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ingest-discover-${{ github.run_number }}
+          path: |
+            proposed-manifest.txt
+            candidates-rust.json
+            candidates-shell.json
+            policy-report.tsv
+            accepted.txt
+            ingest-raw.txt
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Fail if a step failed
+        if: always()
+        env:
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},crates=${{ steps.crates.outcome }},shell=${{ steps.shell.outcome }},manifest=${{ steps.manifest.outcome }},policy=${{ steps.policy.outcome }}
+        run: |
+          set -eu
+          case "$STEP_OUTCOMES" in
+            *failure*|*cancelled*|*skipped*)
+              echo "::error title=midman-ai Ingest::a step did not succeed (step outcomes: $STEP_OUTCOMES)"
+              exit 1
+              ;;
+          esac
