@@ -6,7 +6,9 @@
 #
 #   measure   (default) Reads the committed manifest (data/manifest.txt), applies the license
 #             policy to it with the Rust code that training uses, fetches every accepted
-#             source at exactly its pinned commit, and counts what the sources would give:
+#             source at exactly its pinned commit, looks in the top-level files of every
+#             source that has no license for a statement against use (such a source is left
+#             out if it has one), and counts what the remaining sources would give:
 #             files and megabytes by category, sources with no file of their category, files
 #             that are not UTF-8, files with a very long line, and everything fetched by
 #             extension. Nothing is trained and no shard is written.
@@ -17,6 +19,11 @@
 #             manifest, the candidate lists and the verdicts are uploaded as an artifact. It
 #             never changes the repository: to use a proposed manifest, put it at
 #             data/manifest.txt.
+#
+# The license rule: permissive and weak copyleft licenses are accepted, and so is a source with
+# no license at all, unless its own files say otherwise. A license that exists but could not
+# be identified is refused. Sources you have looked at and want to keep although the notice
+# scan flagged them go in data/notices-reviewed.txt.
 #
 # Helper script: scripts/ingest.py, tested by scripts/test_ingest.py. The license policy is
 # in crates/midman-data (examples/check_manifest.rs); the script decides nothing about
@@ -127,7 +134,15 @@ jobs:
           ./target/release/examples/check_manifest "$MANIFEST" --accepted accepted.txt \
             > policy-report.tsv 2> policy-totals.txt || status=$?
           tee -a ingest-raw.txt < policy-totals.txt
-          exit "$status"
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          note="Run ${{ github.run_number }} on $RUNNER_OS $RUNNER_ARCH, commit ${GITHUB_SHA}, manifest ${MANIFEST}, ${{ steps.toolchain.outputs.version }}"
+          if [ -n "$BASELINE_NOTE" ]; then
+            note="$note. $BASELINE_NOTE"
+          fi
+          python3 scripts/ingest.py report --report policy-report.tsv \
+            --markdown "$GITHUB_STEP_SUMMARY" --note "$note" 2>&1 | tee -a ingest-raw.txt
 
       - name: Fetch the accepted sources
         id: fetch
@@ -139,25 +154,35 @@ jobs:
           python3 scripts/ingest.py fetch --manifest "$MANIFEST" --accepted accepted.txt \
             --dest data-src 2>&1 | tee -a ingest-raw.txt
 
-      - name: Measure
-        id: measure
+      # Sources with no license are accepted unless their own files say otherwise: this is
+      # the look in those files. usable.txt is the accepted list without the ones left out.
+      - name: Look for notices in unlicensed sources
+        id: notices
         if: steps.fetch.outcome == 'success'
         continue-on-error: true
         run: |
           set -o pipefail
+          echo "=== notices ===" | tee -a ingest-raw.txt
+          python3 scripts/ingest.py notices --manifest "$MANIFEST" --accepted accepted.txt \
+            --dest data-src --out usable.txt --report notices.tsv \
+            --reviewed data/notices-reviewed.txt \
+            --markdown "$GITHUB_STEP_SUMMARY" 2>&1 | tee -a ingest-raw.txt
+
+      - name: Measure
+        id: measure
+        if: steps.notices.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
           echo "=== measure ===" | tee -a ingest-raw.txt
-          note="Run ${{ github.run_number }} on $RUNNER_OS $RUNNER_ARCH, commit ${GITHUB_SHA}, manifest ${MANIFEST}, ${{ steps.toolchain.outputs.version }}"
-          if [ -n "$BASELINE_NOTE" ]; then
-            note="$note. $BASELINE_NOTE"
-          fi
-          python3 scripts/ingest.py measure --manifest "$MANIFEST" --accepted accepted.txt \
-            --dest data-src --out ingest-results.json --report policy-report.tsv \
-            --markdown "$GITHUB_STEP_SUMMARY" --note "$note" 2>&1 | tee -a ingest-raw.txt
+          python3 scripts/ingest.py measure --manifest "$MANIFEST" --accepted usable.txt \
+            --dest data-src --out ingest-results.json \
+            --markdown "$GITHUB_STEP_SUMMARY" 2>&1 | tee -a ingest-raw.txt
 
       - name: Say what happened
         if: always()
         env:
-          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},measure=${{ steps.measure.outcome }}
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},notices=${{ steps.notices.outcome }},measure=${{ steps.measure.outcome }}
         run: |
           {
             echo "### Steps"
@@ -175,13 +200,15 @@ jobs:
             ingest-results.json
             policy-report.tsv
             accepted.txt
+            usable.txt
+            notices.tsv
           retention-days: 30
           if-no-files-found: warn
 
       - name: Fail if a step failed
         if: always()
         env:
-          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},measure=${{ steps.measure.outcome }}
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},notices=${{ steps.notices.outcome }},measure=${{ steps.measure.outcome }}
         run: |
           set -eu
           case "$STEP_OUTCOMES" in
