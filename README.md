@@ -1,0 +1,142 @@
+# MidMan AI
+
+> A coding and game-development model, built and trained from scratch in Rust.
+
+MidMan AI is a Rust workspace for a coding and game-development model, the pipeline that trains it, and an agent runtime around it. Nothing here starts from pretrained weights or a machine-learning framework: the tensors, the automatic differentiation, the kernels, the tokenizer and the data pipeline are written in this repository. Rust and [Ubel Stratum](https://github.com/MidManStudio/ubel_stratum) are the core code domains, shell and terminal material is in scope, and the model is meant to be useful for [Mid Engine](https://github.com/Mid-D-Man/mid-engine) work.
+
+It is early. The model and its training step work and are tested on small sizes; no model has been trained on a real corpus yet. The table below says what exists.
+
+---
+
+## Crates
+
+Status as of 2026-10-25. Working means it has code, tests and a document in `docs/`. In progress means it works but has known gaps listed in its document. Planned means the crate is an empty stub.
+
+| Crate | Role | Status |
+|---|---|---|
+| `midman-foundation` | Shared error type and a seeded random number generator | 🟢 Working |
+| `midman-model-config` | Model architecture description, exact parameter counts, presets from `smoke` (117,056) to `large` (1,009,338,368) | 🟢 Working |
+| `midman-tensor` | CPU `f32` tensors, reverse-mode autograd, matrix products (with AVX kernels behind a Cargo feature) | 🟢 Working |
+| `midman-nn` | Linear, embedding, RMSNorm, rotary embeddings, causal attention, SwiGLU, decoder block | 🟢 Working |
+| `midman-model` | The decoder-only model: forward pass and loss | 🟢 Working |
+| `midman-optim` | AdamW, warmup-and-cosine schedule, gradient clipping | 🟡 In progress (optimizer state cannot be saved yet) |
+| `midman-checkpoint` | Weights in the standard safetensors format | 🟡 In progress (no optimizer state or training progress yet) |
+| `midman-tokenizer` | Byte-level BPE with a trainer, special tokens and a code-and-shell pre-tokenizer | 🟢 Working |
+| `midman-data` | License policy, source manifest, secret scrubber, exact deduplication, token shards, batcher | 🟡 In progress (ingestion has a first cut; no quality filters yet) |
+| `midman-api` | Safe Rust API and a C ABI, also compiled to WebAssembly for the website | 🟢 Working |
+| `benches/midman-bench` | Benchmarks with plain C twins as baselines | 🟢 Working |
+| `midman-quant`, `midman-training`, `midman-inference` | Quantization, the training loop, inference | 🔵 Planned |
+| `midman-agent`, `midman-tools`, `midman-sandbox` | Agent runtime, tools, restricted execution | 🔵 Planned |
+| `midman-ubel`, `midman-game` | Ubel Stratum and game-engine integration | 🔵 Planned |
+| `apps/midman-cli`, `apps/midman-server`, `apps/midman-trainer` | Command line, server, trainer | 🔵 Planned |
+
+Each crate has a document in `docs/` that holds what it does, the decisions behind it, its benchmarks and tests, and a list of fixes and open problems by file.
+
+## Crate dependency order
+
+```
+midman-foundation    (no workspace dependencies)
+midman-model-config  (uses foundation)
+midman-tensor        (uses foundation)
+midman-tokenizer     (uses foundation)
+midman-nn            (uses foundation, tensor)
+midman-optim         (uses foundation, tensor)
+midman-checkpoint    (uses foundation, tensor)
+midman-model         (uses foundation, model-config, nn, tensor)
+midman-data          (uses foundation, tokenizer)
+midman-api           (uses foundation, model, model-config, nn, optim, tensor)
+```
+
+`midman-api` is also what the website runs in the browser.
+
+## Getting started
+
+Any recent stable Rust toolchain builds the workspace. The benchmark package needs Cargo 1.85 or newer; the other crates are also tested on Rust 1.75, per crate with `-p`.
+
+```bash
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo fmt --all -- --check
+python3 -m unittest discover -s scripts -p 'test_*.py'
+```
+
+The training path can be seen on the smallest size: a model that must learn one fixed batch. That test is ignored by default because it is slow in a debug build:
+
+```bash
+cargo test --release -p midman-model --locked -- --ignored
+```
+
+Train a tokenizer, build token shards, and check a source manifest:
+
+```bash
+cargo run --release -p midman-tokenizer --example train -- \
+    --vocab 4096 --out tokenizer.txt --special '<|endoftext|>' training-dir
+
+cargo run --release -p midman-data --example build_shards -- \
+    --tokenizer tokenizer.txt --out shards/ < list-of-paths
+
+cargo run --release -p midman-data --example check_manifest -- \
+    data/manifest.txt --accepted accepted.txt
+```
+
+The commands of the ingestion script are listed at the top of `scripts/ingest.py`.
+
+## The training corpus
+
+The corpus is built from public repositories listed in [`data/manifest.txt`](data/README.md): each source is pinned to a commit, so the corpus can be rebuilt exactly. The rules:
+
+- A source is used if its license is on the allow list: permissive licenses (MIT, Apache-2.0, BSD and the like) and weak copyleft (MPL and LGPL). The lists are in `crates/midman-data/src/license.rs`.
+- A source with **no license** is used too, unless its own top-level files say otherwise (all rights reserved, no commercial use, no AI training and similar). Sources that the scan flags are left out; ones that were read and kept go in `data/notices-reviewed.txt`. This is a choice the project made. It is not a statement that code without a license is free to use.
+- A source whose license exists but could not be identified is refused.
+- Secrets are replaced before anything is tokenized, and documents that are identical are kept once.
+
+No license has been chosen for this repository itself yet.
+
+## Continuous integration
+
+Nine GitHub Actions workflows, all started by hand (`workflow_dispatch`):
+
+| Workflow | What it does |
+|---|---|
+| `ci.yml` | Format, clippy, build and test, for the whole workspace or one package |
+| `docs.yml` | Check that the docs and the source agree, then build rustdoc |
+| `security.yml` | Dependency advisories (`cargo audit`), a secret scan over the full history (gitleaks) and repository hygiene |
+| `benchmarks.yml` | Criterion benchmarks and the plain C baselines |
+| `train-smoke.yml` | A tiny model must learn a fixed batch, on several platforms |
+| `data-smoke.yml` | The data pipeline must give byte-identical shards and batches on every platform |
+| `ingest.yml` | Check the manifest against the license policy, fetch the sources and measure them, or propose a new manifest |
+| `midman-api-ffi.yml` | Test the C ABI from C and C++ |
+| `deploy-site.yml` | Build the website and deploy it to Cloudflare Pages |
+
+Details and the history of every fix are in `docs/ci-and-workflows.md`.
+
+## Layout
+
+```
+crates/       the library crates (midman-*)
+apps/         command line, server and trainer (stubs)
+benches/      midman-bench: criterion benchmarks and C baselines
+web/          the website: landing page, lab, test and benchmark pages, docs book
+configs/      one TOML file per model-size preset
+data/         the source manifest and its notes (no datasets are committed)
+docs/         one document per crate, plus architecture, workspace and CI notes
+scripts/      the helper scripts that CI uses, with self-tests and real captured fixtures
+examples/     workspace-level examples (none yet)
+tests/        workspace-level tests (none yet)
+```
+
+## Working rules
+
+- Versions stay `0.0.1` during development; the first official release is `1.0.0`.
+- `unsafe_code` is denied in the workspace. The crates that need it (`midman-api` for the C ABI, `midman-bench` for the C baselines, `midman-tensor` for the AVX kernels) say so at their crate roots, and the `undocumented_unsafe_blocks` lint is on, so every `unsafe` block needs a safety comment.
+- Every source file starts with a NOTICE header that points to its section in `docs/`, and `scripts/check_docs.py` checks it.
+- Profile before optimizing. A speed-up is kept only with a release-build measurement, and results stay bit-identical unless a change says otherwise.
+- Apart from the benchmark package, the crates use only the standard library and each other.
+- No weights, datasets or credentials are committed. `scripts/repo_hygiene.py` enforces it, and the secret scan covers the whole history.
+
+## Related projects
+
+- [Ubel Stratum](https://github.com/MidManStudio/ubel_stratum): the programming language the model is meant to learn.
+- [Mid Engine](https://github.com/Mid-D-Man/mid-engine): the modular Rust game engine whose documentation and benchmarking conventions this repository follows.
+- [DixScript-Rust](https://github.com/Mid-D-Man/DixScript-Rust): the `.mdix` configuration language.
+- [mdix-scaffold](https://github.com/Mid-D-Man/mdix-scaffold): the replacement tooling used to deliver changes to this repository.
