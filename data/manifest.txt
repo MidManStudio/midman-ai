@@ -297,7 +297,7 @@ category: shell
 id: papers-we-love/papers-we-love
 url: https://github.com/papers-we-love/papers-we-love
 revision: 9b92363eac4d4fbea0f5fdc7766ef68d22037ca8
-license: NOASSERTION
+license: NONE
 fetched: 2026-10-25
 category: shell
 
@@ -325,7 +325,7 @@ category: shell
 id: youngyangyang04/leetcode-master
 url: https://github.com/youngyangyang04/leetcode-master
 revision: 6fe1571732d41e8f425f8e702992adf7ffae95a0
-license: NOASSERTION
+license: NONE
 fetched: 2026-10-25
 category: shell
 
@@ -486,7 +486,7 @@ category: shell
 id: powerline/fonts
 url: https://github.com/powerline/fonts
 revision: a029626780dd4af32f15a3e708a5b00528c22f1d
-license: NOASSERTION
+license: NONE
 fetched: 2026-10-25
 category: shell
 
@@ -521,14 +521,14 @@ category: shell
 id: eip-work/kuboard-press
 url: https://github.com/eip-work/kuboard-press
 revision: d4876d6b3b7eb6e672d072003f65865d549ecbb5
-license: NOASSERTION
+license: NONE
 fetched: 2026-10-25
 category: shell
 
 id: kholia/OSX-KVM
 url: https://github.com/kholia/OSX-KVM
 revision: 4c378a4b5e0b219783683012bec680325eb40719
-license: NOASSERTION
+license: NONE
 fetched: 2026-10-25
 category: shell
 

@@ -647,7 +647,7 @@ mod tests {
             ("a/mit", "MIT"),
             ("b/gpl", "GPL-3.0-only"),
             ("c/mpl", "MPL-2.0"),
-            ("d/none", "NOASSERTION"),
+            ("d/none", "NONE"),
             ("e/dual", "GPL-2.0-only OR Apache-2.0"),
             ("f/both", "MIT AND GPL-2.0-only"),
         ] {

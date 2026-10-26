@@ -223,15 +223,15 @@ class GithubSearchTests(unittest.TestCase):
         self.assertEqual(by_id["ohmyzsh/ohmyzsh"]["url"], "https://github.com/ohmyzsh/ohmyzsh")
         self.assertEqual(by_id["ohmyzsh/ohmyzsh"]["origin"], "github-search")
 
-    def test_real_reply_has_a_repository_with_no_license_as_noassertion(self):
-        # In the captured reply the license of papers-we-love is null.
+    def test_real_reply_has_a_repository_with_no_license_as_none(self):
+        # In the captured reply the license of papers-we-love is null: GitHub found none.
         doc = json.loads(fixture("ingest-github-search.json"))
         out = {c["id"]: c["license"] for c in ingest.parse_github_search(doc, "shell")}
-        self.assertEqual(out["papers-we-love/papers-we-love"], "NOASSERTION")
+        self.assertEqual(out["papers-we-love/papers-we-love"], "NONE")
 
     # The cases below are written by hand: a captured reply does not have a fork or a name
     # that the manifest would refuse.
-    def test_forks_odd_names_and_noassertion(self):
+    def test_forks_odd_names_none_and_noassertion(self):
         doc = {
             "items": [
                 {"full_name": "a/b", "fork": False, "stargazers_count": 3, "license": None},
@@ -248,12 +248,18 @@ class GithubSearchTests(unittest.TestCase):
                     "stargazers_count": 2,
                     "license": {"spdx_id": "NOASSERTION"},
                 },
+                {"full_name": "e/f", "fork": False, "license": {"spdx_id": None}},
+                {"full_name": "g/h", "fork": False, "license": {}},
                 {"fork": False},
             ]
         }
         out = ingest.parse_github_search(doc, "shell")
-        self.assertEqual([c["id"] for c in out], ["a/b", "c/d"])
-        self.assertEqual([c["license"] for c in out], ["NOASSERTION", "NOASSERTION"])
+        self.assertEqual([c["id"] for c in out], ["a/b", "c/d", "e/f", "g/h"])
+        # No license at all is NONE. A license GitHub could not identify, or an object
+        # without an id, is NOASSERTION: a license file exists, so it is not "none".
+        self.assertEqual(
+            [c["license"] for c in out], ["NONE", "NOASSERTION", "NOASSERTION", "NOASSERTION"]
+        )
 
     def test_empty_result(self):
         self.assertEqual(ingest.parse_github_search({}, "shell"), [])
@@ -618,9 +624,9 @@ class MeasureSummaryTests(unittest.TestCase):
         again = ingest.summarize_measurements(doc["sources"], {})
         self.assertEqual(again["categories"], doc["categories"])
         self.assertEqual(doc["categories"]["rust"]["sources"], 37)
-        self.assertEqual(doc["categories"]["shell"]["sources"], 24)
-        self.assertEqual(len(doc["sources"]), 61)
-        self.assertEqual(sum(s["files"] for s in doc["sources"]), 3151 + 2894)
+        self.assertEqual(doc["categories"]["shell"]["sources"], 28)
+        self.assertEqual(len(doc["sources"]), 65)
+        self.assertEqual(sum(s["files"] for s in doc["sources"]), 3151 + 2926)
 
     def test_markdown_from_real_results(self):
         doc = json.loads(fixture("ingest-results.json"))
@@ -628,10 +634,10 @@ class MeasureSummaryTests(unittest.TestCase):
         self.assertTrue(text.startswith("## midman-ai ingest"))
         self.assertIn("\na note\n", text)
         self.assertIn("| rust | 37 | 0 | 3151 | 29.9 | 0 | 1 |", text)
-        self.assertIn("| shell | 24 | 0 | 2894 | 13.6 | 0 | 1 |", text)
+        self.assertIn("| shell | 28 | 0 | 2926 | 13.6 | 0 | 1 |", text)
         self.assertIn("| `rust-lang/regex` | rust | 227 | 5.6 |", text)
-        self.assertIn("| `.mp4` | 19 | 86.2 | 21.8% |", text)
-        self.assertTrue(text.endswith("All files fetched: 17872, 395.9 MB.\n\n"))
+        self.assertIn("| `.mp4` | 19 | 86.2 | 16.2% |", text)
+        self.assertTrue(text.endswith("All files fetched: 19612, 533.0 MB.\n\n"))
         self.assertNotIn("Sources with no file of their category", text)
         self.assertEqual(text.count("\n| `"), 15 + ingest.TOP_EXTENSIONS)
 
@@ -650,13 +656,29 @@ class MeasureSummaryTests(unittest.TestCase):
 class PolicyReportTests(unittest.TestCase):
     def test_real_report_is_read(self):
         report = ingest.parse_policy_report(fixture("ingest-policy-report.tsv"))
-        self.assertEqual(len(report["accepted"]), 61)
-        self.assertEqual(len(report["rejected"]), 16)
+        self.assertEqual(len(report["accepted"]), 66)
+        self.assertEqual(len(report["rejected"]), 11)
         first = report["rejected"][0]
-        self.assertEqual(first["id"], "papers-we-love/papers-we-love")
+        self.assertEqual(first["id"], "tw93/Mole")
         self.assertEqual(first["category"], "shell")
-        self.assertEqual(first["license"], "NOASSERTION")
-        self.assertEqual(first["reason"], "no license was identified (`NOASSERTION`)")
+        self.assertEqual(first["license"], "GPL-3.0")
+        self.assertEqual(first["reason"], "`GPL-3.0` is not on the allow list")
+        unidentified = [s for s in report["rejected"] if s["license"] == "NOASSERTION"]
+        self.assertEqual(len(unidentified), 5)
+        self.assertEqual(
+            unidentified[0]["reason"], "the license could not be identified (`NOASSERTION`)"
+        )
+        unlicensed = [s["id"] for s in report["accepted"] if s["license"] == "NONE"]
+        self.assertEqual(
+            sorted(unlicensed),
+            [
+                "eip-work/kuboard-press",
+                "kholia/OSX-KVM",
+                "papers-we-love/papers-we-love",
+                "powerline/fonts",
+                "youngyangyang04/leetcode-master",
+            ],
+        )
         rust = [s for s in report["accepted"] if s["category"] == "rust"]
         self.assertEqual(len(rust), 37)
         self.assertEqual(report["accepted"][0]["id"], "rust-lang/hashbrown")
@@ -672,10 +694,11 @@ class PolicyReportTests(unittest.TestCase):
         text = ingest.policy_markdown(report, "a note")
         self.assertTrue(text.startswith("## midman-ai ingest: license policy\n\na note\n\n| Category"))
         self.assertIn("| rust | 37 | 0 |", text)
-        self.assertIn("| shell | 24 | 16 |", text)
-        self.assertIn("| all | 61 | 16 |", text)
+        self.assertIn("| shell | 29 | 11 |", text)
+        self.assertIn("| all | 66 | 11 |", text)
         self.assertIn("| `tw93/Mole` | shell | GPL-3.0 | `GPL-3.0` is not on the allow list |", text)
-        self.assertEqual(text.count("\n| `"), 16)
+        self.assertIn("\n5 of the accepted sources have no license.", text)
+        self.assertEqual(text.count("\n| `"), 11)
         # A blank line ends it, so whatever is appended next starts a new block.
         self.assertTrue(text.endswith("|\n\n"))
 
@@ -684,7 +707,11 @@ class PolicyReportTests(unittest.TestCase):
         text = ingest.policy_markdown(report)
         self.assertTrue(text.startswith("## midman-ai ingest: license policy\n\n| Category"))
         self.assertNotIn("### Refused", text)
+        self.assertNotIn("no license", text)
         self.assertIn("| all | 1 | 0 |", text)
+        # The count of sources with no license does not depend on the case of NONE.
+        report["accepted"].append({"id": "e/f", "category": "rust", "license": "none"})
+        self.assertIn("\n1 of the accepted sources have no license.", ingest.policy_markdown(report))
         report["rejected"].append({"id": "c/d", "category": "rust", "license": "A | B", "reason": "x|y"})
         text = ingest.policy_markdown(report)
         self.assertIn("| `c/d` | rust | A \\| B | x\\|y |", text)
@@ -701,10 +728,253 @@ class PolicyReportTests(unittest.TestCase):
             with redirect_stdout(io.StringIO()), redirect_stderr(err):
                 code = ingest.main(["report", "--report", report, "--markdown", summary, "--note", "n"])
             self.assertEqual(code, 0)
-            self.assertIn("report: 61 accepted, 16 rejected", err.getvalue())
+            self.assertIn("report: 66 accepted, 11 rejected", err.getvalue())
             with open(summary, encoding="utf-8") as handle:
                 text = handle.read()
             self.assertTrue(text.startswith("before\n## midman-ai ingest: license policy"))
+
+
+class NoticeScanTests(unittest.TestCase):
+    """The scan that looks, in a source with no license, for a statement against use."""
+
+    def labels(self, text):
+        return sorted({label for _line, label, _text in ingest.scan_notice_text(text)})
+
+    # Sentences written by hand to show what each pattern is for, except the first, which is
+    # the line of papers-we-love's README that the first real run found.
+    def test_real_line_from_a_readme(self):
+        line = (
+            'The name "Papers We Love" and the logos for the organization are copyrighted, '
+            "and under the ownership of Papers We Love Ltd, all rights reserved. When starting"
+        )
+        hits = ingest.scan_notice_text("# Title\n\n" + line + "\n")
+        self.assertEqual([(n, label) for n, label, _ in hits], [(3, "all rights reserved")])
+
+    def test_statements_that_are_caught(self):
+        cases = {
+            "Copyright (c) 2024 Someone. All Rights Reserved.": "all rights reserved",
+            "ALL   RIGHTS\tRESERVED": "all rights reserved",
+            "This is proprietary software.": "proprietary",
+            "Free for non-commercial use.": "non-commercial",
+            "Noncommercial use is fine, anything else is not.": "non-commercial",
+            "For personal use only.": "personal or educational use only",
+            "This is meant for educational purposes only": "personal or educational use only",
+            "Do not use without my permission.": "permission",
+            "You may not use this without written permission": "permission",
+            "Permission has not been granted to reuse it": "permission",
+            "This code may not be copied.": "may not be used or copied",
+            "The files must not be redistributed": "may not be used or copied",
+            "Please do not copy or steal my work": "may not be used or copied",
+            "You are not allowed to reuse any of this": "may not be used or copied",
+            "No license is granted to anyone": "no license granted",
+            "This repository is not licensed for reuse": "no license granted",
+            "No AI training on this repository": "against AI training",
+            "Scraping this for machine learning datasets is prohibited": "against AI training",
+            "Training of language models on this code is not allowed": "against AI training",
+            "do not scrape this repo": "against AI training",
+        }
+        for sentence, label in cases.items():
+            self.assertIn(label, self.labels(sentence), sentence)
+
+    def test_ordinary_text_is_not_caught(self):
+        for sentence in (
+            "A collection of dotfiles and install scripts.",
+            "Permission is hereby granted, free of charge, to any person obtaining a copy",
+            "Feel free to copy anything you like.",
+            "This project is MIT licensed.",
+            "Use at your own risk.",
+            "We train a model on the data in this folder.",
+            "Pull requests are welcome; ask before you change the public interface.",
+            "The commercial edition has more features.",
+        ):
+            self.assertEqual(self.labels(sentence), [], sentence)
+
+    def test_one_hit_per_line_and_label(self):
+        text = "All rights reserved. All rights reserved.\nnothing\nproprietary and all rights reserved"
+        hits = ingest.scan_notice_text(text)
+        self.assertEqual(
+            [(n, label) for n, label, _ in hits],
+            [(1, "all rights reserved"), (3, "all rights reserved"), (3, "proprietary")],
+        )
+
+    def test_the_text_of_a_hit_is_tidied_and_cut(self):
+        long_line = "all   rights\treserved " + "x" * 400
+        hit = ingest.scan_notice_text(long_line)[0]
+        self.assertTrue(hit[2].startswith("all rights reserved xxxx"))
+        self.assertEqual(len(hit[2]), 160)
+
+    def test_which_files_are_read(self):
+        with tempfile.TemporaryDirectory() as root:
+            def put(name, size=10):
+                with open(os.path.join(root, name), "w", encoding="utf-8") as handle:
+                    handle.write("x" * size)
+
+            for name in ("README.md", "readme.txt", "LICENSE", "Licence.md", "COPYING", "NOTICE",
+                         "TERMS.md", "LEGAL", "DISCLAIMER", "COPYRIGHT", "README"):
+                put(name)
+            for name in ("main.rs", "CHANGELOG.md", "docs.md", "AUTHORS", "Makefile"):
+                put(name)
+            put("README-big.md", ingest.MAX_NOTICE_BYTES + 1)
+            put("README-limit.md", ingest.MAX_NOTICE_BYTES)
+            os.makedirs(os.path.join(root, "README-dir"))
+            os.makedirs(os.path.join(root, "sub"))
+            with open(os.path.join(root, "sub", "README.md"), "w", encoding="utf-8") as handle:
+                handle.write("all rights reserved")
+            os.symlink(os.path.join(root, "README.md"), os.path.join(root, "README-link.md"))
+            names = [os.path.basename(p) for p in ingest.notice_files(root)]
+            self.assertEqual(
+                names,
+                sorted(["COPYING", "COPYRIGHT", "DISCLAIMER", "LEGAL", "LICENSE", "Licence.md",
+                        "NOTICE", "README", "README-limit.md", "README.md", "TERMS.md",
+                        "readme.txt"]),
+            )
+            self.assertEqual(ingest.notice_files(os.path.join(root, "missing")), [])
+            # Only the top level is read.
+            self.assertEqual(ingest.scan_source(os.path.join(root, "sub")), [
+                {"file": "README.md", "line": 1, "label": "all rights reserved",
+                 "text": "all rights reserved"}])
+            self.assertEqual(ingest.scan_source(root), [])
+
+    def test_scan_source_reads_bad_utf8_and_names_the_file_and_line(self):
+        with tempfile.TemporaryDirectory() as root:
+            with open(os.path.join(root, "NOTICE"), "wb") as handle:
+                handle.write(b"\xff proprietary\nfor personal use only\n")
+            with open(os.path.join(root, "README.md"), "w", encoding="utf-8") as handle:
+                handle.write("fine\nfine\nThis is proprietary.\n")
+            hits = ingest.scan_source(root)
+            self.assertEqual(
+                [(h["file"], h["line"], h["label"]) for h in hits],
+                [
+                    ("NOTICE", 1, "proprietary"),
+                    ("NOTICE", 2, "personal or educational use only"),
+                    ("README.md", 3, "proprietary"),
+                ],
+            )
+            # A byte that is not UTF-8 becomes the replacement character, not nothing.
+            self.assertEqual(hits[0]["text"], "\ufffd proprietary")
+
+    def test_markdown(self):
+        hit = {"file": "README.md", "line": 4, "label": "proprietary", "text": "a | b"}
+        many = [dict(hit, line=n) for n in range(1, 6)]
+        text = ingest.notices_markdown(["a/x", "b/y", "c/z"], {"a/x": [hit], "b/y": many}, {"c/z": [hit]}, "n")
+        self.assertTrue(text.startswith("## midman-ai ingest: license notices\n\nn\n\n"))
+        self.assertIn("scanned: 3. Left out because their own files say otherwise: 2. Kept after review: 1.", text)
+        self.assertIn("### Left out", text)
+        self.assertIn("### Kept after review", text)
+        self.assertIn("| `a/x` | README.md | 4 | proprietary | a \\| b |", text)
+        self.assertEqual(text.count("| `b/y` | README.md |"), ingest.MAX_NOTICE_HITS_SHOWN)
+        self.assertIn("| `b/y` | | | | and 2 more |", text)
+        self.assertTrue(text.endswith("|\n\n"))
+        # Exactly as many hits as are shown: no row saying there are more.
+        exact = [dict(hit, line=n) for n in range(1, ingest.MAX_NOTICE_HITS_SHOWN + 1)]
+        text = ingest.notices_markdown(["a/x"], {"a/x": exact}, {})
+        self.assertEqual(text.count("| `a/x` | README.md |"), ingest.MAX_NOTICE_HITS_SHOWN)
+        self.assertNotIn("more |", text)
+
+    def test_markdown_when_nothing_was_scanned_or_nothing_was_found(self):
+        none = ingest.notices_markdown([], {}, {})
+        self.assertIn("No accepted source lacks a license, so nothing was scanned.", none)
+        self.assertNotIn("###", none)
+        clean = ingest.notices_markdown(["a/x"], {}, {})
+        self.assertIn("scanned: 1. Left out because their own files say otherwise: 0. Kept after review: 0.", clean)
+        self.assertNotIn("###", clean)
+
+
+class NoticesCommandTests(unittest.TestCase):
+    def make(self, root):
+        def source(ident, license_text, readme):
+            record = {"id": ident, "url": "https://github.com/" + ident, "revision": "a" * 40,
+                      "license": license_text, "fetched": "2026-10-25", "category": "shell"}
+            if readme is not None:
+                folder = os.path.join(root, "src", ident.replace("/", "__"))
+                os.makedirs(folder)
+                with open(os.path.join(folder, "README.md"), "w", encoding="utf-8") as handle:
+                    handle.write(readme)
+            return record
+
+        records = [
+            source("t/licensed", "MIT", "All rights reserved."),
+            source("t/clean", "NONE", "Some scripts.\n"),
+            source("t/closed", "none", "Some scripts.\nAll rights reserved.\nproprietary\n"),
+            source("t/reviewed", "NONE", "For personal use only.\n"),
+            source("t/last", "Apache-2.0", "hello"),
+        ]
+        manifest = os.path.join(root, "m.txt")
+        with open(manifest, "w", encoding="utf-8") as handle:
+            handle.write(ingest.manifest_text(records))
+        accepted = os.path.join(root, "a.txt")
+        with open(accepted, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(r["id"] for r in records) + "\n")
+        return manifest, accepted
+
+    def run_main(self, argv):
+        err = io.StringIO()
+        with redirect_stdout(io.StringIO()), redirect_stderr(err):
+            code = ingest.main(argv)
+        return code, err.getvalue()
+
+    def test_the_scan_leaves_out_what_says_otherwise(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest, accepted = self.make(root)
+            usable = os.path.join(root, "u.txt")
+            report = os.path.join(root, "r.tsv")
+            summary = os.path.join(root, "s.md")
+            reviewed = os.path.join(root, "rev.txt")
+            with open(reviewed, "w", encoding="utf-8") as handle:
+                handle.write("# reviewed by hand\nt/reviewed\n")
+            with open(summary, "w", encoding="utf-8") as handle:
+                handle.write("before\n")
+            base = ["notices", "--manifest", manifest, "--accepted", accepted,
+                    "--dest", os.path.join(root, "src"), "--out", usable]
+            code, err = self.run_main(base + ["--report", report, "--markdown", summary,
+                                              "--reviewed", reviewed])
+            self.assertEqual(code, 0, err)
+            self.assertIn("3 with no license scanned, 1 left out, 1 kept after review; 4 of 5 usable", err)
+            with open(usable, encoding="utf-8") as handle:
+                self.assertEqual(handle.read().split(), ["t/licensed", "t/clean", "t/reviewed", "t/last"])
+            with open(report, encoding="utf-8") as handle:
+                rows = [line.split("\t") for line in handle.read().splitlines()]
+            self.assertEqual(
+                [(r[0], r[1], r[2], r[3], r[4]) for r in rows],
+                [("left out", "t/closed", "README.md", "2", "all rights reserved"),
+                 ("left out", "t/closed", "README.md", "3", "proprietary"),
+                 ("kept", "t/reviewed", "README.md", "1", "personal or educational use only")],
+            )
+            with open(summary, encoding="utf-8") as handle:
+                text = handle.read()
+            self.assertTrue(text.startswith("before\n## midman-ai ingest: license notices"))
+            self.assertIn("| `t/closed` | README.md | 2 | all rights reserved |", text)
+            # Without the review list the same source is left out.
+            code, err = self.run_main(base)
+            self.assertEqual(code, 0, err)
+            self.assertIn("2 left out, 0 kept after review; 3 of 5 usable", err)
+            with open(usable, encoding="utf-8") as handle:
+                self.assertEqual(handle.read().split(), ["t/licensed", "t/clean", "t/last"])
+
+    def test_errors(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest, accepted = self.make(root)
+            usable = os.path.join(root, "u.txt")
+            dest = os.path.join(root, "src")
+            base = ["notices", "--manifest", manifest, "--dest", dest, "--out", usable]
+            with open(accepted, "w", encoding="utf-8") as handle:
+                handle.write("t/unknown\n")
+            code, err = self.run_main(base + ["--accepted", accepted])
+            self.assertEqual(code, 1)
+            self.assertIn("t/unknown", err)
+            # An unlicensed source that was not fetched is an error; a licensed one is not read.
+            with open(accepted, "w", encoding="utf-8") as handle:
+                handle.write("t/clean\n")
+            os.rename(os.path.join(dest, "t__clean"), os.path.join(dest, "elsewhere"))
+            code, err = self.run_main(base + ["--accepted", accepted])
+            self.assertEqual(code, 1)
+            self.assertIn("has not been fetched", err)
+            with open(accepted, "w", encoding="utf-8") as handle:
+                handle.write("t/licensed\n")
+            os.rename(os.path.join(dest, "t__licensed"), os.path.join(dest, "elsewhere2"))
+            code, err = self.run_main(base + ["--accepted", accepted])
+            self.assertEqual(code, 0, err)
+            self.assertIn("0 with no license scanned", err)
 
 
 class MeasureCommandTests(unittest.TestCase):

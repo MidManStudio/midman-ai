@@ -29,7 +29,7 @@ fn a_manifest_decides_which_sources_are_read() {
     manifest.push(source("rust-lang/rust", "MIT OR Apache-2.0", "rust")).unwrap();
     manifest.push(source("gnu/bash", "GPL-3.0-or-later", "shell")).unwrap();
     manifest.push(source("mozilla/gecko", "MPL-2.0", "code_other")).unwrap();
-    manifest.push(source("someone/unlicensed", "NOASSERTION", "rust")).unwrap();
+    manifest.push(source("someone/unlicensed", "NONE", "rust")).unwrap();
 
     let reloaded = Manifest::from_text(&manifest.to_text()).unwrap();
     assert_eq!(reloaded, manifest);

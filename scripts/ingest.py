@@ -16,6 +16,8 @@ Standard library only (plus the `git` program). Four commands:
     ingest.py measure  --manifest manifest.txt --accepted ids.txt --dest DIR --out results.json
                        [--markdown FILE] [--report check_manifest.tsv] [--note TEXT]
     ingest.py report   --report check_manifest.tsv --markdown FILE [--note TEXT]
+    ingest.py notices  --manifest manifest.txt --accepted ids.txt --dest DIR --out usable.txt
+                       [--report notices.tsv] [--markdown FILE] [--reviewed FILE]
 
 The license policy is NOT decided here. This script only records what the listing says
 (crates.io for Rust, the GitHub API for the rest). The Rust example `check_manifest` reads
@@ -38,6 +40,14 @@ CANDIDATES_SCHEMA = "midman-ingest-candidates/1"
 RESULTS_SCHEMA = "midman-ingest-results/1"
 # A line longer than this many bytes marks a file as possibly minified or generated.
 LONG_LINE = 1000
+# The notice scan reads the top-level files of a source that has no license, looking for a
+# statement against use. A file is read if its name starts with one of these (any case).
+NOTICE_PREFIXES = (
+    "readme", "license", "licence", "copying", "notice", "terms", "legal", "disclaimer",
+    "copyright",
+)
+MAX_NOTICE_BYTES = 200_000
+MAX_NOTICE_HITS_SHOWN = 3
 TOP_EXTENSIONS = 12
 MANIFEST_HEADER = "midman-data-manifest 1"
 USER_AGENT = "midman-ai-ingest (https://github.com/MidManStudio/midman-ai)"
@@ -192,7 +202,14 @@ def parse_github_search(doc, category):
         full = item.get("full_name")
         if not isinstance(full, str) or not ID_RE.match(full):
             continue
-        spdx = (item.get("license") or {}).get("spdx_id")
+        # GitHub gives `license: null` when it found no license at all, and an object with
+        # the id NOASSERTION when there is a license file it could not identify. The first is
+        # recorded as NONE, the second as NOASSERTION: they are not the same thing.
+        listed = item.get("license")
+        if listed is None:
+            license_text = "NONE"
+        else:
+            license_text = normalize_license(listed.get("spdx_id")) or "NOASSERTION"
         out.append(
             {
                 "id": full,
@@ -200,7 +217,7 @@ def parse_github_search(doc, category):
                 "category": category,
                 "origin": "github-search",
                 "stars": int(item.get("stargazers_count") or 0),
-                "license": normalize_license(spdx) or "NOASSERTION",
+                "license": license_text,
             }
         )
     return out
@@ -392,6 +409,142 @@ def summarize_measurements(sources, extensions):
     }
 
 
+def _compile(pattern):
+    return re.compile(pattern, re.IGNORECASE)
+
+
+# Each entry: what the match is called in the report, and the pattern. They look for a
+# statement that rights are kept or use is limited; they are deliberately wide, because a
+# false alarm costs one source and a missed one is the thing the scan is for.
+NOTICE_PATTERNS = [
+    ("all rights reserved", _compile(r"\ball\s+rights\s+reserved\b")),
+    ("proprietary", _compile(r"\bproprietary\b")),
+    ("non-commercial", _compile(r"\bnon[- ]?commercial\b")),
+    (
+        "personal or educational use only",
+        _compile(
+            r"\b(personal|private|educational|research|non-?profit)\s+(use|purposes?)\s+only\b"
+            r"|\bfor\s+(personal|educational|private)\s+use\b"
+        ),
+    ),
+    (
+        "permission",
+        _compile(
+            r"\b(without|no)\s+(\w+\s+){0,2}permission\b"
+            r"|\bpermission\s+(is|has)\s+not\s+(been\s+)?granted\b"
+        ),
+    ),
+    (
+        "may not be used or copied",
+        _compile(
+            r"\b(may|must|shall|can)\s*(not|n't)\s+be\s+(used|copied|reproduced|redistributed"
+            r"|distributed|modified|sold|shared)\b"
+            r"|\bdo\s+not\s+(copy|redistribute|reproduce|reupload|re-upload|steal|reuse|use\s+this)\b"
+            r"|\b(not|never)\s+(allowed|permitted)\s+to\s+(copy|use|reuse|redistribute|modify)\b"
+        ),
+    ),
+    (
+        "no license granted",
+        _compile(r"\bno\s+licen[sc]e\b[^.\n]{0,40}\b(granted|given|provided)\b|\bnot\s+licensed\b"),
+    ),
+    (
+        "against AI training",
+        _compile(
+            r"\b(no|not|never|prohibit\w*|forbid\w*|forbidden|disallow\w*|banned?)\b[^.\n]{0,60}"
+            r"\b(ai|a\.i\.|machine[- ]learning|llms?|language\s+models?|generative)\b[^.\n]{0,40}"
+            r"\b(train\w*|scrap\w*|dataset\w*|corpus)\b"
+            r"|\b(train\w*|scrap\w*)\b[^.\n]{0,40}\b(ai|machine[- ]learning|llms?|language\s+models?)\b"
+            r"[^.\n]{0,40}\b(prohibit\w*|forbid\w*|forbidden|disallow\w*|not\s+(allowed|permitted))\b"
+            r"|\bdo\s+not\s+(train|scrape)\b"
+        ),
+    ),
+]
+
+
+def notice_files(root):
+    """The top-level files of a source that the notice scan reads, sorted by name."""
+    found = []
+    try:
+        names = sorted(os.listdir(root))
+    except OSError:
+        return found
+    for name in names:
+        if not name.lower().startswith(NOTICE_PREFIXES):
+            continue
+        path = os.path.join(root, name)
+        if os.path.islink(path) or not os.path.isfile(path):
+            continue
+        try:
+            if os.path.getsize(path) > MAX_NOTICE_BYTES:
+                continue
+        except OSError:
+            continue
+        found.append(path)
+    return found
+
+
+def scan_notice_text(text):
+    """(line number, label, the line) for every line that matches a pattern, once per label."""
+    hits = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        for label, pattern in NOTICE_PATTERNS:
+            if pattern.search(line):
+                hits.append((number, label, " ".join(line.split())[:160]))
+    return hits
+
+
+def scan_source(root):
+    """The notice scan of one fetched source: a list of hit dicts, file by file."""
+    hits = []
+    for path in notice_files(root):
+        try:
+            with open(path, "rb") as handle:
+                text = handle.read().decode("utf-8", errors="replace")
+        except OSError:
+            continue
+        for number, label, line in scan_notice_text(text):
+            hits.append(
+                {"file": os.path.basename(path), "line": number, "label": label, "text": line}
+            )
+    return hits
+
+
+def notices_markdown(scanned, flagged, kept, note=""):
+    """The result of the notice scan as markdown.
+
+    `scanned` is the list of source ids that were scanned, `flagged` maps an id to its hits
+    (left out) and `kept` maps an id to its hits (flagged, but listed as reviewed).
+    """
+    lines = ["## midman-ai ingest: license notices", ""]
+    if note:
+        lines += [note, ""]
+    if not scanned:
+        lines += ["No accepted source lacks a license, so nothing was scanned.", ""]
+        return "\n".join(lines) + "\n"
+    lines += [
+        "Sources with no license that were scanned: %d. Left out because their own files say"
+        " otherwise: %d. Kept after review: %d." % (len(scanned), len(flagged), len(kept)),
+        "",
+    ]
+    for title, table in (("Left out", flagged), ("Kept after review", kept)):
+        if not table:
+            continue
+        lines += ["### " + title, "", "| Source | File | Line | Found | Text |", "|---|---|---:|---|---|"]
+        for ident in sorted(table):
+            hits = table[ident]
+            for hit in hits[:MAX_NOTICE_HITS_SHOWN]:
+                lines.append(
+                    "| `%s` | %s | %d | %s | %s |"
+                    % (ident, cell(hit["file"]), hit["line"], hit["label"], cell(hit["text"]))
+                )
+            if len(hits) > MAX_NOTICE_HITS_SHOWN:
+                lines.append(
+                    "| `%s` | | | | and %d more |" % (ident, len(hits) - MAX_NOTICE_HITS_SHOWN)
+                )
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 def parse_policy_report(text):
     """Reads the standard output of `check_manifest` (tab-separated, one source per line)."""
     accepted = []
@@ -426,6 +579,13 @@ def policy_markdown(report, note=""):
         lines.append("| %s | %d | %d |" % (name, categories[name]["accepted"], categories[name]["rejected"]))
     lines.append("| all | %d | %d |" % (len(report["accepted"]), len(report["rejected"])))
     lines.append("")
+    unlicensed = sum(1 for source in report["accepted"] if source["license"].upper() == "NONE")
+    if unlicensed:
+        lines += [
+            "%d of the accepted sources have no license. The project accepts those unless their"
+            " own files say otherwise, which is checked after they are fetched." % unlicensed,
+            "",
+        ]
     if report["rejected"]:
         lines += ["### Refused", "", "| Source | Category | License | Reason |", "|---|---|---|---|"]
         for source in report["rejected"]:
@@ -759,6 +919,61 @@ def cmd_measure(args):
         )
 
 
+def cmd_notices(args):
+    with open(args.manifest, encoding="utf-8") as handle:
+        records = {r["id"]: r for r in read_manifest(handle.read())}
+    with open(args.accepted, encoding="utf-8") as handle:
+        wanted = [line.strip() for line in handle if line.strip()]
+    reviewed = set()
+    if args.reviewed:
+        with open(args.reviewed, encoding="utf-8") as handle:
+            reviewed = {line.strip() for line in handle if line.strip() and not line.startswith("#")}
+    usable = []
+    scanned = []
+    flagged = {}
+    kept = {}
+    for ident in wanted:
+        record = records.get(ident)
+        if record is None:
+            raise IngestError("`" + ident + "` is not in the manifest")
+        if record["license"].strip().upper() != "NONE":
+            usable.append(ident)
+            continue
+        root = source_dir(args.dest, ident)
+        if not os.path.isdir(root):
+            raise IngestError("`" + ident + "` has not been fetched into " + args.dest)
+        scanned.append(ident)
+        hits = scan_source(root)
+        if not hits:
+            usable.append(ident)
+        elif ident in reviewed:
+            kept[ident] = hits
+            usable.append(ident)
+        else:
+            flagged[ident] = hits
+    with open(args.out, "w", encoding="utf-8", newline="\n") as handle:
+        for ident in usable:
+            handle.write(ident + "\n")
+    if args.report:
+        with open(args.report, "w", encoding="utf-8", newline="\n") as handle:
+            for status, table in (("left out", flagged), ("kept", kept)):
+                for ident in sorted(table):
+                    for hit in table[ident]:
+                        handle.write(
+                            "\t".join(
+                                [status, ident, hit["file"], str(hit["line"]), hit["label"], hit["text"]]
+                            ).replace("\r", " ")
+                            + "\n"
+                        )
+    if args.markdown:
+        with open(args.markdown, "a", encoding="utf-8", newline="\n") as handle:
+            handle.write(notices_markdown(scanned, flagged, kept))
+    sys.stderr.write(
+        "notices: %d with no license scanned, %d left out, %d kept after review; %d of %d usable\n"
+        % (len(scanned), len(flagged), len(kept), len(usable), len(wanted))
+    )
+
+
 def cmd_report(args):
     with open(args.report, encoding="utf-8") as handle:
         report = parse_policy_report(handle.read())
@@ -816,6 +1031,18 @@ def build_parser():
     measure.add_argument("--note", default="", help="a line shown at the top of the summary")
     measure.add_argument("--max-bytes", type=int, default=1024 * 1024)
     measure.set_defaults(run=cmd_measure)
+
+    notices = sub.add_parser(
+        "notices", help="look in the files of unlicensed sources for a statement against use"
+    )
+    notices.add_argument("--manifest", required=True)
+    notices.add_argument("--accepted", required=True, help="file with one source id per line")
+    notices.add_argument("--dest", required=True)
+    notices.add_argument("--out", required=True, help="the accepted ids that remain usable")
+    notices.add_argument("--report", help="write the matching lines here (tab separated)")
+    notices.add_argument("--markdown", help="append a markdown summary to this file")
+    notices.add_argument("--reviewed", help="ids to keep although the scan found something")
+    notices.set_defaults(run=cmd_notices)
 
     report = sub.add_parser("report", help="markdown summary of check_manifest's verdicts")
     report.add_argument("--report", required=True, help="the standard output of check_manifest")

@@ -57,3 +57,27 @@ fn a_changed_license_in_the_same_file_is_judged_by_the_policy() {
     assert_eq!(partition.rejected.len(), 1);
     assert_eq!(partition.rejected[0].source.id, "BurntSushi/memchr");
 }
+
+#[test]
+fn a_source_with_no_license_is_accepted_only_when_the_policy_says_so() {
+    let changed = WRITTEN_BY_THE_SCRIPT.replacen("Unlicense OR MIT", "NONE", 1);
+    let manifest = Manifest::from_text(&changed).expect("NONE is a valid expression");
+
+    let strict = manifest.partition(&LicensePolicy::permissive_and_weak_copyleft());
+    assert_eq!(strict.accepted.len(), 3);
+    assert_eq!(strict.rejected[0].source.id, "BurntSushi/memchr");
+    assert!(strict.rejected[0].reason.starts_with("no license was identified"));
+
+    let open =
+        manifest.partition(&LicensePolicy::permissive_and_weak_copyleft().allow_unlicensed());
+    assert_eq!(open.accepted.len(), 4);
+    assert!(open.rejected.is_empty());
+
+    // A license that could not be identified is refused by both.
+    let unknown = WRITTEN_BY_THE_SCRIPT.replacen("Unlicense OR MIT", "NOASSERTION", 1);
+    let manifest = Manifest::from_text(&unknown).expect("still valid");
+    let open =
+        manifest.partition(&LicensePolicy::permissive_and_weak_copyleft().allow_unlicensed());
+    assert_eq!(open.rejected.len(), 1);
+    assert!(open.rejected[0].reason.starts_with("the license could not be identified"));
+}

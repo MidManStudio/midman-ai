@@ -40,8 +40,10 @@ accepted	mattpocock/skills	shell	MIT
 accepted	ohmyzsh/ohmyzsh	shell	MIT
 accepted	msitarzewski/agency-agents	shell	MIT
 accepted	d3/d3	shell	ISC
+accepted	papers-we-love/papers-we-love	shell	NONE
 accepted	nvm-sh/nvm	shell	MIT
 accepted	base/node	shell	MIT
+accepted	youngyangyang04/leetcode-master	shell	NONE
 accepted	romkatv/powerlevel10k	shell	MIT
 accepted	dockur/windows	shell	MIT
 accepted	omacom/omarchy	shell	MIT
@@ -54,24 +56,22 @@ accepted	mathiasbynens/dotfiles	shell	MIT
 accepted	community-scripts/ProxmoxVE	shell	MIT
 accepted	shengxinjing/programmer-job-blacklist	shell	MIT
 accepted	Donchitos/Claude-Code-Game-Studios	shell	MIT
+accepted	powerline/fonts	shell	NONE
 accepted	a2aproject/A2A	shell	Apache-2.0
 accepted	yuaotian/go-cursor-help	shell	MIT
 accepted	VoltAgent/awesome-claude-code-subagents	shell	MIT
 accepted	gpakosz/.tmux	shell	MIT
+accepted	eip-work/kuboard-press	shell	NONE
+accepted	kholia/OSX-KVM	shell	NONE
 accepted	dylanaraps/neofetch	shell	MIT
-rejected	papers-we-love/papers-we-love	shell	NOASSERTION	no license was identified (`NOASSERTION`)
 rejected	tw93/Mole	shell	GPL-3.0	`GPL-3.0` is not on the allow list
-rejected	youngyangyang04/leetcode-master	shell	NOASSERTION	no license was identified (`NOASSERTION`)
-rejected	pi-hole/pi-hole	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	pi-hole/pi-hole	shell	NOASSERTION	the license could not be identified (`NOASSERTION`)
 rejected	sickcodes/Docker-OSX	shell	GPL-3.0	`GPL-3.0` is not on the allow list
 rejected	acmesh-official/acme.sh	shell	GPL-3.0	`GPL-3.0` is not on the allow list
 rejected	open-guides/og-aws	shell	CC-BY-4.0	`CC-BY-4.0` is not on the allow list
-rejected	MichaelCade/90DaysOfDevOps	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	MichaelCade/90DaysOfDevOps	shell	NOASSERTION	the license could not be identified (`NOASSERTION`)
 rejected	233boy/v2ray	shell	GPL-3.0	`GPL-3.0` is not on the allow list
-rejected	hwdsl2/setup-ipsec-vpn	shell	NOASSERTION	no license was identified (`NOASSERTION`)
-rejected	mbadolato/iTerm2-Color-Schemes	shell	NOASSERTION	no license was identified (`NOASSERTION`)
-rejected	nvie/gitflow	shell	NOASSERTION	no license was identified (`NOASSERTION`)
+rejected	hwdsl2/setup-ipsec-vpn	shell	NOASSERTION	the license could not be identified (`NOASSERTION`)
+rejected	mbadolato/iTerm2-Color-Schemes	shell	NOASSERTION	the license could not be identified (`NOASSERTION`)
+rejected	nvie/gitflow	shell	NOASSERTION	the license could not be identified (`NOASSERTION`)
 rejected	lxgw/LxgwWenKai	shell	OFL-1.1	`OFL-1.1` is not on the allow list
-rejected	powerline/fonts	shell	NOASSERTION	no license was identified (`NOASSERTION`)
-rejected	eip-work/kuboard-press	shell	NOASSERTION	no license was identified (`NOASSERTION`)
-rejected	kholia/OSX-KVM	shell	NOASSERTION	no license was identified (`NOASSERTION`)

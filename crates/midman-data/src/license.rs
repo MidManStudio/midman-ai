@@ -384,12 +384,13 @@ impl Verdict {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LicensePolicy {
     allowed: BTreeSet<String>,
+    unlicensed: bool,
 }
 
 impl LicensePolicy {
     /// A policy that allows nothing. Add licenses with [`LicensePolicy::allow`].
     pub fn empty() -> Self {
-        LicensePolicy { allowed: BTreeSet::new() }
+        LicensePolicy { allowed: BTreeSet::new(), unlicensed: false }
     }
 
     /// The default policy: [`PERMISSIVE`] plus [`WEAK_COPYLEFT`].
@@ -413,6 +414,33 @@ impl LicensePolicy {
         self
     }
 
+    /// Also accepts a source whose listing says it has no license: the SPDX value `NONE`.
+    ///
+    /// ```
+    /// use midman_data::LicensePolicy;
+    ///
+    /// let strict = LicensePolicy::permissive_and_weak_copyleft();
+    /// let open = strict.clone().allow_unlicensed();
+    /// assert!(!strict.check("NONE").unwrap().is_accepted());
+    /// assert!(open.check("NONE").unwrap().is_accepted());
+    /// // A license that exists but could not be identified is not "no license".
+    /// assert!(!open.check("NOASSERTION").unwrap().is_accepted());
+    /// ```
+    ///
+    /// This is a choice about the corpus, not a statement of law: code with no license is
+    /// not free to use by default, so the project decides, and a source that says anything
+    /// in its own files against use has to be caught by a separate check (`ingest.py notices`).
+    #[must_use]
+    pub fn allow_unlicensed(mut self) -> Self {
+        self.unlicensed = true;
+        self
+    }
+
+    /// Whether `NONE` is accepted, see [`LicensePolicy::allow_unlicensed`].
+    pub fn allows_unlicensed(&self) -> bool {
+        self.unlicensed
+    }
+
     /// The allowed identifiers in canonical lowercase form, sorted.
     pub fn allowed_ids(&self) -> impl Iterator<Item = &str> {
         self.allowed.iter().map(String::as_str)
@@ -433,8 +461,19 @@ impl LicensePolicy {
         match expr {
             LicenseExpr::License { id, or_later, exception } => {
                 let lower = id.to_ascii_lowercase();
-                if (lower == "noassertion" || lower == "none") && exception.is_none() {
-                    return Verdict::Rejected(format!("no license was identified (`{id}`)"));
+                if exception.is_none() {
+                    if lower == "none" {
+                        return if self.unlicensed {
+                            Verdict::Accepted
+                        } else {
+                            Verdict::Rejected(format!("no license was identified (`{id}`)"))
+                        };
+                    }
+                    if lower == "noassertion" {
+                        return Verdict::Rejected(format!(
+                            "the license could not be identified (`{id}`)"
+                        ));
+                    }
                 }
                 if self.allowed.contains(&canonical_id(id, *or_later)) {
                     Verdict::Accepted
@@ -773,12 +812,49 @@ mod tests {
 
     #[test]
     fn no_license_found_is_rejected_with_its_own_reason() {
-        for id in ["NOASSERTION", "NONE", "noassertion"] {
+        for id in ["NONE", "none"] {
             match policy().check(id).unwrap() {
-                Verdict::Rejected(reason) => assert!(reason.contains("no license"), "{reason}"),
+                Verdict::Rejected(reason) => {
+                    assert!(reason.starts_with("no license was identified"), "{reason}")
+                }
                 Verdict::Accepted => panic!("{id} accepted"),
             }
         }
+        for id in ["NOASSERTION", "noassertion"] {
+            match policy().check(id).unwrap() {
+                Verdict::Rejected(reason) => {
+                    assert!(reason.starts_with("the license could not be identified"), "{reason}")
+                }
+                Verdict::Accepted => panic!("{id} accepted"),
+            }
+        }
+    }
+
+    #[test]
+    fn unlicensed_is_accepted_only_when_the_policy_says_so() {
+        assert!(!policy().allows_unlicensed());
+        let open = policy().allow_unlicensed();
+        assert!(open.allows_unlicensed());
+        for id in ["NONE", "none", "None"] {
+            assert!(open.check(id).unwrap().is_accepted(), "{id}");
+        }
+        // Unidentified is a different thing from none, and stays refused.
+        for id in ["NOASSERTION", "noassertion"] {
+            assert!(!open.check(id).unwrap().is_accepted(), "{id}");
+        }
+        // The rest of the policy is unchanged.
+        assert!(open.check("MIT").unwrap().is_accepted());
+        assert!(!open.check("GPL-3.0-only").unwrap().is_accepted());
+        assert!(!open.check("GPL-3.0-only AND NONE").unwrap().is_accepted());
+        assert!(!open.check("NONE AND NOASSERTION").unwrap().is_accepted());
+        assert!(open.check("NONE OR GPL-3.0-only").unwrap().is_accepted());
+        // An exception does not turn NONE into a license; it is judged as a name.
+        assert!(!open.check("NONE WITH LLVM-exception").unwrap().is_accepted());
+        // It is a flag of the policy, not an allowed identifier.
+        assert!(!LicensePolicy::empty().allow_unlicensed().check("MIT").unwrap().is_accepted());
+        assert!(LicensePolicy::empty().allow_unlicensed().check("NONE").unwrap().is_accepted());
+        assert_eq!(open.allowed_ids().count(), policy().allowed_ids().count());
+        assert_ne!(open, policy());
     }
 
     #[test]

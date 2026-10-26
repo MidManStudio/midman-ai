@@ -1,0 +1,3 @@
+# Sources that have no license, were flagged by the notice scan, and that you have read and decided to keep.
+# One source id per line (owner/repo). Lines that start with # are comments.
+# The scan is run by the "midman-ai Ingest" workflow; see docs/ci-and-workflows.md, `ingest.py`.
