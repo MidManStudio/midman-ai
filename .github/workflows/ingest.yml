@@ -8,14 +8,19 @@
 #             policy to it with the Rust code that training uses, fetches every accepted
 #             source at exactly its pinned commit, looks in the top-level files of every
 #             source that has no license for a statement against use (such a source is left
-#             out if it has one), and counts what the remaining sources would give:
-#             files and megabytes by category, sources with no file of their category, files
-#             that are not UTF-8, files with a very long line, and everything fetched by
-#             extension. Nothing is trained and no shard is written.
+#             out if it has one), and counts what the remaining sources would give: code
+#             and documentation files and megabytes by category (code is by suffix or name,
+#             and for shell also scripts with a shell #! line; documentation is Markdown and
+#             reStructuredText without release notes), where the documentation is, sources
+#             with no file of their category, files that are not UTF-8, files with a very
+#             long line, and everything fetched by extension. It also writes the list of
+#             files training would read. Nothing is trained and no shard is written.
 #
-#   discover  Builds a NEW proposed manifest: the most downloaded crates on crates.io (Rust)
-#             and a GitHub repository search (shell), each pinned to the commit at the head of
-#             its default branch, with the license policy's verdict for every one. The
+#   discover  Builds a NEW proposed manifest: the most downloaded crates on crates.io (Rust),
+#             the most starred Rust repositories on GitHub (their license is read from the
+#             root Cargo.toml when GitHub cannot name one) and a GitHub repository search
+#             (shell), each pinned to the commit at the head of its default branch, with the
+#             license policy's verdict for every one. The
 #             manifest, the candidate lists and the verdicts are uploaded as an artifact. It
 #             never changes the repository: to use a proposed manifest, put it at
 #             data/manifest.txt.
@@ -52,7 +57,15 @@ on:
       rust_repos:
         description: 'discover: how many Rust repositories to take from crates.io (about 3 seconds each)'
         type: string
-        default: '80'
+        default: '300'
+      rust_stars_query:
+        description: 'discover: GitHub repository search for Rust applications and libraries'
+        type: string
+        default: 'language:Rust stars:>2000'
+      rust_stars_repos:
+        description: 'discover: how many of those to take (0 leaves them out)'
+        type: string
+        default: '100'
       shell_query:
         description: 'discover: GitHub repository search for the shell sources'
         type: string
@@ -60,7 +73,7 @@ on:
       shell_repos:
         description: 'discover: how many shell repositories to take'
         type: string
-        default: '40'
+        default: '100'
       exclude:
         description: 'discover: source ids to leave out, separated by spaces'
         type: string
@@ -78,7 +91,7 @@ jobs:
     name: fetch and measure the manifest
     if: ${{ inputs.mode == 'measure' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     env:
       BASELINE_NOTE: ${{ inputs.baseline_note }}
       MANIFEST: ${{ inputs.manifest }}
@@ -151,8 +164,11 @@ jobs:
         run: |
           set -o pipefail
           echo "=== fetch ===" | tee -a ingest-raw.txt
+          df -h . | tee -a ingest-raw.txt
           python3 scripts/ingest.py fetch --manifest "$MANIFEST" --accepted accepted.txt \
-            --dest data-src 2>&1 | tee -a ingest-raw.txt
+            --dest data-src --drop-git 2>&1 | tee -a ingest-raw.txt
+          df -h . | tee -a ingest-raw.txt
+          du -sh data-src | tee -a ingest-raw.txt
 
       # Sources with no license are accepted unless their own files say otherwise: this is
       # the look in those files. usable.txt is the accepted list without the ones left out.
@@ -179,10 +195,21 @@ jobs:
             --dest data-src --out ingest-results.json \
             --markdown "$GITHUB_STEP_SUMMARY" 2>&1 | tee -a ingest-raw.txt
 
+      # The list of files that training would read: category, kind (code or docs), source, path.
+      - name: List the usable files
+        id: files
+        if: steps.notices.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== files ===" | tee -a ingest-raw.txt
+          python3 scripts/ingest.py files --manifest "$MANIFEST" --accepted usable.txt \
+            --dest data-src --out files.tsv 2>&1 | tee -a ingest-raw.txt
+
       - name: Say what happened
         if: always()
         env:
-          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},notices=${{ steps.notices.outcome }},measure=${{ steps.measure.outcome }}
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},notices=${{ steps.notices.outcome }},measure=${{ steps.measure.outcome }},files=${{ steps.files.outcome }}
         run: |
           {
             echo "### Steps"
@@ -202,13 +229,14 @@ jobs:
             accepted.txt
             usable.txt
             notices.tsv
+            files.tsv
           retention-days: 30
           if-no-files-found: warn
 
       - name: Fail if a step failed
         if: always()
         env:
-          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},notices=${{ steps.notices.outcome }},measure=${{ steps.measure.outcome }}
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},notices=${{ steps.notices.outcome }},measure=${{ steps.measure.outcome }},files=${{ steps.files.outcome }}
         run: |
           set -eu
           case "$STEP_OUTCOMES" in
@@ -226,6 +254,8 @@ jobs:
     env:
       BASELINE_NOTE: ${{ inputs.baseline_note }}
       RUST_REPOS: ${{ inputs.rust_repos }}
+      RUST_STARS_QUERY: ${{ inputs.rust_stars_query }}
+      RUST_STARS_REPOS: ${{ inputs.rust_stars_repos }}
       SHELL_QUERY: ${{ inputs.shell_query }}
       SHELL_REPOS: ${{ inputs.shell_repos }}
       EXCLUDE: ${{ inputs.exclude }}
@@ -278,6 +308,21 @@ jobs:
           echo "=== crates ===" | tee -a ingest-raw.txt
           python3 scripts/ingest.py crates --count "$RUST_REPOS" --out candidates-rust.json 2>&1 | tee -a ingest-raw.txt
 
+      # Rust repositories GitHub knows by stars. GitHub often cannot name the license of a
+      # dual-licensed one (it says NOASSERTION), so the root Cargo.toml is read for those.
+      - name: List Rust repositories (GitHub search)
+        id: stars
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== rust by stars ===" | tee -a ingest-raw.txt
+          if [ "$RUST_STARS_REPOS" = "0" ]; then
+            echo "skipped (rust_stars_repos is 0)" | tee -a ingest-raw.txt
+          else
+            python3 scripts/ingest.py github --query "$RUST_STARS_QUERY" --category rust \
+              --count "$RUST_STARS_REPOS" --cargo-license --out candidates-rust-stars.json 2>&1 | tee -a ingest-raw.txt
+          fi
+
       - name: List shell repositories (GitHub search)
         id: shell
         continue-on-error: true
@@ -289,17 +334,20 @@ jobs:
 
       - name: Pin every candidate to a commit
         id: manifest
-        if: steps.crates.outcome == 'success' && steps.shell.outcome == 'success'
+        if: steps.crates.outcome == 'success' && steps.stars.outcome == 'success' && steps.shell.outcome == 'success'
         continue-on-error: true
         run: |
           set -o pipefail
           echo "=== manifest ===" | tee -a ingest-raw.txt
-          set --
+          set -- --candidates candidates-rust.json
+          if [ -f candidates-rust-stars.json ]; then
+            set -- "$@" candidates-rust-stars.json
+          fi
+          set -- "$@" candidates-shell.json --out proposed-manifest.txt
           for id in $EXCLUDE; do
             set -- "$@" --exclude "$id"
           done
-          python3 scripts/ingest.py manifest --candidates candidates-rust.json candidates-shell.json \
-            --out proposed-manifest.txt "$@" 2>&1 | tee -a ingest-raw.txt
+          python3 scripts/ingest.py manifest "$@" 2>&1 | tee -a ingest-raw.txt
 
       - name: Apply the license policy
         id: policy
@@ -315,7 +363,7 @@ jobs:
           if [ "$status" -ne 0 ]; then
             exit "$status"
           fi
-          note="Run ${{ github.run_number }}, commit ${GITHUB_SHA}, ${{ steps.toolchain.outputs.version }}. Rust: top ${RUST_REPOS} crates.io repositories. Shell: ${SHELL_QUERY} (${SHELL_REPOS})."
+          note="Run ${{ github.run_number }}, commit ${GITHUB_SHA}, ${{ steps.toolchain.outputs.version }}. Rust: top ${RUST_REPOS} crates.io repositories, plus ${RUST_STARS_REPOS} from ${RUST_STARS_QUERY}. Shell: ${SHELL_QUERY} (${SHELL_REPOS})."
           if [ -n "$BASELINE_NOTE" ]; then
             note="$note $BASELINE_NOTE"
           fi
@@ -325,7 +373,7 @@ jobs:
       - name: Say what happened
         if: always()
         env:
-          STEP_OUTCOMES: build=${{ steps.build.outcome }},crates=${{ steps.crates.outcome }},shell=${{ steps.shell.outcome }},manifest=${{ steps.manifest.outcome }},policy=${{ steps.policy.outcome }}
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},crates=${{ steps.crates.outcome }},stars=${{ steps.stars.outcome }},shell=${{ steps.shell.outcome }},manifest=${{ steps.manifest.outcome }},policy=${{ steps.policy.outcome }}
         run: |
           {
             echo "### Steps"
@@ -343,6 +391,7 @@ jobs:
           path: |
             proposed-manifest.txt
             candidates-rust.json
+            candidates-rust-stars.json
             candidates-shell.json
             policy-report.tsv
             accepted.txt
@@ -353,7 +402,7 @@ jobs:
       - name: Fail if a step failed
         if: always()
         env:
-          STEP_OUTCOMES: build=${{ steps.build.outcome }},crates=${{ steps.crates.outcome }},shell=${{ steps.shell.outcome }},manifest=${{ steps.manifest.outcome }},policy=${{ steps.policy.outcome }}
+          STEP_OUTCOMES: build=${{ steps.build.outcome }},crates=${{ steps.crates.outcome }},stars=${{ steps.stars.outcome }},shell=${{ steps.shell.outcome }},manifest=${{ steps.manifest.outcome }},policy=${{ steps.policy.outcome }}
         run: |
           set -eu
           case "$STEP_OUTCOMES" in
