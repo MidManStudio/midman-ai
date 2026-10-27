@@ -4,6 +4,9 @@
   "categories": {
     "rust": {
       "bytes": 29885896,
+      "docs_bytes": 625325,
+      "docs_files": 221,
+      "docs_not_utf8": 0,
       "files": 3151,
       "long_line_files": 1,
       "not_utf8": 0,
@@ -11,8 +14,11 @@
       "sources_without_files": 0
     },
     "shell": {
-      "bytes": 13602630,
-      "files": 2926,
+      "bytes": 16014068,
+      "docs_bytes": 37715649,
+      "docs_files": 5180,
+      "docs_not_utf8": 0,
+      "files": 3593,
       "long_line_files": 1,
       "not_utf8": 0,
       "sources": 28,
@@ -81,11 +87,14 @@
       "files": 192
     }
   ],
-  "schema": "midman-ingest-results/1",
+  "schema": "midman-ingest-results/2",
   "sources": [
     {
       "bytes": 823017,
       "category": "rust",
+      "docs_bytes": 3482,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 39,
       "id": "rust-lang/hashbrown",
       "long_line_files": 0,
@@ -95,6 +104,9 @@
     {
       "bytes": 2390629,
       "category": "rust",
+      "docs_bytes": 17830,
+      "docs_files": 8,
+      "docs_not_utf8": 0,
       "files": 133,
       "id": "dtolnay/syn",
       "long_line_files": 0,
@@ -104,6 +116,9 @@
     {
       "bytes": 104639,
       "category": "rust",
+      "docs_bytes": 21019,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 41,
       "id": "rust-random/getrandom",
       "long_line_files": 0,
@@ -113,6 +128,9 @@
     {
       "bytes": 232016,
       "category": "rust",
+      "docs_bytes": 18000,
+      "docs_files": 5,
+      "docs_not_utf8": 0,
       "files": 106,
       "id": "bitflags/bitflags",
       "long_line_files": 0,
@@ -122,6 +140,9 @@
     {
       "bytes": 401255,
       "category": "rust",
+      "docs_bytes": 12347,
+      "docs_files": 8,
+      "docs_not_utf8": 0,
       "files": 44,
       "id": "rust-lang-nursery/rand",
       "long_line_files": 0,
@@ -131,6 +152,9 @@
     {
       "bytes": 4649300,
       "category": "rust",
+      "docs_bytes": 28700,
+      "docs_files": 9,
+      "docs_not_utf8": 0,
       "files": 507,
       "id": "rust-lang/libc",
       "long_line_files": 0,
@@ -140,6 +164,9 @@
     {
       "bytes": 109466,
       "category": "rust",
+      "docs_bytes": 9918,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 20,
       "id": "dtolnay/quote",
       "long_line_files": 0,
@@ -149,6 +176,9 @@
     {
       "bytes": 241221,
       "category": "rust",
+      "docs_bytes": 4055,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 27,
       "id": "dtolnay/proc-macro2",
       "long_line_files": 0,
@@ -158,6 +188,9 @@
     {
       "bytes": 334012,
       "category": "rust",
+      "docs_bytes": 9458,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 31,
       "id": "marshallpierce/rust-base64",
       "long_line_files": 0,
@@ -167,6 +200,9 @@
     {
       "bytes": 482221,
       "category": "rust",
+      "docs_bytes": 2818,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 36,
       "id": "indexmap-rs/indexmap",
       "long_line_files": 0,
@@ -176,6 +212,9 @@
     {
       "bytes": 729085,
       "category": "rust",
+      "docs_bytes": 9678,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 76,
       "id": "rust-itertools/itertools",
       "long_line_files": 0,
@@ -185,6 +224,9 @@
     {
       "bytes": 150099,
       "category": "rust",
+      "docs_bytes": 7464,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 68,
       "id": "dtolnay/thiserror",
       "long_line_files": 0,
@@ -194,6 +236,9 @@
     {
       "bytes": 6930,
       "category": "rust",
+      "docs_bytes": 1731,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 2,
       "id": "rust-lang/cfg-if",
       "long_line_files": 0,
@@ -203,6 +248,9 @@
     {
       "bytes": 615552,
       "category": "rust",
+      "docs_bytes": 18832,
+      "docs_files": 10,
+      "docs_not_utf8": 0,
       "files": 63,
       "id": "BurntSushi/memchr",
       "long_line_files": 0,
@@ -212,6 +260,9 @@
     {
       "bytes": 5561756,
       "category": "rust",
+      "docs_bytes": 59990,
+      "docs_files": 17,
+      "docs_not_utf8": 0,
       "files": 227,
       "id": "rust-lang/regex",
       "long_line_files": 0,
@@ -221,6 +272,9 @@
     {
       "bytes": 1246310,
       "category": "rust",
+      "docs_bytes": 10261,
+      "docs_files": 8,
+      "docs_not_utf8": 0,
       "files": 208,
       "id": "serde-rs/serde",
       "long_line_files": 0,
@@ -230,6 +284,9 @@
     {
       "bytes": 163331,
       "category": "rust",
+      "docs_bytes": 12773,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 17,
       "id": "dtolnay/unicode-ident",
       "long_line_files": 0,
@@ -239,6 +296,9 @@
     {
       "bytes": 21419,
       "category": "rust",
+      "docs_bytes": 2299,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 5,
       "id": "dtolnay/itoa",
       "long_line_files": 0,
@@ -248,6 +308,9 @@
     {
       "bytes": 705702,
       "category": "rust",
+      "docs_bytes": 15776,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 72,
       "id": "serde-rs/json",
       "long_line_files": 1,
@@ -257,6 +320,9 @@
     {
       "bytes": 27607,
       "category": "rust",
+      "docs_bytes": 1951,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 9,
       "id": "withoutboats/heck",
       "long_line_files": 0,
@@ -266,6 +332,9 @@
     {
       "bytes": 46374,
       "category": "rust",
+      "docs_bytes": 3792,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 17,
       "id": "cuviper/autocfg",
       "long_line_files": 0,
@@ -275,6 +344,9 @@
     {
       "bytes": 123665,
       "category": "rust",
+      "docs_bytes": 2191,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 20,
       "id": "matklad/once_cell",
       "long_line_files": 0,
@@ -284,6 +356,9 @@
     {
       "bytes": 193965,
       "category": "rust",
+      "docs_bytes": 59670,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 13,
       "id": "rust-lang/log",
       "long_line_files": 0,
@@ -293,6 +368,9 @@
     {
       "bytes": 795748,
       "category": "rust",
+      "docs_bytes": 5804,
+      "docs_files": 4,
+      "docs_not_utf8": 0,
       "files": 58,
       "id": "rust-lang/cc-rs",
       "long_line_files": 0,
@@ -302,6 +380,9 @@
     {
       "bytes": 351585,
       "category": "rust",
+      "docs_bytes": 6809,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 7,
       "id": "rust-lang/socket2",
       "long_line_files": 0,
@@ -311,6 +392,9 @@
     {
       "bytes": 201524,
       "category": "rust",
+      "docs_bytes": 6164,
+      "docs_files": 5,
+      "docs_not_utf8": 0,
       "files": 46,
       "id": "servo/rust-smallvec",
       "long_line_files": 0,
@@ -320,6 +404,9 @@
     {
       "bytes": 2729920,
       "category": "rust",
+      "docs_bytes": 25860,
+      "docs_files": 6,
+      "docs_not_utf8": 0,
       "files": 456,
       "id": "bytecodealliance/rustix",
       "long_line_files": 0,
@@ -329,6 +416,9 @@
     {
       "bytes": 816157,
       "category": "rust",
+      "docs_bytes": 54356,
+      "docs_files": 7,
+      "docs_not_utf8": 0,
       "files": 40,
       "id": "BurntSushi/aho-corasick",
       "long_line_files": 0,
@@ -338,6 +428,9 @@
     {
       "bytes": 2595019,
       "category": "rust",
+      "docs_bytes": 76784,
+      "docs_files": 69,
+      "docs_not_utf8": 0,
       "files": 337,
       "id": "clap-rs/clap",
       "long_line_files": 0,
@@ -347,6 +440,9 @@
     {
       "bytes": 141547,
       "category": "rust",
+      "docs_bytes": 3890,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 30,
       "id": "dtolnay/ryu",
       "long_line_files": 0,
@@ -356,6 +452,9 @@
     {
       "bytes": 453401,
       "category": "rust",
+      "docs_bytes": 33601,
+      "docs_files": 13,
+      "docs_not_utf8": 0,
       "files": 75,
       "id": "RustCrypto/traits",
       "long_line_files": 0,
@@ -365,6 +464,9 @@
     {
       "bytes": 625780,
       "category": "rust",
+      "docs_bytes": 5737,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 45,
       "id": "Amanieu/parking_lot",
       "long_line_files": 0,
@@ -374,6 +476,9 @@
     {
       "bytes": 508103,
       "category": "rust",
+      "docs_bytes": 52852,
+      "docs_files": 18,
+      "docs_not_utf8": 0,
       "files": 95,
       "id": "RustCrypto/utils",
       "long_line_files": 0,
@@ -383,6 +488,9 @@
     {
       "bytes": 40981,
       "category": "rust",
+      "docs_bytes": 4370,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 3,
       "id": "rapidfuzz/strsim-rs",
       "long_line_files": 0,
@@ -392,6 +500,9 @@
     {
       "bytes": 385211,
       "category": "rust",
+      "docs_bytes": 2226,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 34,
       "id": "tokio-rs/bytes",
       "long_line_files": 0,
@@ -401,6 +512,9 @@
     {
       "bytes": 711983,
       "category": "rust",
+      "docs_bytes": 7077,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 82,
       "id": "tokio-rs/mio",
       "long_line_files": 0,
@@ -410,6 +524,9 @@
     {
       "bytes": 169366,
       "category": "rust",
+      "docs_bytes": 5760,
+      "docs_files": 2,
+      "docs_not_utf8": 0,
       "files": 62,
       "id": "taiki-e/pin-project-lite",
       "long_line_files": 0,
@@ -417,9 +534,12 @@
       "revision": "89df232181961a9abefab5b3ede9ac1399409ece"
     },
     {
-      "bytes": 261163,
+      "bytes": 274791,
       "category": "shell",
-      "files": 50,
+      "docs_bytes": 823791,
+      "docs_files": 111,
+      "docs_not_utf8": 0,
+      "files": 56,
       "id": "obra/superpowers",
       "long_line_files": 0,
       "not_utf8": 0,
@@ -428,6 +548,9 @@
     {
       "bytes": 13729,
       "category": "shell",
+      "docs_bytes": 598291,
+      "docs_files": 131,
+      "docs_not_utf8": 0,
       "files": 5,
       "id": "mattpocock/skills",
       "long_line_files": 0,
@@ -435,9 +558,12 @@
       "revision": "5beb35b040e3de97e54fa9e386d7e42d15c295c2"
     },
     {
-      "bytes": 1558773,
+      "bytes": 1611840,
       "category": "shell",
-      "files": 410,
+      "docs_bytes": 779225,
+      "docs_files": 391,
+      "docs_not_utf8": 0,
+      "files": 422,
       "id": "ohmyzsh/ohmyzsh",
       "long_line_files": 1,
       "not_utf8": 0,
@@ -446,6 +572,9 @@
     {
       "bytes": 246552,
       "category": "shell",
+      "docs_bytes": 4533645,
+      "docs_files": 330,
+      "docs_not_utf8": 0,
       "files": 31,
       "id": "msitarzewski/agency-agents",
       "long_line_files": 0,
@@ -455,6 +584,9 @@
     {
       "bytes": 55315,
       "category": "shell",
+      "docs_bytes": 970656,
+      "docs_files": 118,
+      "docs_not_utf8": 0,
       "files": 1,
       "id": "d3/d3",
       "long_line_files": 0,
@@ -462,18 +594,24 @@
       "revision": "3d1a90c30805c17b79eb24c13c5aa45454534850"
     },
     {
-      "bytes": 248536,
+      "bytes": 313106,
       "category": "shell",
-      "files": 11,
+      "docs_bytes": 114359,
+      "docs_files": 12,
+      "docs_not_utf8": 0,
+      "files": 57,
       "id": "nvm-sh/nvm",
       "long_line_files": 0,
       "not_utf8": 0,
       "revision": "e780535240ee3ba67048b434cec6f7f509ee7b31"
     },
     {
-      "bytes": 2198,
+      "bytes": 8605,
       "category": "shell",
-      "files": 1,
+      "docs_bytes": 7867,
+      "docs_files": 3,
+      "docs_not_utf8": 0,
+      "files": 3,
       "id": "base/node",
       "long_line_files": 0,
       "not_utf8": 0,
@@ -482,6 +620,9 @@
     {
       "bytes": 3113,
       "category": "shell",
+      "docs_bytes": 4700018,
+      "docs_files": 314,
+      "docs_not_utf8": 0,
       "files": 1,
       "id": "youngyangyang04/leetcode-master",
       "long_line_files": 0,
@@ -489,9 +630,12 @@
       "revision": "6fe1571732d41e8f425f8e702992adf7ffae95a0"
     },
     {
-      "bytes": 952650,
+      "bytes": 1000060,
       "category": "shell",
-      "files": 18,
+      "docs_bytes": 162472,
+      "docs_files": 5,
+      "docs_not_utf8": 0,
+      "files": 21,
       "id": "romkatv/powerlevel10k",
       "long_line_files": 0,
       "not_utf8": 0,
@@ -500,6 +644,9 @@
     {
       "bytes": 470598,
       "category": "shell",
+      "docs_bytes": 27857,
+      "docs_files": 3,
+      "docs_not_utf8": 0,
       "files": 13,
       "id": "dockur/windows",
       "long_line_files": 0,
@@ -507,18 +654,24 @@
       "revision": "013ea27498e0e820a46b3861a0fa047d5b19d846"
     },
     {
-      "bytes": 4436702,
+      "bytes": 5982207,
       "category": "shell",
-      "files": 818,
+      "docs_bytes": 15520139,
+      "docs_files": 2600,
+      "docs_not_utf8": 0,
+      "files": 1357,
       "id": "omacom/omarchy",
       "long_line_files": 0,
       "not_utf8": 0,
       "revision": "2fca7fe073e5ef71cd066ddb0d2294ad067deaf5"
     },
     {
-      "bytes": 244568,
+      "bytes": 470793,
       "category": "shell",
-      "files": 61,
+      "docs_bytes": 86209,
+      "docs_files": 13,
+      "docs_not_utf8": 0,
+      "files": 110,
       "id": "pyenv/pyenv",
       "long_line_files": 0,
       "not_utf8": 0,
@@ -527,6 +680,9 @@
     {
       "bytes": 6805,
       "category": "shell",
+      "docs_bytes": 52239,
+      "docs_files": 3,
+      "docs_not_utf8": 0,
       "files": 2,
       "id": "dylanaraps/pure-bash-bible",
       "long_line_files": 0,
@@ -536,6 +692,9 @@
     {
       "bytes": 9400,
       "category": "shell",
+      "docs_bytes": 16270,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 5,
       "id": "inkonchain/node",
       "long_line_files": 0,
@@ -545,6 +704,9 @@
     {
       "bytes": 54372,
       "category": "shell",
+      "docs_bytes": 15286,
+      "docs_files": 4,
+      "docs_not_utf8": 0,
       "files": 16,
       "id": "zsh-users/zsh-autosuggestions",
       "long_line_files": 0,
@@ -552,18 +714,24 @@
       "revision": "85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5"
     },
     {
-      "bytes": 79813,
+      "bytes": 98535,
       "category": "shell",
-      "files": 27,
+      "docs_bytes": 66592,
+      "docs_files": 18,
+      "docs_not_utf8": 0,
+      "files": 31,
       "id": "VSCodium/vscodium",
       "long_line_files": 0,
       "not_utf8": 0,
       "revision": "be70704abf84fc6c7721f94478dfcccd2dc6163e"
     },
     {
-      "bytes": 3055,
+      "bytes": 62023,
       "category": "shell",
-      "files": 2,
+      "docs_bytes": 5139,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
+      "files": 7,
       "id": "mathiasbynens/dotfiles",
       "long_line_files": 0,
       "not_utf8": 0,
@@ -572,6 +740,9 @@
     {
       "bytes": 3824720,
       "category": "shell",
+      "docs_bytes": 838705,
+      "docs_files": 64,
+      "docs_not_utf8": 0,
       "files": 1354,
       "id": "community-scripts/ProxmoxVE",
       "long_line_files": 0,
@@ -581,6 +752,9 @@
     {
       "bytes": 104,
       "category": "shell",
+      "docs_bytes": 42906,
+      "docs_files": 11,
+      "docs_not_utf8": 0,
       "files": 1,
       "id": "shengxinjing/programmer-job-blacklist",
       "long_line_files": 0,
@@ -590,6 +764,9 @@
     {
       "bytes": 816691,
       "category": "shell",
+      "docs_bytes": 4978016,
+      "docs_files": 557,
+      "docs_not_utf8": 0,
       "files": 52,
       "id": "Donchitos/Claude-Code-Game-Studios",
       "long_line_files": 0,
@@ -599,6 +776,9 @@
     {
       "bytes": 1683,
       "category": "shell",
+      "docs_bytes": 28616,
+      "docs_files": 44,
+      "docs_not_utf8": 0,
       "files": 2,
       "id": "powerline/fonts",
       "long_line_files": 0,
@@ -608,6 +788,9 @@
     {
       "bytes": 21340,
       "category": "shell",
+      "docs_bytes": 411868,
+      "docs_files": 48,
+      "docs_not_utf8": 0,
       "files": 9,
       "id": "a2aproject/A2A",
       "long_line_files": 0,
@@ -617,6 +800,9 @@
     {
       "bytes": 213633,
       "category": "shell",
+      "docs_bytes": 57244,
+      "docs_files": 3,
+      "docs_not_utf8": 0,
       "files": 3,
       "id": "yuaotian/go-cursor-help",
       "long_line_files": 0,
@@ -626,6 +812,9 @@
     {
       "bytes": 21015,
       "category": "shell",
+      "docs_bytes": 1194413,
+      "docs_files": 181,
+      "docs_not_utf8": 0,
       "files": 2,
       "id": "VoltAgent/awesome-claude-code-subagents",
       "long_line_files": 0,
@@ -635,6 +824,9 @@
     {
       "bytes": 8057,
       "category": "shell",
+      "docs_bytes": 20009,
+      "docs_files": 1,
+      "docs_not_utf8": 0,
       "files": 1,
       "id": "gpakosz/.tmux",
       "long_line_files": 0,
@@ -644,6 +836,9 @@
     {
       "bytes": 1609,
       "category": "shell",
+      "docs_bytes": 1590001,
+      "docs_files": 197,
+      "docs_not_utf8": 0,
       "files": 2,
       "id": "eip-work/kuboard-press",
       "long_line_files": 0,
@@ -653,6 +848,9 @@
     {
       "bytes": 46018,
       "category": "shell",
+      "docs_bytes": 66371,
+      "docs_files": 11,
+      "docs_not_utf8": 0,
       "files": 27,
       "id": "kholia/OSX-KVM",
       "long_line_files": 0,
@@ -660,9 +858,12 @@
       "revision": "4c378a4b5e0b219783683012bec680325eb40719"
     },
     {
-      "bytes": 418,
+      "bytes": 377354,
       "category": "shell",
-      "files": 1,
+      "docs_bytes": 7445,
+      "docs_files": 5,
+      "docs_not_utf8": 0,
+      "files": 2,
       "id": "dylanaraps/neofetch",
       "long_line_files": 0,
       "not_utf8": 0,

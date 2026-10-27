@@ -4,537 +4,3813 @@ id: rust-lang/hashbrown
 url: https://github.com/rust-lang/hashbrown
 revision: 00c175652a71039ff146110b30dd30c52578e21f
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: dtolnay/syn
 url: https://github.com/dtolnay/syn
-revision: 9ff9287583767e53dcfb70e3b1b350996908bd8b
+revision: f81c060acf18657dd354a3cd017b080363ba50da
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-random/getrandom
 url: https://github.com/rust-random/getrandom
-revision: aa04c59adb35a3fb7e62fefea15700a61c7b4d8e
+revision: 7ce68004541895b6939c5ed64c8db7e8652e3be8
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: bitflags/bitflags
 url: https://github.com/bitflags/bitflags
 revision: 8384f6f6e1fd1ab3f448ccf17d400a9e1d6a5280
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-lang-nursery/rand
 url: https://github.com/rust-lang-nursery/rand
 revision: 9e7d328f60d6372ae22927f37d1a816fc980f25e
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-lang/libc
 url: https://github.com/rust-lang/libc
-revision: e959e8ce1997c73808a77abf5d773bf979bf5597
+revision: cdec27dc8b643dd22993f3069a6e3d38a75d175c
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: dtolnay/quote
 url: https://github.com/dtolnay/quote
 revision: 27be8db3c8eb07e7ccd83c2e695d5297c2466253
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: dtolnay/proc-macro2
 url: https://github.com/dtolnay/proc-macro2
 revision: 4626ab98d794f0ff1c3da3fdaf1d6b6e8e6d269c
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: marshallpierce/rust-base64
 url: https://github.com/marshallpierce/rust-base64
 revision: 5b98ee180cc7c2a64af6cb12c724b1721550e0d0
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: indexmap-rs/indexmap
 url: https://github.com/indexmap-rs/indexmap
 revision: 41a870887c4c77adf665886e63df08f406bfe37a
 license: Apache-2.0 OR MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-itertools/itertools
 url: https://github.com/rust-itertools/itertools
 revision: fb3d996d813b07fb6cc83dc600518fde42170c3c
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: dtolnay/thiserror
 url: https://github.com/dtolnay/thiserror
 revision: 3b29f0107e7900860c7a061c069958569eb458e7
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-lang/cfg-if
 url: https://github.com/rust-lang/cfg-if
 revision: 14432a28e180ec717933714aed7828fc7ed2fd29
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: BurntSushi/memchr
 url: https://github.com/BurntSushi/memchr
 revision: bd6068c30e9074a90c285e47912fa0b047d07597
 license: Unlicense OR MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-lang/regex
 url: https://github.com/rust-lang/regex
 revision: 80b9d14e4be9f0b703a742d11c064abce05f210b
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: serde-rs/serde
 url: https://github.com/serde-rs/serde
 revision: 0db9b3b504bcb0a7fa9cf001429869519afd3e9a
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: dtolnay/unicode-ident
 url: https://github.com/dtolnay/unicode-ident
 revision: c1ac3afb721f3cea6527bc2255340a04d0de3ca0
 license: (MIT OR Apache-2.0) AND Unicode-3.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: dtolnay/itoa
 url: https://github.com/dtolnay/itoa
 revision: 1577ed901354d0d7448ac162328f9dbf5183124c
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: serde-rs/json
 url: https://github.com/serde-rs/json
 revision: 8c535a260ce561eaab4111aafc29038eb9f77ff3
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: withoutboats/heck
 url: https://github.com/withoutboats/heck
 revision: 252c1906cefefb8d13ecad7fce7b8f27ce6437e0
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: cuviper/autocfg
 url: https://github.com/cuviper/autocfg
 revision: 2799b09c24e6632f8e653c5cd8fc303e85a906ba
 license: Apache-2.0 OR MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: matklad/once_cell
 url: https://github.com/matklad/once_cell
 revision: 80fe900b21f6d76c1a2ed74d3343e8a3a88c46d0
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-lang/log
 url: https://github.com/rust-lang/log
 revision: b408d2ca4edcd5544658e3d1db79aa86b0b8197f
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-lang/cc-rs
 url: https://github.com/rust-lang/cc-rs
-revision: 8d06fcb73f6938c35c9bc59edbdcb9fb56f04d71
+revision: fe1d3cb59c9b0ecf7d6bfc53ddbeec5322d71d99
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rust-lang/socket2
 url: https://github.com/rust-lang/socket2
 revision: 8b8b96fdaa1301698fd2b6f4de188635df4a8bd1
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: servo/rust-smallvec
 url: https://github.com/servo/rust-smallvec
-revision: 442ac643d4b9403eaed48f718d338359d11bed06
+revision: 7b2457646b2bdaa9baf30006d92273376856185c
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: bytecodealliance/rustix
 url: https://github.com/bytecodealliance/rustix
-revision: a1c13cc103454c4cc14c86e771794d85a05daf29
+revision: 4a563ad698b2c20ff848515821023d2265a788d0
 license: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: BurntSushi/aho-corasick
 url: https://github.com/BurntSushi/aho-corasick
 revision: 6c0abf5681bfc30bb9d8f7f52b68a350b436fffa
 license: Unlicense OR MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: clap-rs/clap
 url: https://github.com/clap-rs/clap
 revision: ccc89b83875474399e9d9d70841163f6319d1a41
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: dtolnay/ryu
 url: https://github.com/dtolnay/ryu
 revision: 75f9e707e77c89717ffb9c2a01fe2c28a016cc82
 license: Apache-2.0 OR BSL-1.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: RustCrypto/traits
 url: https://github.com/RustCrypto/traits
-revision: f3c174e1a693e17363884a358137543253e79136
-license: MIT OR Apache-2.0
-fetched: 2026-10-25
+revision: 8fffd5b1e6c5b9272b18efa967c55a8bd78d0d9b
+license: (MIT OR Apache-2.0) AND (Apache-2.0 OR MIT)
+fetched: 2026-10-27
+category: rust
+
+id: RustCrypto/utils
+url: https://github.com/RustCrypto/utils
+revision: 79275f704220fe32574c2a61973af40e4e1925b2
+license: (MIT OR Apache-2.0) AND (Apache-2.0 OR MIT)
+fetched: 2026-10-27
 category: rust
 
 id: Amanieu/parking_lot
 url: https://github.com/Amanieu/parking_lot
 revision: 85827ffa2ffb0b60d416e2e2a091f36b0e8e5a91
 license: MIT OR Apache-2.0
-fetched: 2026-10-25
-category: rust
-
-id: RustCrypto/utils
-url: https://github.com/RustCrypto/utils
-revision: 9f408239aa4f55af4ce9a26ce04cdc5a63686c22
-license: MIT OR Apache-2.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: rapidfuzz/strsim-rs
 url: https://github.com/rapidfuzz/strsim-rs
 revision: dacc84c0dc61eff0ee0ff66962bcf2e17018ad26
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: tokio-rs/bytes
 url: https://github.com/tokio-rs/bytes
-revision: d38faf7c9d003d6074405dd480db6bdb813cb80f
+revision: c08f87663a04eac3b9ab2dfa1976852d9b525a8c
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: tokio-rs/mio
 url: https://github.com/tokio-rs/mio
 revision: a88e5e119172e4fb1638926faf65a4fe889e05b1
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: rust
 
 id: taiki-e/pin-project-lite
 url: https://github.com/taiki-e/pin-project-lite
 revision: 89df232181961a9abefab5b3ede9ac1399409ece
 license: Apache-2.0 OR MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
+category: rust
+
+id: hyperium/http
+url: https://github.com/hyperium/http
+revision: 3dd9f5e1c3c228c26e6836ee60b36129351bfd3b
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: SergioBenitez/version_check
+url: https://github.com/SergioBenitez/version_check
+revision: d77ef9f27cc336719b2d839d09ee6635dd22f758
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-num/num-traits
+url: https://github.com/rust-num/num-traits
+revision: 1166177ec398601d6dd4d88891cf7674f3978888
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rayon-rs/either
+url: https://github.com/rayon-rs/either
+revision: 1e4326df5972eb4a0ced66cb3b67fa0c5aca8493
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/semver
+url: https://github.com/dtolnay/semver
+revision: 280ebcb6edac3aa4cdc545dbff8a26c5ac4861fe
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: RustCrypto/hashes
+url: https://github.com/RustCrypto/hashes
+revision: 7bd9889c9701fae1fb24b0c935456628710c18fd
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tokio-rs/tokio
+url: https://github.com/tokio-rs/tokio
+revision: b980c95d4755697ee376f5e19b95c328e173e304
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang-nursery/lazy-static.rs
+url: https://github.com/rust-lang-nursery/lazy-static.rs
+revision: 4c1b9a170c157d679592e2682b13cc780c1db814
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/anyhow
+url: https://github.com/dtolnay/anyhow
+revision: bb1b0f9af0f645d5fdf1ac63a1fcbf3975ee452c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: servo/rust-url
+url: https://github.com/servo/rust-url
+revision: 00a6ce58d02f4e0d43c5ca0702c0bedb8b1ebf3a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: winnow-rs/winnow
+url: https://github.com/winnow-rs/winnow
+revision: bca21ee8e3c9980863d18740cbcf2943f787daf2
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: bluss/scopeguard
+url: https://github.com/bluss/scopeguard
+revision: bb988222848d39b0b9037b29da3a3a1eb05ebf4b
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/futures-rs
+url: https://github.com/rust-lang/futures-rs
+revision: 706e29bce353e3e72655b99a4a6411291cd4762a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: google/zerocopy
+url: https://github.com/google/zerocopy
+revision: 2f71b3b236adc79516538d080e3cff592bafd2f2
+license: BSD-2-Clause OR Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: tokio-rs/slab
+url: https://github.com/tokio-rs/slab
+revision: 7d1d8ab00a7b8b1978b4bf21d9ae9633ac8c0b05
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: toml-rs/toml
+url: https://github.com/toml-rs/toml
+revision: ceac6e4412420d5a5c19e4f7293ad005cf1a31b2
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: hyperium/hyper
+url: https://github.com/hyperium/hyper
+revision: b07337878fe57b34b2065335ae8cae9ce5a780a0
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: rustls/rustls
+url: https://github.com/rustls/rustls
+revision: 51370d96f0e746d01a53c3acb4c7d5cc2db7cba1
+license: Apache-2.0 OR ISC OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/fastrand
+url: https://github.com/smol-rs/fastrand
+revision: 7a1cc2c69ebde6cb3442809213db3fe19a2cb0ba
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: crossbeam-rs/crossbeam
+url: https://github.com/crossbeam-rs/crossbeam
+revision: 099d0469efcfacb32527bd9451a4fb62586ae537
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: paholg/typenum
+url: https://github.com/paholg/typenum
+revision: 0db9a0f731981f29266b63586c29fa07e4477b1a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: Frommi/miniz_oxide
+url: https://github.com/Frommi/miniz_oxide
+revision: cdd7ddd56cf57a6255203bb9f5c6a92bf1144bbf
+license: MIT OR Zlib OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: fizyk20/generic-array
+url: https://github.com/fizyk20/generic-array
+revision: 6b6c76f39994a8752686dd2d09408ad4a08c320c
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: time-rs/time
+url: https://github.com/time-rs/time
+revision: 3ce1048391093bfd058b06140357856a9a9e06e1
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: cryptocorrosion/cryptocorrosion
+url: https://github.com/cryptocorrosion/cryptocorrosion
+revision: aadd0158fc0000105404925fb2730eac11db1125
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: hyperium/http-body
+url: https://github.com/hyperium/http-body
+revision: 929ff1c456c6cfe7a984e8d4bd70f506cbd9c78c
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: comex/rust-shlex
+url: https://github.com/comex/rust-shlex
+revision: 653936e120cdd0a8d1b4f0837e2cce0f347da4c0
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tokio-rs/tracing
+url: https://github.com/tokio-rs/tracing
+revision: 9d0e557728ecb91e467fc29dfe738b9f28cf6684
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: lambda-fairy/rust-errno
+url: https://github.com/lambda-fairy/rust-errno
+revision: 756e1900e027dbb48c605608700d8b31d86310fb
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: indexmap-rs/equivalent
+url: https://github.com/indexmap-rs/equivalent
+revision: 4ee88130bd4ab3229e785533da2af641be22deac
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/rustc-hash
+url: https://github.com/rust-lang/rustc-hash
+revision: f16da569fcb867fa1bc3b5dba18c9b8f7ca99483
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: Stebalien/tempfile
+url: https://github.com/Stebalien/tempfile
+revision: 1c294cc29d2a48746637252a0e30b1bebc05b3e6
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: uuid-rs/uuid
+url: https://github.com/uuid-rs/uuid
+revision: 4eba67ba778660915fdab697d936d9f72f5a8e25
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: hyperium/h2
+url: https://github.com/hyperium/h2
+revision: e64c1662ebb14794fc19cbcbb5b5dd0f67925f27
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: chronotope/chrono
+url: https://github.com/chronotope/chrono
+revision: 6adaa5240c26fecb7bd9077334a91f8f67f4f3fe
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: nix-rust/nix
+url: https://github.com/nix-rust/nix
+revision: 89339c618783622e3cdd8d7a6b17319a65337e94
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: unicode-rs/unicode-width
+url: https://github.com/unicode-rs/unicode-width
+revision: 5180748ec0cacabfad0478996e9a89a612274e8f
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rustls/webpki
+url: https://github.com/rustls/webpki
+revision: 4657021e5bd53b4393a3050cde52609b43b63f31
+license: ISC
+fetched: 2026-10-27
+category: rust
+
+id: servo/rust-fnv
+url: https://github.com/servo/rust-fnv
+revision: 4e55052a343a4372c191141f29a17ab829cf1dbc
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: BurntSushi/byteorder
+url: https://github.com/BurntSushi/byteorder
+revision: 5a82625fae462e8ba64cec8146b24a372b4d75c6
+license: Unlicense OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: briansmith/untrusted
+url: https://github.com/briansmith/untrusted
+revision: b7c4aea36ca2ddcec71c323fb7b27d5724d73f3a
+license: ISC
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/rustversion
+url: https://github.com/dtolnay/rustversion
+revision: 9bb564a5a08fc16bad9597a4cdc1de817beaab34
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rustls/tokio-rustls
+url: https://github.com/rustls/tokio-rustls
+revision: cb3c6106803c176aa5c2b15fda3f5ed2404e98c3
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/pkg-config-rs
+url: https://github.com/rust-lang/pkg-config-rs
+revision: a8852cc148f8f7d504bf3a62444c298dcd3637f0
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rustls/webpki-roots
+url: https://github.com/rustls/webpki-roots
+revision: 7ebfa0b377fd0c7e0a2848f9d9b2867a4c2198cf
+license: CDLA-Permissive-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tkaitchuck/ahash
+url: https://github.com/tkaitchuck/ahash
+revision: a9d649d18d6aefeef106a48252dc6708ee7f9e47
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-cli/anstyle
+url: https://github.com/rust-cli/anstyle
+revision: d891cdae9f5d9e923232bb42cecc597be09afe7a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: TedDriggs/darling
+url: https://github.com/TedDriggs/darling
+revision: 70b280dede2eaa1ee53f445a970657b16299767b
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: bytecodealliance/wasi-rs
+url: https://github.com/bytecodealliance/wasi-rs
+revision: a7479ee6382d26cbead630ae9d5a05380f40c6bd
+license: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: djc/rustc-version-rs
+url: https://github.com/djc/rustc-version-rs
+revision: eeca449cca83e24150e46739e797aa82e9142809
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: vorner/signal-hook
+url: https://github.com/vorner/signal-hook
+revision: 1ee5faa02e1ebb62c38fd9bcfd649afd21bce75e
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: briansmith/ring
+url: https://github.com/briansmith/ring
+revision: 840167e18e4fa837eb48de46500454a616a15a6e
+license: Apache-2.0 AND ISC
+fetched: 2026-10-27
+category: rust
+
+id: seanmonstar/reqwest
+url: https://github.com/seanmonstar/reqwest
+revision: 8e1c8061e5dd936762dcef08a64ef2cff584b295
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: Lokathor/tinyvec
+url: https://github.com/Lokathor/tinyvec
+revision: 93f6af570f9f7c109b713177c8ba6eddb074bbed
+license: Zlib OR Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: rust-bakery/nom
+url: https://github.com/rust-bakery/nom
+revision: 51c3c4e44fa78a8a09b413419372b97b2cc2a787
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: seanmonstar/httparse
+url: https://github.com/seanmonstar/httparse
+revision: a0fa552e4e0fa9a5914a736ef3a556748fef709b
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: mystor/synstructure
+url: https://github.com/mystor/synstructure
+revision: 30cfafe36e42405e717a8e55da042a2835a698d7
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: Gilnaa/memoffset
+url: https://github.com/Gilnaa/memoffset
+revision: 153fc3d50f03755be53148bc3eb97390f9011e45
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: dalek-cryptography/subtle
+url: https://github.com/dalek-cryptography/subtle
+revision: 369e7463e85921377a5f2df80aabcbbc6d57a930
+license: BSD-3-Clause
+fetched: 2026-10-27
+category: rust
+
+id: srijs/rust-crc32fast
+url: https://github.com/srijs/rust-crc32fast
+revision: d2363eab95ebc85fcf726d1c8fa845148e474591
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/flate2-rs
+url: https://github.com/rust-lang/flate2-rs
+revision: 54f49cd9f4c36774f68cc6ab95edf62a3b6c506e
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: Amanieu/thread_local-rs
+url: https://github.com/Amanieu/thread_local-rs
+revision: 69fb0508498fc4484cf5696ed16f2c9d6c50f9d4
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-num/num-integer
+url: https://github.com/rust-num/num-integer
+revision: 765fd9b3eb9397471d41b9f613e530f6d9d6383f
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tower-rs/tower
+url: https://github.com/tower-rs/tower
+revision: df06d70dbea345facbffb5881fe8647f53bf424d
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: storyyeller/stable_deref_trait
+url: https://github.com/storyyeller/stable_deref_trait
+revision: 2f3c4a2e3534ca382f60b532f64b78b37220c36f
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: strawlab/iana-time-zone
+url: https://github.com/strawlab/iana-time-zone
+revision: c6fe5ec58eb6989860c8ce137bc5b566c7232d9e
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/pin-utils
+url: https://github.com/rust-lang/pin-utils
+revision: 1c8fe452e3f22c76cb35f4b171f090bf2d50890c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/async-trait
+url: https://github.com/dtolnay/async-trait
+revision: 20fffdd704d82bcf0560cc9ab0d1178b30e4691c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: KokaKiwi/rust-hex
+url: https://github.com/KokaKiwi/rust-hex
+revision: e25a8701f7f6b5ec4acedffcb4a45cfb69cc34eb
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rustls/hyper-rustls
+url: https://github.com/rustls/hyper-rustls
+revision: c020925a3960ab3e7bb22ace6040a01df5312e91
+license: Apache-2.0 OR ISC OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: Actyx/sync_wrapper
+url: https://github.com/Actyx/sync_wrapper
+revision: 55413956c36aeab47feb8c04d1b7a044d6df336a
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: orlp/foldhash
+url: https://github.com/orlp/foldhash
+revision: 77d8e3dae0d43abe65753e888b9e74efbe4ee3f7
+license: Zlib
+fetched: 2026-10-27
+category: rust
+
+id: Peternator7/strum
+url: https://github.com/Peternator7/strum
+revision: a078a782bb30d1b13e57494bb08ac0a249acfced
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: Soveu/tinyvec_macros
+url: https://github.com/Soveu/tinyvec_macros
+revision: 860c23a09d91c8b9203134a81de7888b7191d5f2
+license: MIT OR Apache-2.0 OR Zlib
+fetched: 2026-10-27
+category: rust
+
+id: seanmonstar/want
+url: https://github.com/seanmonstar/want
+revision: 322291ce5a87c72ecfd83d383d0d7f5245cf72c6
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: seanmonstar/try-lock
+url: https://github.com/seanmonstar/try-lock
+revision: 4f5197e4b1c25194f7877bd98bad287e0f5991e5
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: BurntSushi/walkdir
+url: https://github.com/BurntSushi/walkdir
+revision: 6fd031c82ba5a4204b4ce6eae73dacb00dc072ec
+license: Unlicense OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: alacritty/vte
+url: https://github.com/alacritty/vte
+revision: 89c9c22f5b8fcc3feba0a9d9f50a020801e74acc
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: yaahc/displaydoc
+url: https://github.com/yaahc/displaydoc
+revision: 6f11002160acb7557cf368bf92a36c62e85b31f4
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: unicode-org/icu4x
+url: https://github.com/unicode-org/icu4x
+revision: 876cd0a981745528ca7752ecf5233d9329a7d5df
+license: Unicode-3.0
+fetched: 2026-10-27
+category: rust
+
+id: hyperium/mime
+url: https://github.com/hyperium/mime
+revision: 1ef137c7358fc64e07c8a640e4e9ba2a784b7f7d
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-phf/rust-phf
+url: https://github.com/rust-phf/rust-phf
+revision: 79bf7d18be8496764befcb2260b47bba8fcd01ac
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: jhpratt/deranged
+url: https://github.com/jhpratt/deranged
+revision: aeb03a4be17fe287d5fdd509e9ae134d4b9999fc
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: BurntSushi/same-file
+url: https://github.com/BurntSushi/same-file
+revision: e7d851bc8e888200d6d08ab612d4cb9b5e53bdf7
+license: Unlicense OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: rustls/openssl-probe
+url: https://github.com/rustls/openssl-probe
+revision: f5964f9e8994251dea150d3e82fcabca8433731c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: RustCrypto/MACs
+url: https://github.com/RustCrypto/MACs
+revision: e905def365b4a53b2530f4dce64a5f49276985c2
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-num/num-bigint
+url: https://github.com/rust-num/num-bigint
+revision: 41f0b035d12971c5c7f7501917e31f0f6439c26c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/glob
+url: https://github.com/rust-lang/glob
+revision: 057cef2824f5a96f738e52d7d8ca3e024381bcc6
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: krisprice/ipnet
+url: https://github.com/krisprice/ipnet
+revision: 13c5c5873c02127679b1e8e64b538e4e36942640
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: gimli-rs/object
+url: https://github.com/gimli-rs/object
+revision: 4201cd4cd8026aed31377ce4193367b8c520d522
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: pyfisch/httpdate
+url: https://github.com/pyfisch/httpdate
+revision: 53df52094835dd85aca70e23b9f384abcf843f7f
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: fitzgen/bumpalo
+url: https://github.com/fitzgen/bumpalo
+revision: 52816568e32d47cb887d358fde173d5a4a6a550a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: unicode-rs/unicode-xid
+url: https://github.com/unicode-rs/unicode-xid
+revision: 0aeadace2aa539b1488266c9a17f5c695c5faace
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tokio-rs/prost
+url: https://github.com/tokio-rs/prost
+revision: aed74ad0e844959ee6948f29c4e9cff0f278e89e
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: jhpratt/num-conv
+url: https://github.com/jhpratt/num-conv
+revision: 67f41e3300be24184fb63855819cd87a5d1de6d1
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: hsivonen/idna_adapter
+url: https://github.com/hsivonen/idna_adapter
+revision: 1d9782f32c9e29218542b4a9411a82b35ec5c8cb
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: taiki-e/pin-project
+url: https://github.com/taiki-e/pin-project
+revision: 40c26e87597fa4d5b7736d865a590515aa1c4c56
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: bluss/arrayvec
+url: https://github.com/bluss/arrayvec
+revision: 8a7c8211a237b9b258275e6ab0d967b7d0cb2704
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: nox/serde_urlencoded
+url: https://github.com/nox/serde_urlencoded
+revision: 0cca840185fa85b39e2cc8a0b2547fff5ace8e68
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: seanmonstar/num_cpus
+url: https://github.com/seanmonstar/num_cpus
+revision: 474977ee4ae9d05a6bf7d997f422782997c1f4b4
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: jedisct1/rust-siphash
+url: https://github.com/jedisct1/rust-siphash
+revision: 2fcf2a742340824ee23328e6eba4bc7ea0e52613
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: unicode-rs/unicode-normalization
+url: https://github.com/unicode-rs/unicode-normalization
+revision: 16c9597b73ec5b6b8ed55f4249a5ac854892544c
+license: (MIT OR Apache-2.0) AND Unicode-3.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/jobserver-rs
+url: https://github.com/rust-lang/jobserver-rs
+revision: ea6c0ac276b0506c7e229882c3bf05e7bfc5dc5d
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: jhpratt/powerfmt
+url: https://github.com/jhpratt/powerfmt
+revision: 3dd45162a7e64d6b354675e4282d0550dce8bfc8
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: unicode-rs/unicode-segmentation
+url: https://github.com/unicode-rs/unicode-segmentation
+revision: afe6c8e63f627b09b0cb26801fc9c934d06e41d6
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rustls/rustls-native-certs
+url: https://github.com/rustls/rustls-native-certs
+revision: f90a960685f8d9bc0ca3046c8dc6ce11bd4cd253
+license: Apache-2.0 OR ISC OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: hawkw/sharded-slab
+url: https://github.com/hawkw/sharded-slab
+revision: 168eae462779e2faac2e49012c2bf4e1dfb34997
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: polyfill-rs/is_terminal_polyfill
+url: https://github.com/polyfill-rs/is_terminal_polyfill
+revision: 9ed4c24ea4e9202cb38a6564368252ed35197a08
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rayon-rs/rayon
+url: https://github.com/rayon-rs/rayon
+revision: d627c1debdc001d5db33de35018488282fc2d50a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: oyvindln/adler2
+url: https://github.com/oyvindln/adler2
+revision: 89a031a0f42eeff31c70dc598b398cbf31f1680f
+license: 0BSD OR MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rustls/pki-types
+url: https://github.com/rustls/pki-types
+revision: e29ad15465126acc089b39611bcec85e27ce0817
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: gimli-rs/gimli
+url: https://github.com/gimli-rs/gimli
+revision: 478f07ad90e91bb8b061ec33ef4bd3a8448839e1
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: bkchr/proc-macro-crate
+url: https://github.com/bkchr/proc-macro-crate
+revision: 085703770fe796713f547eaf5c13179744e4ff2d
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/rustc-demangle
+url: https://github.com/rust-lang/rustc-demangle
+revision: 7778bc992a4b75cc9385c32494903c0a3a10f3a9
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: hsivonen/utf8_iter
+url: https://github.com/hsivonen/utf8_iter
+revision: 6b604ea2365bd535fb66eb4bfe92a9e00e333090
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: wasm-bindgen/wasm-bindgen
+url: https://github.com/wasm-bindgen/wasm-bindgen
+revision: 39ae823bbc14c9d0a4a2869361483b5453a9b133
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: katharostech/cfg_aliases
+url: https://github.com/katharostech/cfg_aliases
+revision: e069ce61e00fee423ac1dbe6a897f228f1774716
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: nushell/nu-ansi-term
+url: https://github.com/nushell/nu-ansi-term
+revision: a23b71dae8efc17ca89d6bfe86134e15c3b157f5
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/event-listener
+url: https://github.com/smol-rs/event-listener
+revision: 77004ac77dcef7884bf71a99c276a50f83a7fa4e
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: rust-cli/env_logger
+url: https://github.com/rust-cli/env_logger
+revision: f80dca81223bb7cd50fc81f484e20eaef22be0aa
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rutrum/convert-case
+url: https://github.com/rutrum/convert-case
+revision: 637e1aec1717e3a4af07dff1c1dec7a4eb971b2a
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: hsivonen/encoding_rs
+url: https://github.com/hsivonen/encoding_rs
+revision: 9db0e447f07c34b9969a258a2a1237cc6cf341d5
+license: (Apache-2.0 OR MIT) AND BSD-3-Clause
+fetched: 2026-10-27
+category: rust
+
+id: Alexhuszagh/minimal-lexical
+url: https://github.com/Alexhuszagh/minimal-lexical
+revision: b961dc819c9d5a1939716688b408ce6d98840a99
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: hermit-os/hermit-rs
+url: https://github.com/hermit-os/hermit-rs
+revision: e9dc6784ad1a2dc6d18c6819ee51198cab9fb78a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: nagisa/rust_libloading
+url: https://github.com/nagisa/rust_libloading
+revision: f5dc3b81485b978596d518f7574d941ff811bf74
+license: ISC
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/zmij
+url: https://github.com/dtolnay/zmij
+revision: 35355256734db2c69a19aba4cae98c7fd8e14adf
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: GREsau/schemars
+url: https://github.com/GREsau/schemars
+revision: 4791bb7352555d339e45658ca09c092ed9fa1f5d
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/paste
+url: https://github.com/dtolnay/paste
+revision: 6a302522990cbfd9de4e0c61d91854622f7b2999
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: petgraph/petgraph
+url: https://github.com/petgraph/petgraph
+revision: e38de6fed0593b782ef806f1dab6690167a6230e
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: hyperium/hyper-util
+url: https://github.com/hyperium/hyper-util
+revision: 64855f6c6cac998255ae7776bd22a6eb7bb5f1bb
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: rustls/pemfile
+url: https://github.com/rustls/pemfile
+revision: 1e4ce69dd97b6bd0657a9dee8503cb8657b49235
+license: Apache-2.0 OR ISC OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/atomic-waker
+url: https://github.com/smol-rs/atomic-waker
+revision: 471d0cf3a2734e62d1eb21a1372fd83e8fbf90d8
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: RustCrypto/formats
+url: https://github.com/RustCrypto/formats
+revision: 4c5fadb155ebc05c4a8a3abc05e4e64a6a100614
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: nvzqz/static-assertions-rs
+url: https://github.com/nvzqz/static-assertions-rs
+revision: a867e97a1b3c2e0c76b7a154abdf4e422b78e5f2
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/prettyplease
+url: https://github.com/dtolnay/prettyplease
+revision: 49e50897b580a5b7591ead6ef73f3fe09e76d896
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: petgraph/fixedbitset
+url: https://github.com/petgraph/fixedbitset
+revision: 111fb2552130f6f4c06a4a1a2e0de7ea6e28b922
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: zakarumych/allocator-api2
+url: https://github.com/zakarumych/allocator-api2
+revision: 1644e70ebc31746ca6b20ccf8cf5865c8438238e
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: gimli-rs/addr2line
+url: https://github.com/gimli-rs/addr2line
+revision: 61b28a49f14eb4d14ba631ba5e8e4ab3cbedf932
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: BurntSushi/termcolor
+url: https://github.com/BurntSushi/termcolor
+revision: d672e7b09f3ac3e8c0c12e67a67c5d46265df88d
+license: Unlicense OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: tower-rs/tower-http
+url: https://github.com/tower-rs/tower-http
+revision: 8569ec8b99f661eb0a4406a2e032504188d9f3fd
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: hawkw/matchers
+url: https://github.com/hawkw/matchers
+revision: a73b203f95b61113a2012ecada9ee287c1d8abee
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: JelteF/derive_more
+url: https://github.com/JelteF/derive_more
+revision: e13226493dbdb510dae2b3548c975f01624f11d5
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: servo/unicode-bidi
+url: https://github.com/servo/unicode-bidi
+revision: 9a8c7b03be01def5cf7014b89d5af90f7382fdad
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: retep998/winapi-rs
+url: https://github.com/retep998/winapi-rs
+revision: 5b1829956ef645f3c2f8236ba18bb198ca4c2468
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tokio-rs/axum
+url: https://github.com/tokio-rs/axum
+revision: 86aa6153e47b7862737acdcfe3a0eb3a162b939a
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: mcgoo/vcpkg-rs
+url: https://github.com/mcgoo/vcpkg-rs
+revision: fa42994af157924e44223f2559a95c906e00c1fa
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/compiler-builtins
+url: https://github.com/rust-lang/compiler-builtins
+revision: da91091c5e52c55889c284671b97c3141852f749
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: taiki-e/portable-atomic
+url: https://github.com/taiki-e/portable-atomic
+revision: a253dda1c21fe8d5c47e6d2818b3200197b8726c
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: TedDriggs/ident_case
+url: https://github.com/TedDriggs/ident_case
+revision: 9ecdb364564374ecc694927f0f587f1357fbd62a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/backtrace-rs
+url: https://github.com/rust-lang/backtrace-rs
+revision: 7acd013050ebe158f3ddf0a9e26c32f3827bda20
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: VoidStarKat/half-rs
+url: https://github.com/VoidStarKat/half-rs
+revision: 688f1e2c2a541186802b6b0fe0e6761cdb507428
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: contain-rs/bit-vec
+url: https://github.com/contain-rs/bit-vec
+revision: cd5b4392be151fb507f3bdbf71ce1e73885dbc28
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: ibraheemdev/matchit
+url: https://github.com/ibraheemdev/matchit
+revision: 4b5a2c356022f544187d6e67325d8e98dd7f11ca
+license: MIT AND BSD-3-Clause
+fetched: 2026-10-27
+category: rust
+
+id: servo/core-foundation-rs
+url: https://github.com/servo/core-foundation-rs
+revision: 88cb72cb2e0ac3f1e4f39e04d80f0b24f8374401
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: reem/rust-ordered-float
+url: https://github.com/reem/rust-ordered-float
+revision: aa4c4f2deb34472828e27c61218e6a60abe42c86
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: tafia/quick-xml
+url: https://github.com/tafia/quick-xml
+revision: ef4ad8a33914500dbe4ce1f1c5f8b21b7cfd07f7
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: rust-openssl/rust-openssl
+url: https://github.com/rust-openssl/rust-openssl
+revision: d2820a7db875ffee020cbd221186ee5cb432a150
+license: MIT AND Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: ia0/data-encoding
+url: https://github.com/ia0/data-encoding
+revision: 53e2ff65eb3157a7b113b8a1a8b3fc89ce898dbf
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: mcountryman/simd-adler32
+url: https://github.com/mcountryman/simd-adler32
+revision: d93164f98d7fe2daf883f2e1bec82778dd26199a
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: sfackler/foreign-types
+url: https://github.com/sfackler/foreign-types
+revision: 2d5077646c441fb089662e9ac439bec45c0d84b5
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: BurntSushi/bstr
+url: https://github.com/BurntSushi/bstr
+revision: 134195be38c7c9a4887980fd0f6f8bae042dd91e
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: chronotope/humantime
+url: https://github.com/chronotope/humantime
+revision: 997ff566cc731e3ece5c792c8b83dd78e459f202
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/cargo
+url: https://github.com/rust-lang/cargo
+revision: 749d85d9fc53250737d2d8ba0d431a00c44982bb
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: harryfei/which-rs
+url: https://github.com/harryfei/which-rs
+revision: 8e84cb67761b6e19d2cfa512c5d55cbe5fd9e8bc
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: mgeisler/textwrap
+url: https://github.com/mgeisler/textwrap
+revision: 07fdbbb92103a22c48a61be271dca36c739fdde3
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: BurntSushi/winapi-util
+url: https://github.com/BurntSushi/winapi-util
+revision: 803874c57dc1f10ecd42f7c86d9de72f53818432
+license: Unlicense OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: gyscos/zstd-rs
+url: https://github.com/gyscos/zstd-rs
+revision: cdfeaad8cea22ede46b23a146798e8ce0f5d8f6b
+license: BSD-3-Clause
+fetched: 2026-10-27
+category: rust
+
+id: seanmonstar/unicase
+url: https://github.com/seanmonstar/unicase
+revision: 1e739ff80fe2297c52efda9d05f0bea1038a7eb9
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/serde-yaml
+url: https://github.com/dtolnay/serde-yaml
+revision: 2009506d33767dfc88e979d6bc0d53d09f941c94
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: r-efi/r-efi
+url: https://github.com/r-efi/r-efi
+revision: bdb3cc07feca5e87bebe3cc52eb509ffe65b1fed
+license: MIT OR Apache-2.0 OR LGPL-2.1-or-later
+fetched: 2026-10-27
+category: rust
+
+id: hyperium/tonic
+url: https://github.com/hyperium/tonic
+revision: 818532da3abfa6068b0855f483e3c627d9e14640
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: Lokathor/bytemuck
+url: https://github.com/Lokathor/bytemuck
+revision: ea3616110b0134e9991fdb66be8892dbc427c5ac
+license: Zlib OR Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/rust-bindgen
+url: https://github.com/rust-lang/rust-bindgen
+revision: f08d4fff0e060fb4081222b0ad624e0bd7ec247d
+license: BSD-3-Clause
+fetched: 2026-10-27
+category: rust
+
+id: rust-num/num-complex
+url: https://github.com/rust-num/num-complex
+revision: fb5dca6f915c48c43c0c9a6c58311d3b8c568ec7
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-num/num-rational
+url: https://github.com/rust-num/num-rational
+revision: cf95d6719c585d4721645c7ace5dfe1dd5f063e2
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: alexcrichton/filetime
+url: https://github.com/alexcrichton/filetime
+revision: ab5ee65b5e4fe2de19dbe7d4fe08bc31e945949c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-num/num-iter
+url: https://github.com/rust-num/num-iter
+revision: 6bfec7678bae3f4a38d1eeeab20532ac0bae7c9c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tailhook/quick-error
+url: https://github.com/tailhook/quick-error
+revision: 936a0683022e73086705de1985eccf5e69f5d5a0
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: xacrimon/dashmap
+url: https://github.com/xacrimon/dashmap
+revision: 366ce7e7872866a06de66eb95002fa6cf2c117a7
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: bytecodealliance/target-lexicon
+url: https://github.com/bytecodealliance/target-lexicon
+revision: 9b8c506cc3886dc0fce96ed4bd25a03b6650c657
+license: Apache-2.0 WITH LLVM-exception
+fetched: 2026-10-27
+category: rust
+
+id: eira-fransham/crunchy
+url: https://github.com/eira-fransham/crunchy
+revision: ba7b86cea6ba89ccfc72ccb24cc4a4ac6d9c6272
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: kornelski/rust-security-framework
+url: https://github.com/kornelski/rust-security-framework
+revision: d039acdc2e2e5494a71f627040b2fe878733aa72
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: jonasbb/serde_with
+url: https://github.com/jonasbb/serde_with
+revision: bf082875858585cb7c5c65789e2fca3036ef0dcc
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: jeromefroe/lru-rs
+url: https://github.com/jeromefroe/lru-rs
+revision: 3ed2e28cfc53059c5a29d6c4f73f5ddf26a29e98
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/dyn-clone
+url: https://github.com/dtolnay/dyn-clone
+revision: 23fcf09d96222d9f0f11a204ae6193af27362f72
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: djc/hashlink
+url: https://github.com/djc/hashlink
+revision: c7aaa3c2504c08baf8c97da11f3536258464da8f
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/parking
+url: https://github.com/smol-rs/parking
+revision: cedb1884e0502ad21d4863a21eec9e3f13c3cf5f
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: console-rs/console
+url: https://github.com/console-rs/console
+revision: 3271250d3fdd2ccabbb3d590b193c6ef15fd84a5
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: RazrFalcon/memmap2-rs
+url: https://github.com/RazrFalcon/memmap2-rs
+revision: 4692b056b327aa08dace3a7e345a99e4cff77534
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dirs-dev/dirs-sys-rs
+url: https://github.com/dirs-dev/dirs-sys-rs
+revision: 8bcd4aa2c35990d57a2cff2953793525fc42709c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: quinn-rs/quinn
+url: https://github.com/quinn-rs/quinn
+revision: 6c69f9f4ed2362002a0e2e5312a6dfa3ceb31c1d
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/concurrent-queue
+url: https://github.com/smol-rs/concurrent-queue
+revision: f41c20d8b9424eff6c227dead7b062e3b87142bc
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: vorner/arc-swap
+url: https://github.com/vorner/arc-swap
+revision: 624412b87757c6bd5d73c6ada594d321f602b2d2
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/async-channel
+url: https://github.com/smol-rs/async-channel
+revision: 34e669e0571930913535ee8e50c92f01bce3795c
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: RustCrypto/block-ciphers
+url: https://github.com/RustCrypto/block-ciphers
+revision: b99ebe6a2d394833a14a84b79aac60c0c0611577
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: hyperium/hyper-tls
+url: https://github.com/hyperium/hyper-tls
+revision: 5cdd3f2cb33c7053717d4be9b49d98639a9afa55
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: sunfishcode/is-terminal
+url: https://github.com/sunfishcode/is-terminal
+revision: 6ce920a451436433a34e4cae89318d049f8c439c
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: hjr3/hyper-timeout
+url: https://github.com/hjr3/hyper-timeout
+revision: 8e98963f958114a14c1475ed1abef1f253da7d0e
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: pest-parser/pest
+url: https://github.com/pest-parser/pest
+revision: c474eecb4185ce5d8ab413b9ecfc508455c690b7
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-native-tls/rust-native-tls
+url: https://github.com/rust-native-tls/rust-native-tls
+revision: ea5426e0847652ca3dd780b69a351b06de91dfd6
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/cmake-rs
+url: https://github.com/rust-lang/cmake-rs
+revision: 42ffb61d1a21b2c182ecbc106984d10ffefb9789
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: snapview/tungstenite-rs
+url: https://github.com/snapview/tungstenite-rs
+revision: 2f20dc53e2a8d09bba02970d7ba15c5f33fbc17a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: softprops/atty
+url: https://github.com/softprops/atty
+revision: 5bfdbe9e48c6ca6a4909e8d5b04f5e843a257e93
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: tokio-rs/async-stream
+url: https://github.com/tokio-rs/async-stream
+revision: 6de652892b62f184695256dd355822c1b0ba78ca
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: jcreekmore/pem-rs
+url: https://github.com/jcreekmore/pem-rs
+revision: 99c15c08f1389153ed037c33750f8605bbf8bd55
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: bincode-org/bincode
+url: https://github.com/bincode-org/bincode
+revision: 5565ee164515ccc5161b66c7f573b905336ba1ef
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/indoc
+url: https://github.com/dtolnay/indoc
+revision: 79ab4aa68838fd831e577e1e192161c718325e60
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: havarnov/multimap
+url: https://github.com/havarnov/multimap
+revision: 7d71ab594eb4c4e60bc675ea96ebefabb0bd91a0
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rustls/sct.rs
+url: https://github.com/rustls/sct.rs
+revision: 93df75f85f8bfe9a0bcd24f756cbba48688544f7
+license: Apache-2.0 OR ISC OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: BurntSushi/ucd-generate
+url: https://github.com/BurntSushi/ucd-generate
+revision: e8fa937f0cac643669dcaf5edac2785b15cab917
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: sebcrozet/instant
+url: https://github.com/sebcrozet/instant
+revision: 7bd13f51f5c930239fddc0476a837870fb239ed7
+license: BSD-3-Clause
+fetched: 2026-10-27
+category: rust
+
+id: nical/android_system_properties
+url: https://github.com/nical/android_system_properties
+revision: 1e9261695705b0672d7abb2c1cb70c3431d5103f
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: steffengy/schannel-rs
+url: https://github.com/steffengy/schannel-rs
+revision: 91c925d987e6b1180bfb21fb29959ab3677adc8a
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: KyleMayes/clang-sys
+url: https://github.com/KyleMayes/clang-sys
+revision: 8452dcf2d1836e5c6088a55664743695a65f7ecb
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/futures-lite
+url: https://github.com/smol-rs/futures-lite
+revision: 3dc587ffdd652bc6002f34dc24a300643ef498ae
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/path-to-error
+url: https://github.com/dtolnay/path-to-error
+revision: 7aad3f59acd6d239615ee8b315e0c666915a13bf
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: webdesus/fs_extra
+url: https://github.com/webdesus/fs_extra
+revision: 1754296075e7cc4a25feaa876a3f4b9daccc0b98
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/unsafe-libyaml
+url: https://github.com/dtolnay/unsafe-libyaml
+revision: 417668ce6565ece14bbd9b4a73137d9241ea1365
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/async-lock
+url: https://github.com/smol-rs/async-lock
+revision: 23e181d5cfb91a59382e5719c682caa58ff43ace
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: jethrogb/rust-cexpr
+url: https://github.com/jethrogb/rust-cexpr
+revision: c7ccdfbc37b508cfda1171ab4f89afaeb72e82f3
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: contain-rs/linked-hash-map
+url: https://github.com/contain-rs/linked-hash-map
+revision: dfc4a57278b79314b0c1892d6c3918f2e00e249b
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: snapview/tokio-tungstenite
+url: https://github.com/snapview/tokio-tungstenite
+revision: 76e10f08c488eb0032f136c7c56a437cd30164c2
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: tokio-rs/valuable
+url: https://github.com/tokio-rs/valuable
+revision: e5135dadbf1e8d7f72859889986e3bee03726f44
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: mrhooray/crc-rs
+url: https://github.com/mrhooray/crc-rs
+revision: 1894aa9f184d44cf1226aeb3048a3e91fc1b8df4
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-num/num
+url: https://github.com/rust-num/num
+revision: 24d7853f49caa9f3fe15fa99afc6d24111b13bc6
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: abonander/mime_guess
+url: https://github.com/abonander/mime_guess
+revision: 90f3d09696f7c08dcac94ca2bb2a279383bb20ce
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/serde-repr
+url: https://github.com/dtolnay/serde-repr
+revision: 030b6ceaf2148a90529aaa4d05b2860f6beea361
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: RustCrypto/crypto-bigint
+url: https://github.com/RustCrypto/crypto-bigint
+revision: 55af01b1957b1f90d718bf697ea9a6db7287151c
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: criterion-rs/criterion.rs
+url: https://github.com/criterion-rs/criterion.rs
+revision: 82b191ebf278cbe47d8da6c1bff76d8a812f61c0
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: zip-rs/zip2
+url: https://github.com/zip-rs/zip2
+revision: f2fe6c405f41bf1503db5a0c0463c567058214ad
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: RustCrypto/KDFs
+url: https://github.com/RustCrypto/KDFs
+revision: 19a0df65a558feefed0722dd0de73ef4b966d79f
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: sfackler/rust-fallible-iterator
+url: https://github.com/sfackler/rust-fallible-iterator
+revision: 0b4fdb728e643c1cbd9ce06868715bbf98f9052a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dtolnay/ref-cast
+url: https://github.com/dtolnay/ref-cast
+revision: cabd8bc092d9ff5ec1058996c4cc926e55bbd44a
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tokio-rs/tls
+url: https://github.com/tokio-rs/tls
+revision: 02c1aeb7001525f4aa71e07312f8519872dc638a
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: bitvecto-rs/bitvec
+url: https://github.com/bitvecto-rs/bitvec
+revision: 5fb855073acc2ed045094ed89d8daf8c765f0135
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: RustCrypto/stream-ciphers
+url: https://github.com/RustCrypto/stream-ciphers
+revision: a2024dde67d449fe2bcb4feecda4bd3959a4704d
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-random/rngs
+url: https://github.com/rust-random/rngs
+revision: 84683fcacf9a5e346a945d1f620c772f91b4b82d
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: bytecodealliance/wit-bindgen
+url: https://github.com/bytecodealliance/wit-bindgen
+revision: 9d4895e31d8df38137a583335c4fc96d6e12f216
+license: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: dropbox/rust-brotli-decompressor
+url: https://github.com/dropbox/rust-brotli-decompressor
+revision: 072acf0f7b7514144e90eaabf2d46d4d0617d94e
+license: BSD-3-Clause OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: ferrilab/ferrilab
+url: https://github.com/ferrilab/ferrilab
+revision: 018d422c1de14a086f0d7e08d24e612228a6b60c
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: Marwes/combine
+url: https://github.com/Marwes/combine
+revision: a2da738ca628bb2e2ef9881fce8e35cbafc455b2
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: open-telemetry/opentelemetry-rust
+url: https://github.com/open-telemetry/opentelemetry-rust
+revision: 542cc693e42abea79a6754267dbbc14437b454bf
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dropbox/rust-brotli
+url: https://github.com/dropbox/rust-brotli
+revision: 6df909c633c3860ea4bede0674798db8d88729e8
+license: BSD-3-Clause AND MIT
+fetched: 2026-10-27
+category: rust
+
+id: illicitonion/num_enum
+url: https://github.com/illicitonion/num_enum
+revision: 77b84416fcba8d53873a4ce49540504800dc3881
+license: BSD-3-Clause OR MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: myrrlyn/tap
+url: https://github.com/myrrlyn/tap
+revision: f5315f0f5ca90ce6399daac76c1fe3ba645a4e4e
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: camino-rs/camino
+url: https://github.com/camino-rs/camino
+revision: 86ed28351d83fa7ef8287bcd5af36b8a4f073c0c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: kornelski/rust_urlencoding
+url: https://github.com/kornelski/rust_urlencoding
+revision: a617c89d16f390e3ab4281ea68c514660b111301
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: SimonSapin/rust-utf8
+url: https://github.com/SimonSapin/rust-utf8
+revision: 218fea2b57b0e4c3de9fa17a376fcc4a4c0d08f3
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dalek-cryptography/curve25519-dalek
+url: https://github.com/dalek-cryptography/curve25519-dalek
+revision: 97a020d185970839ed1d3f3a5c22aca816631786
+license: BSD-3-Clause
+fetched: 2026-10-27
+category: rust
+
+id: daxpedda/web-time
+url: https://github.com/daxpedda/web-time
+revision: b5e411b0908c4bd88befdc0aba21764f9e9f8745
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: smol-rs/event-listener-strategy
+url: https://github.com/smol-rs/event-listener-strategy
+revision: be0f536e7a18776978b03a6079eb823ee3aa9b34
+license: Apache-2.0 OR MIT
+fetched: 2026-10-27
+category: rust
+
+id: myrrlyn/wyz
+url: https://github.com/myrrlyn/wyz
+revision: 112ad644d62580d59aaaba69f3609474980fd7fb
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: japaric/cast.rs
+url: https://github.com/japaric/cast.rs
+revision: 052288097de1846b938e854e27845a93a6f4b59d
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: akhilles/crc-catalog
+url: https://github.com/akhilles/crc-catalog
+revision: 68383903c9ed3441b436b8b32395774fadf6d14f
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: Stebalien/xattr
+url: https://github.com/Stebalien/xattr
+revision: dfbf01ee4f52df3ad48d1f7781a5c8b93289ca07
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: pyo3/pyo3
+url: https://github.com/pyo3/pyo3
+revision: 26f9ec8be637d24d0dee18d51e129cc1a99f3a7c
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: droundy/arrayref
+url: https://github.com/droundy/arrayref
+revision: f8d0299d863922db6c409d08098941e833b70d69
+license: BSD-2-Clause
+fetched: 2026-10-27
+category: rust
+
+id: SergioBenitez/yansi
+url: https://github.com/SergioBenitez/yansi
+revision: 3e35184fc181fef63bc11dedb22413e821168255
+license: MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: Ralith/lru-slab
+url: https://github.com/Ralith/lru-slab
+revision: 47f815b24ab4d17c50c58556fa4ab7d8ffd6a158
+license: MIT OR Apache-2.0 OR Zlib
+fetched: 2026-10-27
+category: rust
+
+id: jonas-schievink/adler
+url: https://github.com/jonas-schievink/adler
+revision: a94f525f62698d699d1fb3cc9112db8c35662b16
+license: 0BSD OR MIT OR Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: ultraworkers/claw-code
+url: https://github.com/ultraworkers/claw-code
+revision: 8aab1d4e5410f9ab5e5e7f03c8a87de479e814ec
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: clash-verge-rev/clash-verge-rev
+url: https://github.com/clash-verge-rev/clash-verge-rev
+revision: 0498ba3e4f8ef888b6b62997eb9ef50f491445e8
+license: GPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: farion1231/cc-switch
+url: https://github.com/farion1231/cc-switch
+revision: e55d8a21b3897b595b746e9f2139716b2931641d
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: openai/codex
+url: https://github.com/openai/codex
+revision: b7f7e7f7e85a1c63e520f27cac42b836f242d9f7
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rustdesk/rustdesk
+url: https://github.com/rustdesk/rustdesk
+revision: 59f2953c94b8373f124dc38d4fd0635098f7c5cd
+license: AGPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/rust
+url: https://github.com/rust-lang/rust
+revision: 16d1ffac17ad8b739e32483ac2e65fe7e1804977
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tauri-apps/tauri
+url: https://github.com/tauri-apps/tauri
+revision: 7e39750cf6a4e05234a781088ff5fb8cb890370a
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: denoland/deno
+url: https://github.com/denoland/deno
+revision: e7b39ebd55c85aaf6a29290c1f5a99e2e21e09dd
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: ruvnet/RuView
+url: https://github.com/ruvnet/RuView
+revision: 3686bc770f77eb6161d5379861dcd09d7d9a1e4b
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: oven-sh/bun
+url: https://github.com/oven-sh/bun
+revision: 99ee03e0800cac37aaefaf2cb5589c2cafef3959
+license: NOASSERTION
+fetched: 2026-10-27
+category: rust
+
+id: zed-industries/zed
+url: https://github.com/zed-industries/zed
+revision: ec86047d67acd6fddd81392f44ed6ebcc6e7f531
+license: NOASSERTION
+fetched: 2026-10-27
+category: rust
+
+id: astral-sh/uv
+url: https://github.com/astral-sh/uv
+revision: f8bec5eac866c5dd3794b4420e21e5dbd44045c6
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: pbakaus/impeccable
+url: https://github.com/pbakaus/impeccable
+revision: 414603bf14c7a344edb466bb1f85690c77ce8b7d
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: rtk-ai/rtk
+url: https://github.com/rtk-ai/rtk
+revision: e05c7bdfacfcfe1f845d11f47339e4eae63eb3f5
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: unionlabs/union
+url: https://github.com/unionlabs/union
+revision: 031785bb6dc6b957c624e62bc64c184409c97d7b
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: storytold/photocraft
+url: https://github.com/storytold/photocraft
+revision: d42f9da94a421980d7130c63ca2953e47802cfbe
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: dani-garcia/vaultwarden
+url: https://github.com/dani-garcia/vaultwarden
+revision: 0f44744ef86a2a7bea615af1c024044ce5736187
+license: AGPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: BurntSushi/ripgrep
+url: https://github.com/BurntSushi/ripgrep
+revision: 6892bc2b7efe5909cbbeec8f757ed2c4c76b1d30
+license: Unlicense
+fetched: 2026-10-27
+category: rust
+
+id: openinterpreter/openinterpreter
+url: https://github.com/openinterpreter/openinterpreter
+revision: ac1fcc8fe57aba51fcc3c79afd57a0883237fe87
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: alacritty/alacritty
+url: https://github.com/alacritty/alacritty
+revision: bbb2cbf9470a6707b1205fbddbdb25109b14e2fd
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: warpdotdev/warp
+url: https://github.com/warpdotdev/warp
+revision: 1e6c3ae465d6a925a9b97ae03877aaadd159b8f1
+license: AGPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: rust-lang/rustlings
+url: https://github.com/rust-lang/rustlings
+revision: f7b9b3c5882a1a43275130b95142d94f847526f5
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: tw93/Pake
+url: https://github.com/tw93/Pake
+revision: 53897aa9754580ad8e18fc5d1be7a45225da0a85
+license: GPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: FuelLabs/sway
+url: https://github.com/FuelLabs/sway
+revision: 7dafb1c7ae52ae8247e41e8e7b36a6f444b40b71
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: sharkdp/bat
+url: https://github.com/sharkdp/bat
+revision: a9aa73d215455a479f072da75dd39f19826acfea
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: starship/starship
+url: https://github.com/starship/starship
+revision: 86e1e7f05dca76fe80aedf34acffcb0940160701
+license: ISC
+fetched: 2026-10-27
+category: rust
+
+id: rust-unofficial/awesome-rust
+url: https://github.com/rust-unofficial/awesome-rust
+revision: 9096e657b263856d7cb006fee9f5c0d894f1e761
+license: CC0-1.0
+fetched: 2026-10-27
+category: rust
+
+id: meilisearch/meilisearch
+url: https://github.com/meilisearch/meilisearch
+revision: 9bbe2813f55fb856d1d710470a8020240c292e32
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: typst/typst
+url: https://github.com/typst/typst
+revision: 05437aeac99426fa70c8e5bbc03c27524f9fe6b8
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: FuelLabs/fuel-core
+url: https://github.com/FuelLabs/fuel-core
+revision: ffd6563763582f8b0d9073a7cc115b57002ee684
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: aaif-goose/goose
+url: https://github.com/aaif-goose/goose
+revision: 2c6812a358db1b11953b9fafc05c6126eb818788
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: lencx/ChatGPT
+url: https://github.com/lencx/ChatGPT
+revision: a6de9a8b61077fa63ad5c3ecbe2bc12e0cb4b4b9
+license: NONE
+fetched: 2026-10-27
+category: rust
+
+id: astral-sh/ruff
+url: https://github.com/astral-sh/ruff
+revision: c9caebb2db3219b43b3de271c5671a4d197fbd43
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: bevyengine/bevy
+url: https://github.com/bevyengine/bevy
+revision: 3409d2df5e576df518d30cdc4bc75fef295a0040
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: helix-editor/helix
+url: https://github.com/helix-editor/helix
+revision: ba40e547426b0f9896c8bdc699a4ab11f2b37dbc
+license: MPL-2.0
+fetched: 2026-10-27
+category: rust
+
+id: herdrdev/herdr
+url: https://github.com/herdrdev/herdr
+revision: 2713feb56e9c9db33992db0a262c68f7426d46dd
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: juspay/hyperswitch
+url: https://github.com/juspay/hyperswitch
+revision: bc36cd0a7340061602964d782e9a9aa91a39ca2d
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: janhq/jan
+url: https://github.com/janhq/jan
+revision: 9c20454e2ebafe8e355b71898fca4c7b89752faa
+license: NOASSERTION
+fetched: 2026-10-27
+category: rust
+
+id: sharkdp/fd
+url: https://github.com/sharkdp/fd
+revision: c44735ec0f130c2486afe9c976937c03b57a8c62
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: vercel-labs/agent-browser
+url: https://github.com/vercel-labs/agent-browser
+revision: edb40f1878864f90e14f6c11e26fdafd3fecc8dc
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: sxyazi/yazi
+url: https://github.com/sxyazi/yazi
+revision: 40a91421893bfd1ae02ef7a55afd41f886558d8c
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: FuelLabs/fuels-rs
+url: https://github.com/FuelLabs/fuels-rs
+revision: f5191b6aab3d553ce2348234015e3523b46beb1e
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tinyhumansai/openhuman
+url: https://github.com/tinyhumansai/openhuman
+revision: 9815263e10e1a89a073ffbc3f287ed77ba86a773
+license: GPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: GyulyVGC/sniffnet
+url: https://github.com/GyulyVGC/sniffnet
+revision: ab4bf739d46448436cb68933bb8260ee264449d5
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: codewhale-hq/Codewhale
+url: https://github.com/codewhale-hq/Codewhale
+revision: 7fe0cc2b4f41e45a71e833ffa302d60c4dc52613
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: nushell/nushell
+url: https://github.com/nushell/nushell
+revision: 36c057c9736234f00b8d49f5f145574617cf75ed
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: ajeetdsouza/zoxide
+url: https://github.com/ajeetdsouza/zoxide
+revision: f0b31631d295b0623bc440016ed0aba3c7c49dde
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: pola-rs/polars
+url: https://github.com/pola-rs/polars
+revision: d0a98d9c509ddad852337db66261d2d16f1a419e
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: DioxusLabs/dioxus
+url: https://github.com/DioxusLabs/dioxus
+revision: e690d49d803b65efce44d0c82ec96df2f587c447
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: spacedriveapp/spacedrive
+url: https://github.com/spacedriveapp/spacedrive
+revision: 4d41a379f612e23ac43a66ffd67df52ca77f57d4
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: lapce/lapce
+url: https://github.com/lapce/lapce
+revision: f66ffaa95387794205c35864517de70958b9ea8d
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: AlexsJones/llmfit
+url: https://github.com/AlexsJones/llmfit
+revision: 2f35825cc825a03448da7e0779dae8d11c0daabd
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: servo/servo
+url: https://github.com/servo/servo
+revision: 1f2b1433c7b89491d174c021c873d0b85c2dc2e7
+license: MPL-2.0
+fetched: 2026-10-27
+category: rust
+
+id: firecracker-microvm/firecracker
+url: https://github.com/firecracker-microvm/firecracker
+revision: d9f9a57d96627d9308140e0764a95e998e5587ff
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: pnpm/pnpm
+url: https://github.com/pnpm/pnpm
+revision: 1ae40b88507c1565c58aa2d067dee7a43623dc90
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: storytold/artcraft
+url: https://github.com/storytold/artcraft
+revision: 1f969a9224934a55417daf10359a6fb1458b63f4
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: block/buzz
+url: https://github.com/block/buzz
+revision: 6861e18a86972a300d5b7c6207a3ff6d4865b41c
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: casey/just
+url: https://github.com/casey/just
+revision: d6fee036379c531369dc37f67f8d4640f6bf1e2d
+license: CC0-1.0
+fetched: 2026-10-27
+category: rust
+
+id: zellij-org/zellij
+url: https://github.com/zellij-org/zellij
+revision: 6cccad122e7bebd3dd79a3d3f19896921b669bbc
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: jdx/mise
+url: https://github.com/jdx/mise
+revision: 59ae1b179162c89aa717accc1d090a08c6a7a9f8
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: rustfs/rustfs
+url: https://github.com/rustfs/rustfs
+revision: 924700a24fe44ca89be54d651840b153005149d6
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: qdrant/qdrant
+url: https://github.com/qdrant/qdrant
+revision: 222b2e44ab1c3f17e8246396ead6558e45041df7
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: cjpais/Handy
+url: https://github.com/cjpais/Handy
+revision: 73c095857bc4eadff097f64767c40ad129cc372d
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: fish-shell/fish-shell
+url: https://github.com/fish-shell/fish-shell
+revision: 9e05df534a6ed4a0bf635aa5eca3c0d5320930da
+license: GPL-2.0-only AND LGPL-2.0-or-later AND MIT AND PSF-2.0
+fetched: 2026-10-27
+category: rust
+
+id: swc-project/swc
+url: https://github.com/swc-project/swc
+revision: f5b03404dadec65457125369c028b12e3d15f042
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: TabbyML/tabby
+url: https://github.com/TabbyML/tabby
+revision: 21b29048d7bcf6b94f9f482f2d0fd05efadfd19f
+license: NOASSERTION
+fetched: 2026-10-27
+category: rust
+
+id: xai-org/x-algorithm
+url: https://github.com/xai-org/x-algorithm
+revision: 2f252142b9284e692ac72851768c8072d045f0d5
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: google/comprehensive-rust
+url: https://github.com/google/comprehensive-rust
+revision: c271ecdcb63c37195fcc9715039a96ed7d758e80
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: surrealdb/surrealdb
+url: https://github.com/surrealdb/surrealdb
+revision: 18971ffba781a796c0ad3897bb4b82432c241e4c
+license: NOASSERTION
+fetched: 2026-10-27
+category: rust
+
+id: zeroclaw-labs/zeroclaw
+url: https://github.com/zeroclaw-labs/zeroclaw
+revision: 5d4b18d335780af8bf15979b2f45e541f91c5eb9
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: yewstack/yew
+url: https://github.com/yewstack/yew
+revision: bfa6c19af971084f9547495388bde9aceeb81aaa
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: BigPizzaV3/CodexPlusPlus
+url: https://github.com/BigPizzaV3/CodexPlusPlus
+revision: 07ed3e69ec4aeed672a2b375402391c61b3159a8
+license: AGPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: dandavison/delta
+url: https://github.com/dandavison/delta
+revision: 3c2269c6b845913965575f11b0196d70ef5352f3
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: lbjlaq/Antigravity-Manager
+url: https://github.com/lbjlaq/Antigravity-Manager
+revision: 0067fe045ddd77f4462ea8e2c25384839d869f32
+license: NOASSERTION
+fetched: 2026-10-27
+category: rust
+
+id: ankitects/anki
+url: https://github.com/ankitects/anki
+revision: 1b48429de2d188e64fce46c9635620e3767a6879
+license: AGPL-3.0-or-later
+fetched: 2026-10-27
+category: rust
+
+id: jj-vcs/jj
+url: https://github.com/jj-vcs/jj
+revision: 22ac96b0fc9e12366fe79010f6e7eecc7b998cd2
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: Zackriya-Solutions/meetily
+url: https://github.com/Zackriya-Solutions/meetily
+revision: a2cb62e827da7ef59f65064c97233efb2313878e
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: atuinsh/atuin
+url: https://github.com/atuinsh/atuin
+revision: 436f912fb3b4ee896a6bcd50ed809a1030514991
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: linera-io/linera-protocol
+url: https://github.com/linera-io/linera-protocol
+revision: 672d97bb2fce3127db351069df72f1d225d8f263
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: googleworkspace/cli
+url: https://github.com/googleworkspace/cli
+revision: a3768d0e82ad83cca2da97724e46bea4ff0e6dbd
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: iced-rs/iced
+url: https://github.com/iced-rs/iced
+revision: cd04b74ca7073766f654535d6e72c452ef749d07
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: influxdata/influxdb
+url: https://github.com/influxdata/influxdb
+revision: 185688a5a813016c0d26ec10abbad2ca770670ed
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: emilk/egui
+url: https://github.com/emilk/egui
+revision: fc9d66dda742d722eedaa8684d23f86369cf8e5f
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: vercel/turborepo
+url: https://github.com/vercel/turborepo
+revision: 453a61699a50482653119a54505137b0d7ebcba4
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: sunface/rust-course
+url: https://github.com/sunface/rust-course
+revision: ebe2d82437f621085b0cb6895edbd1283ed63cb1
+license: NONE
+fetched: 2026-10-27
+category: rust
+
+id: trycua/cua
+url: https://github.com/trycua/cua
+revision: dec726eaa63a1efcb4e9f7b6f31f6810c7e8f74d
+license: MIT
+fetched: 2026-10-27
+category: rust
+
+id: nautechsystems/nautilus_trader
+url: https://github.com/nautechsystems/nautilus_trader
+revision: 93d66b43ed5f316130d49ac4af52b7e07cff4c58
+license: LGPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: chroma-core/chroma
+url: https://github.com/chroma-core/chroma
+revision: 52ce8448cb38a498f1660d55ea80df25b78f000a
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: h4ckf0r0day/obscura
+url: https://github.com/h4ckf0r0day/obscura
+revision: 8fedf55d6e0944ade443d4213285f64f1ecf8b7f
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: wezterm/wezterm
+url: https://github.com/wezterm/wezterm
+revision: e68a8ec27727fbbda15e07f0a0737cd5e16481f6
+license: NOASSERTION
+fetched: 2026-10-27
+category: rust
+
+id: sharkdp/hyperfine
+url: https://github.com/sharkdp/hyperfine
+revision: c5161524980522320c7d3425e714cc0965a869a5
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: niri-wm/niri
+url: https://github.com/niri-wm/niri
+revision: 9d8f4f89f6a075a04ed24af5f13829d0bdba5b85
+license: GPL-3.0
+fetched: 2026-10-27
+category: rust
+
+id: BloopAI/vibe-kanban
+url: https://github.com/BloopAI/vibe-kanban
+revision: a019cebf0693f787ef0f8dc2bb8d37edd35527ac
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: t8y2/dbx
+url: https://github.com/t8y2/dbx
+revision: 8f0e227db77d8cc6ca0f081f71d53631b6d4d7be
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: GraphiteEditor/Graphite
+url: https://github.com/GraphiteEditor/Graphite
+revision: f970cb167e7467716976f089daac502dd9de6678
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: cloudflare/pingora
+url: https://github.com/cloudflare/pingora
+revision: 84f21ee9a2c5074bd3b8d98b92a5cb152940ae99
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: xai-org/grok-build
+url: https://github.com/xai-org/grok-build
+revision: 2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8
+license: Apache-2.0
+fetched: 2026-10-27
+category: rust
+
+id: tree-sitter/tree-sitter
+url: https://github.com/tree-sitter/tree-sitter
+revision: dfe770858e3cfd8e8b29a79ea17da390a6f60319
+license: MIT
+fetched: 2026-10-27
 category: rust
 
 id: obra/superpowers
 url: https://github.com/obra/superpowers
 revision: 2ce8aa15d05bd57213e6f746f953aafb7ded7a8b
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: mattpocock/skills
 url: https://github.com/mattpocock/skills
 revision: 5beb35b040e3de97e54fa9e386d7e42d15c295c2
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: ohmyzsh/ohmyzsh
 url: https://github.com/ohmyzsh/ohmyzsh
-revision: 2100c630ba4bd67bb48802c3e7da893a4fdaa1a0
+revision: d2b7f557cceaddb16ba89bbf8200d8a8df35c4d8
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: msitarzewski/agency-agents
 url: https://github.com/msitarzewski/agency-agents
 revision: b37b5bb33b78f2c1d6567d98e25ca818e3259219
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: d3/d3
 url: https://github.com/d3/d3
 revision: 3d1a90c30805c17b79eb24c13c5aa45454534850
 license: ISC
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: papers-we-love/papers-we-love
 url: https://github.com/papers-we-love/papers-we-love
 revision: 9b92363eac4d4fbea0f5fdc7766ef68d22037ca8
 license: NONE
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: nvm-sh/nvm
 url: https://github.com/nvm-sh/nvm
-revision: e780535240ee3ba67048b434cec6f7f509ee7b31
+revision: 139ed9ccc6d3710e09c6c5865c8d071f5445d658
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: tw93/Mole
 url: https://github.com/tw93/Mole
-revision: 6020bc9c49184119aea37c84ab1d4d4b5b205af0
+revision: ad7915c9857f28bacefab3cafab1c1037276c3ae
 license: GPL-3.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: base/node
 url: https://github.com/base/node
 revision: 36cedd9185512d8664721ab3fd89381ddd0fcd97
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: youngyangyang04/leetcode-master
 url: https://github.com/youngyangyang04/leetcode-master
 revision: 6fe1571732d41e8f425f8e702992adf7ffae95a0
 license: NONE
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: pi-hole/pi-hole
 url: https://github.com/pi-hole/pi-hole
 revision: f503a65d3a07cb71fd931389f1d3babf718249aa
 license: NOASSERTION
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: romkatv/powerlevel10k
 url: https://github.com/romkatv/powerlevel10k
 revision: d05a1b00f9a61f9578bf9dc19b8451942dde8734
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: dockur/windows
 url: https://github.com/dockur/windows
 revision: 013ea27498e0e820a46b3861a0fa047d5b19d846
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: sickcodes/Docker-OSX
 url: https://github.com/sickcodes/Docker-OSX
 revision: aa05a2c9a06aabfc8542c1c373ad1ad0af74ede3
 license: GPL-3.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: acmesh-official/acme.sh
 url: https://github.com/acmesh-official/acme.sh
 revision: 37d064f7b580055d3f2ddf9a9c960f754f3694d6
 license: GPL-3.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: omacom/omarchy
 url: https://github.com/omacom/omarchy
-revision: 2fca7fe073e5ef71cd066ddb0d2294ad067deaf5
+revision: 39d56653d649312453316f2536fcfb9982f08fb8
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: pyenv/pyenv
 url: https://github.com/pyenv/pyenv
-revision: 0effba62c4bbf8f8ca2ad8f0eabbfd8221cc7bc6
+revision: 9b9caf040a539fc7030820d9f19d79ad5861f8d4
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: dylanaraps/pure-bash-bible
 url: https://github.com/dylanaraps/pure-bash-bible
 revision: 8c19d0b482b04d8d50fb72b4c5148b41ce605c6d
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: open-guides/og-aws
 url: https://github.com/open-guides/og-aws
 revision: cde02946c221492d46c03777de41894b88b7d1ff
 license: CC-BY-4.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: inkonchain/node
 url: https://github.com/inkonchain/node
 revision: 3ea9d0027b706a95362d1879461804aa62d87448
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: zsh-users/zsh-autosuggestions
 url: https://github.com/zsh-users/zsh-autosuggestions
 revision: 85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: VSCodium/vscodium
 url: https://github.com/VSCodium/vscodium
-revision: be70704abf84fc6c7721f94478dfcccd2dc6163e
+revision: 081f269dd2cdf07b0df0799f2740533a534b2b18
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: mathiasbynens/dotfiles
 url: https://github.com/mathiasbynens/dotfiles
 revision: b7c7894e7bb2de5d60bfb9a2f5e46d01a61300ea
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: community-scripts/ProxmoxVE
 url: https://github.com/community-scripts/ProxmoxVE
-revision: 80cc9edf9cc556571d977830c98ea18cf660981d
+revision: d4613af2edc1aac0e63ff9ea7c6d1ae03f2f43f3
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: MichaelCade/90DaysOfDevOps
 url: https://github.com/MichaelCade/90DaysOfDevOps
 revision: 2941b895eaac2056ec9431a21f3d09a60a3752f8
 license: NOASSERTION
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: 233boy/v2ray
 url: https://github.com/233boy/v2ray
 revision: 707ecf7601ff49f91c2d12dd22b98e8f89588d1c
 license: GPL-3.0
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: hwdsl2/setup-ipsec-vpn
 url: https://github.com/hwdsl2/setup-ipsec-vpn
 revision: 2f9dbc22eac46ba97aab9676f53156bb6ea6b935
 license: NOASSERTION
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: shengxinjing/programmer-job-blacklist
 url: https://github.com/shengxinjing/programmer-job-blacklist
 revision: 8ec837e7941808d688d9eb8e4b86152c0220c23e
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: Donchitos/Claude-Code-Game-Studios
 url: https://github.com/Donchitos/Claude-Code-Game-Studios
 revision: 05ad7c8a5b8aa2aa86bbd3439ae7cf7295cac418
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: mbadolato/iTerm2-Color-Schemes
 url: https://github.com/mbadolato/iTerm2-Color-Schemes
-revision: 04a98db045eb5d71c2247ca6c050ab97290d081c
+revision: 27cbbb5ee7e98ff15484e7342b07a20606260176
 license: NOASSERTION
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: nvie/gitflow
 url: https://github.com/nvie/gitflow
 revision: d2eee63886e23c27a0c0418603c8264276a86340
 license: NOASSERTION
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: lxgw/LxgwWenKai
 url: https://github.com/lxgw/LxgwWenKai
 revision: 4a762d7594c823a1417b7d6b1de39fa5bfc8afd4
 license: OFL-1.1
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: powerline/fonts
 url: https://github.com/powerline/fonts
 revision: a029626780dd4af32f15a3e708a5b00528c22f1d
 license: NONE
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: a2aproject/A2A
 url: https://github.com/a2aproject/A2A
 revision: 98279d62316361ba8451eaef300f72b72e169185
 license: Apache-2.0
-fetched: 2026-10-25
-category: shell
-
-id: yuaotian/go-cursor-help
-url: https://github.com/yuaotian/go-cursor-help
-revision: 2d00ebc01eb977b2575589d19f4201de9757368e
-license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: VoltAgent/awesome-claude-code-subagents
 url: https://github.com/VoltAgent/awesome-claude-code-subagents
 revision: 408d3c9eee2d0c75c12a3abb5de29e53c2ca6b9e
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
+category: shell
+
+id: yuaotian/go-cursor-help
+url: https://github.com/yuaotian/go-cursor-help
+revision: 2d00ebc01eb977b2575589d19f4201de9757368e
+license: MIT
+fetched: 2026-10-27
 category: shell
 
 id: gpakosz/.tmux
 url: https://github.com/gpakosz/.tmux
 revision: 58a3dcc0d718ec0fa1c0d5a2fddd640a1ad7a5b7
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: eip-work/kuboard-press
 url: https://github.com/eip-work/kuboard-press
-revision: d4876d6b3b7eb6e672d072003f65865d549ecbb5
+revision: 26ada6d9f5ea796d246459b4ab2f908f2891690d
 license: NONE
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: kholia/OSX-KVM
 url: https://github.com/kholia/OSX-KVM
 revision: 4c378a4b5e0b219783683012bec680325eb40719
 license: NONE
-fetched: 2026-10-25
+fetched: 2026-10-27
 category: shell
 
 id: dylanaraps/neofetch
 url: https://github.com/dylanaraps/neofetch
 revision: ccd5d9f52609bbdcd5d8fa78c4fdb0f12954125f
 license: MIT
-fetched: 2026-10-25
+fetched: 2026-10-27
+category: shell
+
+id: StreisandEffect/streisand
+url: https://github.com/StreisandEffect/streisand
+revision: af5eb7dac157a2416ea64cba96cf32f7f505d9ff
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: zsh-users/zsh-syntax-highlighting
+url: https://github.com/zsh-users/zsh-syntax-highlighting
+revision: e6683f20e5c38d3e5447f45845d04ddda75d0f23
+license: BSD-3-Clause
+fetched: 2026-10-27
+category: shell
+
+id: drduh/macOS-Security-and-Privacy-Guide
+url: https://github.com/drduh/macOS-Security-and-Privacy-Guide
+revision: c952886080669e0303a04ca37ba5a21061f9ce3a
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: mack-a/v2ray-agent
+url: https://github.com/mack-a/v2ray-agent
+revision: 7591e6d9ca6f50db7ec55bf4e9b3ce6f624d6973
+license: AGPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: lewagon/dotfiles
+url: https://github.com/lewagon/dotfiles
+revision: c12c9f5b37fbda490b3739992fcfcbc6430ab584
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: dockur/macos
+url: https://github.com/dockur/macos
+revision: 16a5b470cdd601bae8b05b02d748d7edfb36c12e
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: jnMetaCode/agency-agents-zh
+url: https://github.com/jnMetaCode/agency-agents-zh
+revision: 4633be98359f03e8be2c0b29f14141007217f04d
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: rockerBOO/awesome-neovim
+url: https://github.com/rockerBOO/awesome-neovim
+revision: b472f6b390e99acf962211064236a883c4620478
+license: CC0-1.0
+fetched: 2026-10-27
+category: shell
+
+id: Nyr/openvpn-install
+url: https://github.com/Nyr/openvpn-install
+revision: 7ff931a00c37a6806bd1fa8cb61bf3369d963e94
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: spaceship-prompt/spaceship-prompt
+url: https://github.com/spaceship-prompt/spaceship-prompt
+revision: 0676854eb49585d6be2b4faf218de92bbf18ce18
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: agarrharr/awesome-cli-apps
+url: https://github.com/agarrharr/awesome-cli-apps
+revision: 1f85964177eefd08469005b0c47d09c7c729cfd6
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: githubnext/monaspace
+url: https://github.com/githubnext/monaspace
+revision: f31794b6e9e65698a062262e2f826f679dcb7070
+license: OFL-1.1
+fetched: 2026-10-27
+category: shell
+
+id: docker-mailserver/docker-mailserver
+url: https://github.com/docker-mailserver/docker-mailserver
+revision: c0fc3fbe6a4562a12fd303a52a23cda918b88763
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: tj/n
+url: https://github.com/tj/n
+revision: f2fa928b6abc85c35455a929246330729e0febc3
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: deviantony/docker-elk
+url: https://github.com/deviantony/docker-elk
+revision: 4e7ea8b37eaee18fef8e42778c3e2f3356d751e1
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: tj/git-extras
+url: https://github.com/tj/git-extras
+revision: a754386dbfb85e23e766eccbb3885d635115d013
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: unixorn/awesome-zsh-plugins
+url: https://github.com/unixorn/awesome-zsh-plugins
+revision: 358d3cd51fba4cbe32cb34d7233750d47999f4d9
+license: BSD-3-Clause
+fetched: 2026-10-27
+category: shell
+
+id: taizilongxu/interview_python
+url: https://github.com/taizilongxu/interview_python
+revision: 28fa4704a80ea1cc5bb8edfebe5c5b504e00f1c8
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: source-foundry/Hack
+url: https://github.com/source-foundry/Hack
+revision: a737c121cabb337fdfe655d8c7304729f351e30f
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: termux/termux-packages
+url: https://github.com/termux/termux-packages
+revision: f8f7bf3d488ab58ed764e2ec21bbe4873eeb8b31
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: rupa/z
+url: https://github.com/rupa/z
+revision: d37a763a6a30e1b32766fecc3b8ffd6127f8a0fd
+license: WTFPL
+fetched: 2026-10-27
+category: shell
+
+id: thibmaek/awesome-raspberry-pi
+url: https://github.com/thibmaek/awesome-raspberry-pi
+revision: 1022426903d36032058a02a91b36893b8ef28af6
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: rbenv/rbenv
+url: https://github.com/rbenv/rbenv
+revision: 07e9b1e297a5977298c6aadc9971ae0e9eb7f0dc
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: quickemu-project/quickemu
+url: https://github.com/quickemu-project/quickemu
+revision: 45ca89efee2a829b77e86a28965604c457320731
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: CISOfy/lynis
+url: https://github.com/CISOfy/lynis
+revision: 9319416fa0726369ab0a48f686155a90363f3f9c
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: angristan/openvpn-install
+url: https://github.com/angristan/openvpn-install
+revision: ad22fd9eb0c8569a885f836ef6e37576d8702e9f
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: ramitsurana/awesome-kubernetes
+url: https://github.com/ramitsurana/awesome-kubernetes
+revision: be350d9341858fab50efb336ea35e605c31886d2
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: winapps-org/winapps
+url: https://github.com/winapps-org/winapps
+revision: f5c9ee3951046c28f2aaf3a0b3b16c9a1c0a09e9
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: kaldi-asr/kaldi
+url: https://github.com/kaldi-asr/kaldi
+revision: e02e35f0254bb033fab73d1df99fc34123e31d56
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: Bash-it/bash-it
+url: https://github.com/Bash-it/bash-it
+revision: 323e10f81225d8cdfd916d5fbfc971e455f4ea5a
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: DaoCloud/public-image-mirror
+url: https://github.com/DaoCloud/public-image-mirror
+revision: 6781cd8d1e1588a878cbad0ed3b376bb75227894
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: tteck/Proxmox
+url: https://github.com/tteck/Proxmox
+revision: 930760840c27ad92430c41ae1c0ff2a886d6ba63
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: tmux-plugins/tpm
+url: https://github.com/tmux-plugins/tpm
+revision: e261deb1b47614eed3400089ce7197dc68acc4eb
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: nelvko/clashctl
+url: https://github.com/nelvko/clashctl
+revision: e38d643725594c38c3fb02f355a2c89eba9c296c
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: sorin-ionescu/prezto
+url: https://github.com/sorin-ionescu/prezto
+revision: cff2d01871425b1b80710f8ec6a475c5a53145b4
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: itzg/docker-minecraft-server
+url: https://github.com/itzg/docker-minecraft-server
+revision: 2e04d8c973fb2019592f747175b9a2511f7665a0
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: sindresorhus/pure
+url: https://github.com/sindresorhus/pure
+revision: cac55d0b531a0db72294c9bba9453dfa6374c59d
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: trimstray/nginx-admins-handbook
+url: https://github.com/trimstray/nginx-admins-handbook
+revision: 5aea1f81a2fd7bd505af82cfebbdb5ac8526ff2d
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: pystardust/ani-cli
+url: https://github.com/pystardust/ani-cli
+revision: 0301d67d5768d332b049821a30082ad43d9a215a
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: foxlet/macOS-Simple-KVM
+url: https://github.com/foxlet/macOS-Simple-KVM
+revision: 527588d5a25c232fa82bfa079cdb6771568f3d95
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: bin456789/reinstall
+url: https://github.com/bin456789/reinstall
+revision: 01e1e259968c3b9c5ee5d6aea7253392b5eafe92
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: nodesource/distributions
+url: https://github.com/nodesource/distributions
+revision: 9b431d8ae0f10df272598585855c6eca6c0e1bd2
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: hq450/fancyss
+url: https://github.com/hq450/fancyss
+revision: b19e82cb6a05e08990a96905353921819d44d134
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: juewuy/ShellCrash
+url: https://github.com/juewuy/ShellCrash
+revision: b6e4c629c5aea91c20717ee7ff42d95fe364ac9f
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: myspaghetti/macos-virtualbox
+url: https://github.com/myspaghetti/macos-virtualbox
+revision: d00fde1543fb90fe63be4672fe2101f2ab82b2dc
+license: GPL-2.0
+fetched: 2026-10-27
+category: shell
+
+id: awslabs/git-secrets
+url: https://github.com/awslabs/git-secrets
+revision: 7d6b970cbd3c216353cb22b383b70c150140662e
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: Powerlevel9k/powerlevel9k
+url: https://github.com/Powerlevel9k/powerlevel9k
+revision: 66d53c02476c6207f65b0d22910242abc68935e3
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: k4m4/terminals-are-sexy
+url: https://github.com/k4m4/terminals-are-sexy
+revision: c53af64e02a56cd99a119242b07be7fdf5811c48
+license: CC0-1.0
+fetched: 2026-10-27
+category: shell
+
+id: JetBrains/JetBrainsMono
+url: https://github.com/JetBrains/JetBrainsMono
+revision: 19371302b95d218af43299bce79ddbddd0bc364d
+license: OFL-1.1
+fetched: 2026-10-27
+category: shell
+
+id: tmux-plugins/tmux-resurrect
+url: https://github.com/tmux-plugins/tmux-resurrect
+revision: cff343cf9e81983d3da0c8562b01616f12e8d548
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: haoel/haoel.github.io
+url: https://github.com/haoel/haoel.github.io
+revision: 9251b516788f4fbaf244d4405576076b4e8d362e
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: google/oss-fuzz
+url: https://github.com/google/oss-fuzz
+revision: a6d41d14b5293cf2d06e5572813c5995e06c09c3
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: p8952/bocker
+url: https://github.com/p8952/bocker
+revision: 000633061c6cfcb99c8d9eef5aa483a44318f3e6
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: alex000kim/nsfw_data_scraper
+url: https://github.com/alex000kim/nsfw_data_scraper
+revision: cf9c472ab0277fba974e1d06d7951fcfab6919af
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: skywind3000/awesome-cheatsheets
+url: https://github.com/skywind3000/awesome-cheatsheets
+revision: a933bf7d19e1750c832c3f22250dfc3cbf72fdf6
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: ansible/ansible-examples
+url: https://github.com/ansible/ansible-examples
+revision: b50586543c6c4be907fdc88f9f78a2b35d2a895f
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: k4m4/movies-for-hackers
+url: https://github.com/k4m4/movies-for-hackers
+revision: 2a12188eb073efd419a67f4232ecb3a60a6b97ac
+license: CC0-1.0
+fetched: 2026-10-27
+category: shell
+
+id: fuzhengwei/CodeGuide
+url: https://github.com/fuzhengwei/CodeGuide
+revision: ac4eafd672f4cc5b88dea7a13b371e52ca57cbc1
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: BtbN/FFmpeg-Builds
+url: https://github.com/BtbN/FFmpeg-Builds
+revision: b4a2b1d7cc241786eb8e2b588a7ade40cad48bbd
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: jayphelps/git-blame-someone-else
+url: https://github.com/jayphelps/git-blame-someone-else
+revision: 8d854c2d78cb98afdb9f5a73240e06393260b327
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: pi-hole/docker-pi-hole
+url: https://github.com/pi-hole/docker-pi-hole
+revision: 01f3b2b6d0c0e4174e4e40ff6d5506977b52b52a
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: moovweb/gvm
+url: https://github.com/moovweb/gvm
+revision: dd652539fa4b771840846f8319fad303c7d0a8d2
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: 1N3/Sn1per
+url: https://github.com/1N3/Sn1per
+revision: a5450bc496a1af04f8368888f86d086a9fc046b8
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: YanG-1989/m3u
+url: https://github.com/YanG-1989/m3u
+revision: 39bd930c68c2fa0e7bd794ea22ece1d0503c2877
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: edoardottt/awesome-hacker-search-engines
+url: https://github.com/edoardottt/awesome-hacker-search-engines
+revision: 429570ea823960e7687550abacdf1cee39930dd0
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: oh-my-fish/oh-my-fish
+url: https://github.com/oh-my-fish/oh-my-fish
+revision: 043699af326b1d4fcfaf1b2e591d830d1d53506a
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: angristan/wireguard-install
+url: https://github.com/angristan/wireguard-install
+revision: 832fb9833501a7220e2900cffb61082841dedba8
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: github/copilot-cli
+url: https://github.com/github/copilot-cli
+revision: 8f18becc073481aeab76c83bc38d6db8c3d6c85a
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: xzhih/one-key-hidpi
+url: https://github.com/xzhih/one-key-hidpi
+revision: aa4c0b500da2498c2d31b7aec0ffb9993959a526
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: aristocratos/bashtop
+url: https://github.com/aristocratos/bashtop
+revision: 60f95a1a74c8e7e589c02aa03d60141152df8337
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: nicolaka/netshoot
+url: https://github.com/nicolaka/netshoot
+revision: d0aa4b51ae056c36a89bae3d1954b29108eb5811
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: kodekloudhub/certified-kubernetes-administrator-course
+url: https://github.com/kodekloudhub/certified-kubernetes-administrator-course
+revision: 506b5418fc11e726f869a2dbde34e9eca369d975
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: xykt/IPQuality
+url: https://github.com/xykt/IPQuality
+revision: 87397e2c3196ec796f5477c83343c2354df601ea
+license: AGPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: codota/TabNine
+url: https://github.com/codota/TabNine
+revision: c1d225f98b5504ce27ff9fa243e5ea0dcffb8f00
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: yonggekkk/sing-box-yg
+url: https://github.com/yonggekkk/sing-box-yg
+revision: b13f9435c4792fccf04d4fbc73e24a1948abff1b
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: super-linter/super-linter
+url: https://github.com/super-linter/super-linter
+revision: 0209c200ae860f13235e78f50a36ed21c198ba4f
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: LSPosed/MagiskOnWSALocal
+url: https://github.com/LSPosed/MagiskOnWSALocal
+revision: 10659d90b6133b3a3138fd780f272b6869346c39
+license: AGPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: brendangregg/perf-tools
+url: https://github.com/brendangregg/perf-tools
+revision: cb42511b963a8dd2d8fcca400174c8d5d33a1f37
+license: GPL-2.0
+fetched: 2026-10-27
+category: shell
+
+id: RetroPie/RetroPie-Setup
+url: https://github.com/RetroPie/RetroPie-Setup
+revision: f5ebfba638179631d4619f2b52075dec33d4bca8
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: Gogh-Co/Gogh
+url: https://github.com/Gogh-Co/Gogh
+revision: 3277da1a295142cd8664e0657c5a3c2a44cc520a
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: conda-forge/miniforge
+url: https://github.com/conda-forge/miniforge
+revision: 5182221cb655ea7569ddc475822d27ec64ec451d
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: Fmstrat/winapps
+url: https://github.com/Fmstrat/winapps
+revision: 5431f94596bae1d1a471d0ad69cba892b11d2623
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: ophub/amlogic-s9xxx-armbian
+url: https://github.com/ophub/amlogic-s9xxx-armbian
+revision: 72621c6f32942e40757deb1a5de63dca575c7658
+license: GPL-2.0
+fetched: 2026-10-27
+category: shell
+
+id: learnbyexample/Command-line-text-processing
+url: https://github.com/learnbyexample/Command-line-text-processing
+revision: ce56c851f078469736bbe51a6938c21cc934022e
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: awesome-lists/awesome-bash
+url: https://github.com/awesome-lists/awesome-bash
+revision: 8006230b3082b416f34495e957d86fee1a5c3654
+license: CC0-1.0
+fetched: 2026-10-27
+category: shell
+
+id: daliansky/Hackintosh
+url: https://github.com/daliansky/Hackintosh
+revision: bf9c3717fa138206f0abb9c4fd4c03e6b074864e
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: alexanderepstein/Bash-Snippets
+url: https://github.com/alexanderepstein/Bash-Snippets
+revision: 581a6b4ea681005e3f8add37dbed74aaec65479f
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: rgcr/m-cli
+url: https://github.com/rgcr/m-cli
+revision: 02e3f8f42aa02bb6dc801c6e509467ac9f4234a6
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: adobe-fonts/source-han-serif
+url: https://github.com/adobe-fonts/source-han-serif
+revision: 4356704ff7c68e9a84bf2bd489c9ebe186a9e2ef
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: xdissent/ievms
+url: https://github.com/xdissent/ievms
+revision: ad487055333658a5b3555c6d1425e229a18b9409
+license: NONE
+fetched: 2026-10-27
+category: shell
+
+id: iuricode/padroes-de-commits
+url: https://github.com/iuricode/padroes-de-commits
+revision: e7c5297371f73f076a1469dc5e7220ee35a637fb
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: frankbria/ralph-claude-code
+url: https://github.com/frankbria/ralph-claude-code
+revision: a4ea748f446606d156c84900f209547ead7db4f3
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: docker/docker-bench-security
+url: https://github.com/docker/docker-bench-security
+revision: 154869da6418089decf7e1ab0cfca0e1cdfc5c49
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: HyDE-Project/HyDE
+url: https://github.com/HyDE-Project/HyDE
+revision: fa2fd57afc7203b1b5653d3271f3a57ea3873f97
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: telekom-security/tpotce
+url: https://github.com/telekom-security/tpotce
+revision: 67922363b8fde90a7b1315012cf1d05831ac8d0c
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: getsentry/self-hosted
+url: https://github.com/getsentry/self-hosted
+revision: 17e75fa009eb96373f3759af311725494dad0774
+license: NOASSERTION
+fetched: 2026-10-27
+category: shell
+
+id: toniblyx/my-arsenal-of-aws-security-tools
+url: https://github.com/toniblyx/my-arsenal-of-aws-security-tools
+revision: 8a0d26757ddbdfbfaf8cdb171347fb5fade9dfdb
+license: Apache-2.0
+fetched: 2026-10-27
+category: shell
+
+id: orbstack/orbstack
+url: https://github.com/orbstack/orbstack
+revision: fee7fc42276310059957bf3ea4c73d11c05f212e
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: jorgebucaran/fisher
+url: https://github.com/jorgebucaran/fisher
+revision: 791da644d33d392216f6b1a9b5fc1e470db6d7f2
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: EtherDream/jsproxy
+url: https://github.com/EtherDream/jsproxy
+revision: be161ed8bbaf987ec50a28204fe8f54ae3f2ad73
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: wulabing/Xray_onekey
+url: https://github.com/wulabing/Xray_onekey
+revision: f1d1a5927fa947d2f01ca29a7f734546dde5cca2
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: testssl/testssl.sh
+url: https://github.com/testssl/testssl.sh
+revision: db2084c014d4b2f474282d329761bde147184ac6
+license: GPL-2.0
+fetched: 2026-10-27
+category: shell
+
+id: guarinogabriel/Mac-CLI
+url: https://github.com/guarinogabriel/Mac-CLI
+revision: 26c047242351e4b1c66bff91548a07352a694f16
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: kylemanna/docker-openvpn
+url: https://github.com/kylemanna/docker-openvpn
+revision: 1228577d4598762285958ad98724ab37e7b11354
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: phusion/baseimage-docker
+url: https://github.com/phusion/baseimage-docker
+revision: 81490388e598111c12eb0d545d9c70546a607956
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: kiddin9/Kwrt
+url: https://github.com/kiddin9/Kwrt
+revision: 04dbdd8e9a302630132a687642ecb3e78ab9d2af
+license: MIT
+fetched: 2026-10-27
+category: shell
+
+id: adi1090x/rofi
+url: https://github.com/adi1090x/rofi
+revision: 512a585fff6da5b2a90e5948059b062516ddb2e7
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: judasn/Linux-Tutorial
+url: https://github.com/judasn/Linux-Tutorial
+revision: 80109268d5b773c22cb8700d953d5ff01e52abde
+license: GPL-2.0
+fetched: 2026-10-27
+category: shell
+
+id: RROrg/rr
+url: https://github.com/RROrg/rr
+revision: 37569f3e7a735353449e9ba4d53bb4e6c539b9be
+license: GPL-3.0
+fetched: 2026-10-27
+category: shell
+
+id: dnschneid/crouton
+url: https://github.com/dnschneid/crouton
+revision: 59e36db17c5433a31867332b16f48e6b35d9d412
+license: BSD-3-Clause
+fetched: 2026-10-27
 category: shell

@@ -8,11 +8,13 @@
 Standard library only (plus the `git` program). Four commands:
 
     ingest.py crates   --count N --out candidates.json
-    ingest.py github   --query Q --category C --count N --out candidates.json
+    ingest.py github   --query Q --category C --count N --out candidates.json [--cargo-license]
     ingest.py manifest --candidates A.json [B.json ...] --out manifest.txt [--date YYYY-MM-DD]
                        [--exclude ID ...]
-    ingest.py fetch    --manifest manifest.txt --accepted ids.txt --dest DIR
-    ingest.py list     --dest DIR --category C [--max-bytes N]
+    ingest.py fetch    --manifest manifest.txt --accepted ids.txt --dest DIR [--drop-git]
+    ingest.py list     --dest DIR --category C [--kind code|docs] [--max-bytes N]
+    ingest.py files    --manifest manifest.txt --accepted ids.txt --dest DIR --out files.tsv
+                       [--kind all|code|docs] [--max-bytes N]
     ingest.py measure  --manifest manifest.txt --accepted ids.txt --dest DIR --out results.json
                        [--markdown FILE] [--report check_manifest.tsv] [--note TEXT]
     ingest.py report   --report check_manifest.tsv --markdown FILE [--note TEXT]
@@ -29,6 +31,7 @@ import datetime
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -37,7 +40,7 @@ import urllib.parse
 import urllib.request
 
 CANDIDATES_SCHEMA = "midman-ingest-candidates/1"
-RESULTS_SCHEMA = "midman-ingest-results/1"
+RESULTS_SCHEMA = "midman-ingest-results/2"
 # A line longer than this many bytes marks a file as possibly minified or generated.
 LONG_LINE = 1000
 # The notice scan reads the top-level files of a source that has no license, looking for a
@@ -73,6 +76,14 @@ CATEGORY_FILES = {
         "names": ("Makefile", "makefile", "GNUmakefile", "Dockerfile"),
     },
 }
+# Documentation is taken as a second kind of file from every source, whatever its category.
+# Release notes are left out: they are long, repetitive and say little about the code.
+DOC_SUFFIXES = (".md", ".markdown", ".rst")
+DOC_SKIP_PREFIXES = ("CHANGELOG", "CHANGES", "HISTORY", "NEWS", "RELEASE")
+# A shell script with no extension is recognised by its first line.
+SHELL_SHEBANG = re.compile(
+    rb"^#!\s*(?:/usr/bin/env\s+(?:-S\s+)?|/\S*/)?(?:sh|bash|zsh|dash|ksh|fish)\b"
+)
 SKIP_DIRS = {".git", "target", "node_modules", "vendor", "third_party", "build", "dist"}
 
 
@@ -101,17 +112,18 @@ def github_repo(url):
 def normalize_license(text):
     """The license string as an SPDX expression, or None when the listing gave none.
 
-    Cargo's older spelling `MIT/Apache-2.0` means `MIT OR Apache-2.0`; it is rewritten here
-    because the Rust reader only reads SPDX. Nothing else is changed: a name that is not
-    SPDX stays as it is and the policy refuses it.
+    Cargo's older spelling `MIT/Apache-2.0` (also written `MIT / Apache-2.0`, as crates.io
+    has it for `fnv`) means `MIT OR Apache-2.0`; it is rewritten here because the Rust reader
+    only reads SPDX. Nothing else is changed: a name that is not SPDX stays as it is, and
+    `manifest` records it as unidentified (see `is_spdx_shaped`).
     """
     if text is None:
         return None
     text = " ".join(str(text).split())
     if not text:
         return None
-    if "/" in text and " " not in text and "(" not in text:
-        text = " OR ".join(part for part in text.split("/") if part)
+    if "/" in text and "(" not in text and not re.search(r"\b(AND|OR|WITH)\b", text):
+        text = " OR ".join(part.strip() for part in text.split("/") if part.strip())
     return text
 
 
@@ -134,6 +146,76 @@ def merge_licenses(licenses):
         wrapped = " OR " in lic or " AND " in lic
         parts.append("(" + lic + ")" if wrapped else lic)
     return " AND ".join(parts)
+
+
+_SPDX_TOKEN = re.compile(r"\s*(\(|\)|[A-Za-z0-9.+:_-]+)")
+
+
+def is_spdx_shaped(text):
+    """Whether `text` has the shape of an SPDX license expression.
+
+    It checks the grammar only (`id`, `id WITH id`, joined by `AND` or `OR`, in brackets as
+    wanted; the operators in capitals), not that an id exists. The Rust reader refuses a whole
+    manifest for one expression it cannot read, so a license text that fails this check is
+    never written into one.
+    """
+    tokens = []
+    position = 0
+    text = text.strip()
+    while position < len(text):
+        match = _SPDX_TOKEN.match(text, position)
+        if match is None:
+            return False
+        tokens.append(match.group(1))
+        position = match.end()
+    keywords = ("AND", "OR", "WITH")
+
+    def term(at):
+        if at >= len(tokens):
+            return None
+        if tokens[at] == "(":
+            end = expression(at + 1)
+            if end is None or end >= len(tokens) or tokens[end] != ")":
+                return None
+            return end + 1
+        if tokens[at] in keywords or tokens[at] == ")":
+            return None
+        at += 1
+        if at < len(tokens) and tokens[at] == "WITH":
+            if at + 1 >= len(tokens) or tokens[at + 1] in keywords + ("(", ")"):
+                return None
+            at += 2
+        return at
+
+    def expression(at):
+        at = term(at)
+        while at is not None and at < len(tokens) and tokens[at] in ("AND", "OR"):
+            at = term(at + 1)
+        return at
+
+    return expression(0) == len(tokens)
+
+
+def cargo_license(text):
+    """The license a root `Cargo.toml` declares, as an SPDX expression, or None.
+
+    Looks at `[package] license`, then `[workspace.package] license` (a package that says
+    `license.workspace = true` takes the second). A `license-file` is not a license id and
+    gives None, as does text that is not TOML (for example an error page).
+    """
+    try:
+        import tomllib
+    except ImportError:
+        raise IngestError("reading Cargo.toml needs Python 3.11 or newer")
+    try:
+        doc = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return None
+    workspace = doc.get("workspace")
+    for table in (doc.get("package"), workspace.get("package") if isinstance(workspace, dict) else None):
+        if isinstance(table, dict) and isinstance(table.get("license"), str):
+            return normalize_license(table["license"])
+    return None
 
 
 def parse_crates_page(page):
@@ -287,16 +369,42 @@ def read_manifest(text):
     return out
 
 
-def select_files(dest, category, max_bytes):
-    """Paths of files of this category under `dest`, sorted, no directory in SKIP_DIRS."""
-    rule = CATEGORY_FILES.get(category)
-    if rule is None:
-        raise IngestError("no file rule for category `" + category + "`")
+def has_shell_shebang(path):
+    """Whether the file starts with a `#!` line that names a shell."""
+    try:
+        with open(path, "rb") as handle:
+            return SHELL_SHEBANG.match(handle.read(200)) is not None
+    except OSError:
+        return False
+
+
+def select_files(dest, category, max_bytes, kind="code"):
+    """Paths of files of one kind under `dest`, sorted, no directory in SKIP_DIRS.
+
+    `kind` is `code` (the files of this category: by suffix or name, and for shell also an
+    extensionless file that starts with a shell `#!` line) or `docs` (Markdown and
+    reStructuredText, without release notes; the category does not matter).
+    """
+    if kind not in ("code", "docs"):
+        raise IngestError("kind must be `code` or `docs`, not `" + str(kind) + "`")
+    rule = None
+    if kind == "code":
+        rule = CATEGORY_FILES.get(category)
+        if rule is None:
+            raise IngestError("no file rule for category `" + category + "`")
     found = []
     for root, dirs, files in os.walk(dest):
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
         for name in sorted(files):
-            if not (name.endswith(rule["suffixes"]) or name in rule["names"]):
+            by_shebang = False
+            if kind == "code":
+                wanted = name.endswith(rule["suffixes"]) or name in rule["names"]
+                by_shebang = category == "shell" and not wanted and os.path.splitext(name)[1] == ""
+            else:
+                wanted = name.lower().endswith(DOC_SUFFIXES) and not name.upper().startswith(
+                    DOC_SKIP_PREFIXES
+                )
+            if not (wanted or by_shebang):
                 continue
             path = os.path.join(root, name)
             if " " in path or os.path.islink(path):
@@ -305,8 +413,11 @@ def select_files(dest, category, max_bytes):
                 size = os.path.getsize(path)
             except OSError:
                 continue
-            if 0 < size <= max_bytes:
-                found.append(path)
+            if not 0 < size <= max_bytes:
+                continue
+            if by_shebang and not has_shell_shebang(path):
+                continue
+            found.append(path)
     return sorted(found)
 
 
@@ -358,10 +469,13 @@ def extension_table(root):
     return table
 
 
-def measure_source(root, category, max_bytes):
-    """What `list` would take from one fetched source, counted."""
+def count_files(paths):
+    """Files, bytes, files that are not UTF-8 and files with a very long line.
+
+    A file that is not UTF-8 is counted apart and not in the files and bytes.
+    """
     files = bytes_ = not_utf8 = long_line_files = 0
-    for path in select_files(root, category, max_bytes):
+    for path in paths:
         stats = file_stats(path)
         if stats is None:
             continue
@@ -373,11 +487,25 @@ def measure_source(root, category, max_bytes):
         bytes_ += size
         if long_line:
             long_line_files += 1
+    return files, bytes_, not_utf8, long_line_files
+
+
+def measure_source(root, category, max_bytes):
+    """What `files` would take from one fetched source, counted: code, then docs."""
+    files, bytes_, not_utf8, long_line_files = count_files(
+        select_files(root, category, max_bytes, "code")
+    )
+    docs_files, docs_bytes, docs_not_utf8, _ = count_files(
+        select_files(root, category, max_bytes, "docs")
+    )
     return {
         "files": files,
         "bytes": bytes_,
         "not_utf8": not_utf8,
         "long_line_files": long_line_files,
+        "docs_files": docs_files,
+        "docs_bytes": docs_bytes,
+        "docs_not_utf8": docs_not_utf8,
     }
 
 
@@ -388,13 +516,15 @@ def summarize_measurements(sources, extensions):
         entry = categories.setdefault(
             source["category"],
             {"sources": 0, "sources_without_files": 0, "files": 0, "bytes": 0,
-             "not_utf8": 0, "long_line_files": 0},
+             "not_utf8": 0, "long_line_files": 0, "docs_files": 0, "docs_bytes": 0,
+             "docs_not_utf8": 0},
         )
         entry["sources"] += 1
         if source["files"] == 0:
             entry["sources_without_files"] += 1
-        for key in ("files", "bytes", "not_utf8", "long_line_files"):
-            entry[key] += source[key]
+        for key in ("files", "bytes", "not_utf8", "long_line_files", "docs_files", "docs_bytes",
+                    "docs_not_utf8"):
+            entry[key] += source.get(key, 0)
     ranked = sorted(extensions.items(), key=lambda item: (-item[1][1], item[0]))
     all_bytes = sum(v[1] for v in extensions.values())
     return {
@@ -607,17 +737,26 @@ def results_markdown(results, note=""):
     if note:
         lines += [note, ""]
     lines += [
-        "| Category | Sources | Without files | Files | MB | Not UTF-8 | Long-line files |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Category | Sources | Without files | Files | MB | Not UTF-8 | Long-line files | Docs files | Docs MB |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for name in sorted(results["categories"]):
         c = results["categories"][name]
         lines.append(
-            "| %s | %d | %d | %d | %s | %d | %d |"
+            "| %s | %d | %d | %d | %s | %d | %d | %d | %s |"
             % (name, c["sources"], c["sources_without_files"], c["files"],
-               megabytes(c["bytes"]), c["not_utf8"], c["long_line_files"])
+               megabytes(c["bytes"]), c["not_utf8"], c["long_line_files"],
+               c["docs_files"], megabytes(c["docs_bytes"]))
         )
-    lines += ["", "Long-line files hold a line over %d bytes (possibly minified or generated)." % LONG_LINE, ""]
+    lines += [
+        "",
+        "Files, MB and the two columns after them count code: by suffix, by name, and for shell"
+        " also scripts with a shell `#!` line. Long-line files hold a line over %d bytes"
+        " (possibly minified or generated). Docs are Markdown and reStructuredText from every"
+        " source, without release notes; the category column is the category of the source they"
+        " come from." % LONG_LINE,
+        "",
+    ]
     empty = [s for s in results["sources"] if s["files"] == 0]
     if empty:
         lines += ["### Sources with no file of their category", ""]
@@ -627,6 +766,19 @@ def results_markdown(results, note=""):
     biggest = sorted(results["sources"], key=lambda s: (-s["bytes"], s["id"]))[:15]
     for s in biggest:
         lines.append("| `%s` | %s | %d | %s |" % (s["id"], s["category"], s["files"], megabytes(s["bytes"])))
+    docs_sources = sorted(
+        (s for s in results["sources"] if s.get("docs_bytes", 0) > 0),
+        key=lambda s: (-s["docs_bytes"], s["id"]),
+    )[:8]
+    if docs_sources:
+        lines += ["", "### Where the docs are (largest 8)", "",
+                  "| Source | Category | Docs files | Docs MB | Code MB |", "|---|---|---:|---:|---:|"]
+        for s in docs_sources:
+            lines.append(
+                "| `%s` | %s | %d | %s | %s |"
+                % (s["id"], s["category"], s["docs_files"], megabytes(s["docs_bytes"]),
+                   megabytes(s["bytes"]))
+            )
     lines += ["", "### Everything fetched, by extension (top %d by size)" % TOP_EXTENSIONS, "",
               "| Extension | Files | MB | Share |", "|---|---:|---:|---:|"]
     total = results["all_bytes"] or 1
@@ -671,6 +823,26 @@ def get_json(url, headers=None, retries=3):
             last = err
             time.sleep(2 * (attempt + 1))
     raise IngestError("could not fetch " + url + ": " + str(last))
+
+
+def fetch_text(url, retries=3):
+    """The body of a URL as text; None if it does not exist or could not be fetched.
+
+    A 404 is final. A 429 or a server error is tried again after a wait.
+    """
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                return response.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as err:
+            if err.code in (429, 500, 502, 503, 504):
+                time.sleep(3 * (attempt + 1))
+                continue
+            return None
+        except (urllib.error.URLError, TimeoutError):
+            time.sleep(3 * (attempt + 1))
+    return None
 
 
 def run_git(args, cwd=None, timeout=900):
@@ -753,6 +925,37 @@ def cmd_crates(args):
     )
 
 
+def apply_cargo_licenses(candidates, category):
+    """For Rust candidates GitHub could not give a license for, read the root `Cargo.toml`.
+
+    GitHub reports a repository with two license files (the usual `MIT OR Apache-2.0`) as
+    NOASSERTION, and one with none as NONE. The maintainers' own declaration in `Cargo.toml`
+    is better evidence than either, so it replaces them. A license GitHub did identify is
+    left alone. Candidates changed get `license_origin: Cargo.toml`.
+    """
+    if category != "rust":
+        sys.stderr.write("cargo-license: only used for the category `rust`, skipped\n")
+        return
+    replaced = unreadable = 0
+    for candidate in candidates:
+        if candidate["license"] not in ("NONE", "NOASSERTION"):
+            continue
+        text = fetch_text("https://raw.githubusercontent.com/" + candidate["id"] + "/HEAD/Cargo.toml")
+        if text is None:
+            unreadable += 1
+            continue
+        declared = cargo_license(text)
+        if declared:
+            candidate["license"] = declared
+            candidate["license_origin"] = "Cargo.toml"
+            replaced += 1
+        time.sleep(0.3)
+    sys.stderr.write(
+        "cargo-license: %d replaced from Cargo.toml, %d Cargo.toml files could not be read\n"
+        % (replaced, unreadable)
+    )
+
+
 def cmd_github(args):
     headers = {"X-GitHub-Api-Version": "2022-11-28"}
     token = os.environ.get("GITHUB_TOKEN")
@@ -772,6 +975,8 @@ def cmd_github(args):
         page += 1
         time.sleep(2)
     out = out[: args.count]
+    if args.cargo_license:
+        apply_cargo_licenses(out, args.category)
     write_json(
         args.out,
         {
@@ -802,6 +1007,7 @@ def cmd_manifest(args):
     excluded = {ident.lower() for ident in args.exclude}
     sources = []
     skipped = []
+    notes = []
     for candidate in merged:
         if candidate["id"].lower() in excluded:
             skipped.append((candidate["id"], "excluded by --exclude"))
@@ -809,6 +1015,10 @@ def cmd_manifest(args):
         if not ID_RE.match(candidate["id"]):
             skipped.append((candidate["id"], "id not allowed"))
             continue
+        license_text = normalize_license(candidate["license"]) or "NOASSERTION"
+        if not is_spdx_shaped(license_text):
+            notes.append((candidate["id"], license_text))
+            license_text = "NOASSERTION"
         try:
             out = run_git(["ls-remote", candidate["url"], "HEAD"], timeout=120)
         except (IngestError, subprocess.TimeoutExpired) as err:
@@ -823,7 +1033,7 @@ def cmd_manifest(args):
                 "id": candidate["id"],
                 "url": candidate["url"],
                 "revision": revision,
-                "license": candidate["license"],
+                "license": license_text,
                 "fetched": date,
                 "category": candidate["category"],
             }
@@ -835,6 +1045,11 @@ def cmd_manifest(args):
     with open(tmp, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(manifest_text(sources))
     os.replace(tmp, args.out)
+    for ident, text in notes:
+        sys.stderr.write(
+            "manifest: the license of " + ident + " is `" + text
+            + "`, which is not an SPDX expression; recorded as NOASSERTION\n"
+        )
     sys.stderr.write("manifest: " + str(len(sources)) + " sources")
     if skipped:
         sys.stderr.write(", skipped " + str(len(skipped)) + ":")
@@ -871,6 +1086,10 @@ def cmd_fetch(args):
                 raise IngestError("checked out " + head + ", manifest says " + record["revision"])
             with open(marker, "w", encoding="utf-8") as handle:
                 handle.write(record["revision"] + "\n")
+            if args.drop_git:
+                # The commit has been checked and recorded in the marker; the history is not
+                # needed, and is about a third of what a shallow checkout takes.
+                shutil.rmtree(os.path.join(target, ".git"), ignore_errors=True)
             sys.stderr.write("fetched " + ident + " at " + record["revision"][:10] + "\n")
         except (IngestError, subprocess.TimeoutExpired) as err:
             failed.append((ident, str(err)))
@@ -985,8 +1204,38 @@ def cmd_report(args):
 
 
 def cmd_list(args):
-    for path in select_files(args.dest, args.category, args.max_bytes):
+    for path in select_files(args.dest, args.category, args.max_bytes, args.kind):
         sys.stdout.write(path + "\n")
+
+
+def cmd_files(args):
+    """Writes `category<TAB>kind<TAB>source<TAB>path` for every usable file of the sources."""
+    with open(args.manifest, encoding="utf-8") as handle:
+        records = {r["id"]: r for r in read_manifest(handle.read())}
+    with open(args.accepted, encoding="utf-8") as handle:
+        wanted = [line.strip() for line in handle if line.strip()]
+    kinds = ("code", "docs") if args.kind == "all" else (args.kind,)
+    counts = {}
+    tmp = args.out + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as out:
+        for ident in wanted:
+            record = records.get(ident)
+            if record is None:
+                raise IngestError("`" + ident + "` is not in the manifest")
+            root = source_dir(args.dest, ident)
+            if not os.path.isdir(root):
+                raise IngestError("`" + ident + "` has not been fetched into " + args.dest)
+            for kind in kinds:
+                for path in select_files(root, record["category"], args.max_bytes, kind):
+                    stats = file_stats(path)
+                    if stats is None or not stats[1]:
+                        continue
+                    out.write("\t".join([record["category"], kind, ident, path]) + "\n")
+                    key = (record["category"], kind)
+                    counts[key] = counts.get(key, 0) + 1
+    os.replace(tmp, args.out)
+    for (category, kind), count in sorted(counts.items()):
+        sys.stderr.write("files: %s %s: %d\n" % (category, kind, count))
 
 
 def build_parser():
@@ -1004,6 +1253,11 @@ def build_parser():
     github.add_argument("--category", required=True)
     github.add_argument("--count", type=int, default=40)
     github.add_argument("--out", required=True)
+    github.add_argument(
+        "--cargo-license",
+        action="store_true",
+        help="for category rust, take the license from the root Cargo.toml when GitHub has none",
+    )
     github.set_defaults(run=cmd_github)
 
     manifest = sub.add_parser("manifest", help="pin candidates to a commit and write a manifest")
@@ -1019,6 +1273,9 @@ def build_parser():
     fetch.add_argument("--manifest", required=True)
     fetch.add_argument("--accepted", required=True, help="file with one source id per line")
     fetch.add_argument("--dest", required=True)
+    fetch.add_argument(
+        "--drop-git", action="store_true", help="delete each source's .git once it is checked out"
+    )
     fetch.set_defaults(run=cmd_fetch)
 
     measure = sub.add_parser("measure", help="count what fetched sources would contribute")
@@ -1053,8 +1310,18 @@ def build_parser():
     listing = sub.add_parser("list", help="print the paths of one category's files")
     listing.add_argument("--dest", required=True)
     listing.add_argument("--category", required=True)
+    listing.add_argument("--kind", choices=("code", "docs"), default="code")
     listing.add_argument("--max-bytes", type=int, default=1024 * 1024)
     listing.set_defaults(run=cmd_list)
+
+    files = sub.add_parser("files", help="list the usable files of the accepted sources, by kind")
+    files.add_argument("--manifest", required=True)
+    files.add_argument("--accepted", required=True, help="file with one source id per line")
+    files.add_argument("--dest", required=True)
+    files.add_argument("--out", required=True, help="tab separated: category, kind, source, path")
+    files.add_argument("--kind", choices=("all", "code", "docs"), default="all")
+    files.add_argument("--max-bytes", type=int, default=1024 * 1024)
+    files.set_defaults(run=cmd_files)
     return parser
 
 

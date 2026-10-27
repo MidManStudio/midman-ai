@@ -15,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -78,6 +79,46 @@ class LicenseTests(unittest.TestCase):
         self.assertEqual(
             ingest.normalize_license("MIT/Apache-2.0/Unlicense"), "MIT OR Apache-2.0 OR Unlicense"
         )
+
+    def test_spaced_slash_spelling_means_or_too(self):
+        # crates.io gives `Apache-2.0 / MIT` for fnv (a real value, see the fixture below).
+        self.assertEqual(ingest.normalize_license("Apache-2.0 / MIT"), "Apache-2.0 OR MIT")
+        self.assertEqual(ingest.normalize_license("MIT / Apache-2.0 / Unlicense"),
+                         "MIT OR Apache-2.0 OR Unlicense")
+        self.assertEqual(ingest.normalize_license(" MIT /Apache-2.0 "), "MIT OR Apache-2.0")
+        # Empty parts are dropped, not joined.
+        self.assertEqual(ingest.normalize_license("MIT//Apache-2.0"), "MIT OR Apache-2.0")
+        self.assertEqual(ingest.normalize_license("MIT /"), "MIT")
+        self.assertEqual(ingest.normalize_license("/MIT/ /Apache-2.0"), "MIT OR Apache-2.0")
+        # A slash next to an operator or a bracket is not the old spelling; it is left as it is.
+        self.assertEqual(ingest.normalize_license("MIT OR Apache-2.0 / BSD-3-Clause"),
+                         "MIT OR Apache-2.0 / BSD-3-Clause")
+        self.assertEqual(ingest.normalize_license("(MIT/Apache-2.0)"), "(MIT/Apache-2.0)")
+
+    def test_real_crates_io_version_with_a_spaced_slash(self):
+        doc = json.loads(fixture("ingest-crate-version-spaced-slash.json"))
+        self.assertEqual(ingest.parse_crate_version(doc), ("Apache-2.0 OR MIT", False))
+
+    def test_which_texts_have_the_shape_of_an_spdx_expression(self):
+        for text in (
+            "MIT", "MIT OR Apache-2.0", "(MIT OR Apache-2.0) AND Unicode-3.0",
+            "Apache-2.0 WITH LLVM-exception", "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+            "GPL-2.0-or-later", "LGPL-2.1+", "LicenseRef-in-house", "DocumentRef-x:LicenseRef-y",
+            "NONE", "NOASSERTION", "((MIT))", "MIT AND (Apache-2.0 OR BSD-3-Clause)",
+            "  MIT  OR   Apache-2.0 ", "BSD-2-Clause-Patent", "(MIT)",
+        ):
+            self.assertTrue(ingest.is_spdx_shaped(text), text)
+        for text in (
+            "", "   ", "/", "MIT /", "MIT / Apache-2.0", "MIT Apache-2.0", "MIT OR", "OR MIT",
+            "MIT AND AND Apache-2.0", "(MIT", "MIT)", "()", "MIT WITH", "MIT WITH OR",
+            "MIT WITH (x)", "http://example.com/license", "MIT, Apache-2.0", "mit or apache-2.0",
+            "MIT OR (", "MIT (Apache-2.0)", "WITH MIT", "MIT WITH A WITH B", "see LICENSE file",
+            "MIT OR Apache-2.0 OR", "(MIT OR Apache-2.0", "MIT OR Apache-2.0)", "MIT\u00a0OR\u2014Apache",
+            # an operator or a bracket where an id is wanted
+            "AND", "OR", "WITH", ")", "(", "MIT AND OR", "MIT OR WITH", "MIT OR )", "MIT AND ) OR MIT",
+            "MIT WITH )", "MIT WITH (", "MIT WITH AND", "( ) MIT",
+        ):
+            self.assertFalse(ingest.is_spdx_shaped(text), repr(text))
 
     def test_spdx_expressions_are_left_alone(self):
         for text in (
@@ -481,6 +522,66 @@ class CommandTests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("t/unknown", err)
 
+    def test_fetch_can_drop_the_git_directory(self):
+        with tempfile.TemporaryDirectory() as root:
+            repo = self.make_repo(root, "one", "pub fn one() {}\n")
+            revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, check=True,
+                                      capture_output=True, text=True).stdout.strip()
+            record = {"id": "t/one", "url": "file://" + repo, "revision": revision, "license": "MIT",
+                      "fetched": "2026-10-27", "category": "rust"}
+            manifest = os.path.join(root, "m.txt")
+            accepted = os.path.join(root, "a.txt")
+            with open(manifest, "w", encoding="utf-8") as handle:
+                handle.write(ingest.manifest_text([record]))
+            with open(accepted, "w", encoding="utf-8") as handle:
+                handle.write("t/one\n")
+            kept = os.path.join(root, "kept")
+            slim = os.path.join(root, "slim")
+            for dest, extra in ((kept, []), (slim, ["--drop-git"])):
+                code, _out, err = self.run_main(["fetch", "--manifest", manifest, "--accepted", accepted,
+                                                 "--dest", dest] + extra)
+                self.assertEqual(code, 0, err)
+            self.assertTrue(os.path.isdir(os.path.join(kept, "t__one", ".git")))
+            self.assertFalse(os.path.exists(os.path.join(slim, "t__one", ".git")))
+            with open(os.path.join(slim, "t__one", "lib.rs"), encoding="utf-8") as handle:
+                self.assertEqual(handle.read(), "pub fn one() {}\n")
+            with open(os.path.join(slim, "t__one", ".midman-revision"), encoding="utf-8") as handle:
+                self.assertEqual(handle.read().strip(), revision)
+            # A source fetched slim is recognised by its marker and not fetched again.
+            code, _out, err = self.run_main(["fetch", "--manifest", manifest, "--accepted", accepted,
+                                             "--dest", slim, "--drop-git"])
+            self.assertEqual(code, 0, err)
+            self.assertIn("have t/one", err)
+            self.assertFalse(os.path.exists(os.path.join(slim, "t__one", ".git")))
+
+    def test_a_license_is_made_fit_for_the_manifest(self):
+        with tempfile.TemporaryDirectory() as root:
+            texts = {"t/slash": "Apache-2.0 / MIT", "t/prose": "see the LICENSE file",
+                     "t/empty": "", "t/lower": "mit or apache-2.0", "t/good": "MIT OR Apache-2.0"}
+            candidates = []
+            for ident, text in texts.items():
+                path = self.make_repo(root, ident.split("/")[1], "pub fn " + ident.split("/")[1] + "() {}\n")
+                candidates.append({"id": ident, "url": "file://" + path, "category": "rust", "license": text})
+            cands = os.path.join(root, "c.json")
+            self.write_candidates(cands, candidates)
+            manifest = os.path.join(root, "m.txt")
+            code, _out, err = self.run_main(
+                ["manifest", "--candidates", cands, "--out", manifest, "--date", "2026-10-27"]
+            )
+            self.assertEqual(code, 0, err)
+            with open(manifest, encoding="utf-8") as handle:
+                got = {r["id"]: r["license"] for r in ingest.read_manifest(handle.read())}
+            self.assertEqual(got, {
+                "t/slash": "Apache-2.0 OR MIT", "t/prose": "NOASSERTION", "t/empty": "NOASSERTION",
+                "t/lower": "NOASSERTION", "t/good": "MIT OR Apache-2.0",
+            })
+            self.assertIn("the license of t/prose is `see the LICENSE file`, which is not an SPDX"
+                          " expression; recorded as NOASSERTION", err)
+            self.assertIn("the license of t/lower is `mit or apache-2.0`", err)
+            self.assertNotIn("t/slash is", err)
+            self.assertNotIn("t/empty is", err)
+            self.assertNotIn("t/good is", err)
+
     def test_fetch_reports_a_source_that_cannot_be_fetched(self):
         with tempfile.TemporaryDirectory() as root:
             record = {
@@ -577,37 +678,51 @@ class MeasureHelperTests(unittest.TestCase):
             put("readme.md", b"text")
             got = ingest.measure_source(root, "rust", 1_000_000)
             self.assertEqual(
-                got, {"files": 3, "bytes": 10 + 10 + 10 + 2001, "not_utf8": 1, "long_line_files": 1}
+                got,
+                {"files": 3, "bytes": 10 + 10 + 10 + 2001, "not_utf8": 1, "long_line_files": 1,
+                 "docs_files": 1, "docs_bytes": 4, "docs_not_utf8": 0},
             )
             self.assertEqual(
                 ingest.measure_source(root, "shell", 1_000_000),
-                {"files": 0, "bytes": 0, "not_utf8": 0, "long_line_files": 0},
+                {"files": 0, "bytes": 0, "not_utf8": 0, "long_line_files": 0,
+                 "docs_files": 1, "docs_bytes": 4, "docs_not_utf8": 0},
             )
 
 
 class MeasureSummaryTests(unittest.TestCase):
-    def source(self, ident, category, files, size, bad=0, long_lines=0):
+    def source(self, ident, category, files, size, bad=0, long_lines=0, docs=0, docs_size=0, docs_bad=0):
         return {"id": ident, "category": category, "revision": "a" * 40, "files": files,
-                "bytes": size, "not_utf8": bad, "long_line_files": long_lines}
+                "bytes": size, "not_utf8": bad, "long_line_files": long_lines,
+                "docs_files": docs, "docs_bytes": docs_size, "docs_not_utf8": docs_bad}
 
     def test_categories_add_up_and_empty_sources_are_counted(self):
         sources = [
-            self.source("a/x", "rust", 3, 300, 1, 1),
-            self.source("a/y", "rust", 0, 0),
-            self.source("b/z", "shell", 2, 50, 0, 2),
+            self.source("a/x", "rust", 3, 300, 1, 1, 4, 4000, 1),
+            self.source("a/y", "rust", 0, 0, docs=2, docs_size=500),
+            self.source("b/z", "shell", 2, 50, 0, 2, 1, 70),
         ]
         out = ingest.summarize_measurements(sources, {".rs": [4, 400], ".md": [1, 100]})
         self.assertEqual(out["schema"], ingest.RESULTS_SCHEMA)
         self.assertEqual(
             out["categories"]["rust"],
             {"sources": 2, "sources_without_files": 1, "files": 3, "bytes": 300,
-             "not_utf8": 1, "long_line_files": 1},
+             "not_utf8": 1, "long_line_files": 1, "docs_files": 6, "docs_bytes": 4500,
+             "docs_not_utf8": 1},
         )
+        self.assertEqual(out["categories"]["shell"]["docs_files"], 1)
+        self.assertEqual(out["categories"]["shell"]["docs_bytes"], 70)
         self.assertEqual(out["categories"]["shell"]["sources_without_files"], 0)
         self.assertEqual(out["categories"]["shell"]["long_line_files"], 2)
         self.assertEqual(out["all_files"], 5)
         self.assertEqual(out["all_bytes"], 500)
         self.assertEqual(out["sources"], sources)
+
+    def test_a_source_without_docs_keys_counts_as_none(self):
+        old = {"id": "a/x", "category": "rust", "files": 1, "bytes": 5, "not_utf8": 0,
+               "long_line_files": 0}
+        out = ingest.summarize_measurements([old], {})
+        self.assertEqual(out["categories"]["rust"]["docs_files"], 0)
+        self.assertEqual(out["categories"]["rust"]["docs_bytes"], 0)
 
     def test_extensions_rank_by_bytes_then_name_and_are_cut(self):
         # Inserted in reverse, so only the tie-break puts `.a` first.
@@ -626,27 +741,33 @@ class MeasureSummaryTests(unittest.TestCase):
         self.assertEqual(doc["categories"]["rust"]["sources"], 37)
         self.assertEqual(doc["categories"]["shell"]["sources"], 28)
         self.assertEqual(len(doc["sources"]), 65)
-        self.assertEqual(sum(s["files"] for s in doc["sources"]), 3151 + 2926)
+        self.assertEqual(sum(s["files"] for s in doc["sources"]), 3151 + 3593)
+        self.assertEqual(sum(s["docs_files"] for s in doc["sources"]), 221 + 5180)
+        self.assertEqual(doc["schema"], ingest.RESULTS_SCHEMA)
 
     def test_markdown_from_real_results(self):
         doc = json.loads(fixture("ingest-results.json"))
         text = ingest.results_markdown(doc, "a note")
         self.assertTrue(text.startswith("## midman-ai ingest"))
         self.assertIn("\na note\n", text)
-        self.assertIn("| rust | 37 | 0 | 3151 | 29.9 | 0 | 1 |", text)
-        self.assertIn("| shell | 28 | 0 | 2926 | 13.6 | 0 | 1 |", text)
+        self.assertIn("| rust | 37 | 0 | 3151 | 29.9 | 0 | 1 | 221 | 0.6 |", text)
+        self.assertIn("| shell | 28 | 0 | 3593 | 16.0 | 0 | 1 | 5180 | 37.7 |", text)
+        self.assertIn("### Where the docs are (largest 8)", text)
+        self.assertIn("| `omacom/omarchy` | shell | 2600 | 15.5 | 6.0 |", text)
         self.assertIn("| `rust-lang/regex` | rust | 227 | 5.6 |", text)
+        self.assertIn("| `omacom/omarchy` | shell | 1357 | 6.0 |", text)
         self.assertIn("| `.mp4` | 19 | 86.2 | 16.2% |", text)
         self.assertTrue(text.endswith("All files fetched: 19612, 533.0 MB.\n\n"))
         self.assertNotIn("Sources with no file of their category", text)
-        self.assertEqual(text.count("\n| `"), 15 + ingest.TOP_EXTENSIONS)
+        self.assertEqual(text.count("\n| `"), 15 + 8 + ingest.TOP_EXTENSIONS)
 
     def test_markdown_lists_sources_without_files_and_omits_an_empty_note(self):
         sources = [self.source("a/x", "rust", 0, 0), self.source("a/y", "rust", 1, 2_500_000)]
         doc = ingest.summarize_measurements(sources, {".rs": [1, 2_500_000]})
         text = ingest.results_markdown(doc)
         self.assertIn("### Sources with no file of their category\n\n- `a/x` (rust)\n", text)
-        self.assertIn("| rust | 2 | 1 | 1 | 2.5 | 0 | 0 |", text)
+        self.assertIn("| rust | 2 | 1 | 1 | 2.5 | 0 | 0 | 0 | 0.0 |", text)
+        self.assertNotIn("Where the docs are", text)
         self.assertTrue(text.startswith("## midman-ai ingest: what was fetched and what would be used\n\n| Category"))
         self.assertEqual(ingest.megabytes(0), "0.0")
         self.assertEqual(ingest.megabytes(1_049_999), "1.0")
@@ -732,6 +853,282 @@ class PolicyReportTests(unittest.TestCase):
             with open(summary, encoding="utf-8") as handle:
                 text = handle.read()
             self.assertTrue(text.startswith("before\n## midman-ai ingest: license policy"))
+
+
+def write_files(root, files):
+    """Makes files under `root`: {relative path: text or bytes}."""
+    for rel, data in files.items():
+        path = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as handle:
+            handle.write(data if isinstance(data, bytes) else data.encode("utf-8"))
+
+
+class DocsKindTests(unittest.TestCase):
+    def names(self, root, category, kind, limit=1000):
+        return [os.path.relpath(p, root) for p in ingest.select_files(root, category, limit, kind)]
+
+    def test_which_files_are_docs(self):
+        with tempfile.TemporaryDirectory() as root:
+            write_files(root, {
+                "README.md": "x", "docs/guide.md": "x", "docs/more.markdown": "x",
+                "docs/index.rst": "x", "docs/UPPER.MD": "x",
+                "CHANGELOG.md": "x", "changes.md": "x", "History.md": "x", "NEWS.md": "x",
+                "RELEASE-NOTES.md": "x", "RELEASES.md": "x",
+                "README": "x", "notes.txt": "x", "main.rs": "x",
+                "vendor/dep/README.md": "x", "target/doc/x.md": "x", "node_modules/p/README.md": "x",
+                "empty.md": "", "with space.md": "x", "big.md": "y" * 1001, "edge.md": "y" * 1000,
+            })
+            os.symlink(os.path.join(root, "README.md"), os.path.join(root, "link.md"))
+            expected = ["README.md", "docs/UPPER.MD", "docs/guide.md", "docs/index.rst",
+                        "docs/more.markdown", "edge.md"]
+            self.assertEqual(self.names(root, "rust", "docs"), expected)
+            # The category does not matter for docs, not even one that has no code rule.
+            self.assertEqual(self.names(root, "shell", "docs"), expected)
+            self.assertEqual(self.names(root, "anything", "docs"), expected)
+            self.assertIn("big.md", self.names(root, "rust", "docs", 1001))
+
+    def test_code_does_not_include_docs_and_a_bad_kind_is_an_error(self):
+        with tempfile.TemporaryDirectory() as root:
+            write_files(root, {"a.rs": "x", "README.md": "x"})
+            self.assertEqual(self.names(root, "rust", "code"), ["a.rs"])
+            self.assertEqual(self.names(root, "rust", "docs"), ["README.md"])
+            with self.assertRaises(ingest.IngestError):
+                ingest.select_files(root, "rust", 10, "everything")
+            with self.assertRaises(ingest.IngestError):
+                ingest.select_files(root, "cobol", 10, "code")
+
+
+class ShebangTests(unittest.TestCase):
+    def test_which_first_lines_name_a_shell(self):
+        with tempfile.TemporaryDirectory() as root:
+            for i, line in enumerate((
+                "#!/bin/sh", "#!/bin/bash", "#!/usr/bin/env bash", "#!/usr/bin/env -S bash -e",
+                "#! /bin/sh", "#!/bin/zsh -f", "#!/usr/bin/fish", "#!/usr/bin/env dash",
+                "#!/bin/ksh", "#!/usr/local/bin/bash",
+            )):
+                write_files(root, {"ok%d" % i: line + "\necho hi\n"})
+                self.assertTrue(ingest.has_shell_shebang(os.path.join(root, "ok%d" % i)), line)
+            for i, line in enumerate((
+                "#!/usr/bin/env python3", "#!/usr/bin/perl", "#!/bin/bashful", "#!/bin/shell",
+                "# !/bin/sh", " #!/bin/sh", "echo hi", "",
+            )):
+                write_files(root, {"no%d" % i: line + "\n"})
+                self.assertFalse(ingest.has_shell_shebang(os.path.join(root, "no%d" % i)), line)
+            self.assertFalse(ingest.has_shell_shebang(os.path.join(root, "missing")))
+
+    def test_extensionless_scripts_are_selected_for_shell_only(self):
+        with tempfile.TemporaryDirectory() as root:
+            write_files(root, {
+                "bin/tool": "#!/usr/bin/env bash\necho hi\n",
+                "bin/pytool": "#!/usr/bin/env python3\nprint(1)\n",
+                "bin/plain": "just text\n",
+                "bin/data.txt": "#!/bin/sh\n",
+                "run.sh": "echo x\n",
+                ".zshrc": "alias x=y\n",
+                ".profile": "#!/bin/sh\n",
+                "vendor/tool2": "#!/bin/sh\n",
+                "bin/empty": "",
+            })
+            names = [os.path.relpath(p, root) for p in ingest.select_files(root, "shell", 1000)]
+            self.assertEqual(names, [".profile", "bin/tool", "run.sh"])
+            # Rust takes no extensionless files, whatever they start with.
+            self.assertEqual(ingest.select_files(root, "rust", 1000), [])
+
+
+class FilesCommandTests(unittest.TestCase):
+    def run_main(self, argv):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = ingest.main(argv)
+        return code, out.getvalue(), err.getvalue()
+
+    def make(self, root):
+        records = []
+        for ident, category in (("t/code", "rust"), ("t/scripts", "shell"), ("t/last", "rust")):
+            records.append({"id": ident, "url": "https://github.com/" + ident, "revision": "a" * 40,
+                            "license": "MIT", "fetched": "2026-10-25", "category": category})
+        manifest = os.path.join(root, "m.txt")
+        with open(manifest, "w", encoding="utf-8") as handle:
+            handle.write(ingest.manifest_text(records))
+        accepted = os.path.join(root, "a.txt")
+        with open(accepted, "w", encoding="utf-8") as handle:
+            handle.write("t/scripts\nt/code\nt/last\n")
+        dest = os.path.join(root, "src")
+        write_files(dest, {
+            "t__code/a.rs": "fn a() {}\n", "t__code/bad.rs": b"\xff\xfe", "t__code/README.md": "# hi\n",
+            "t__code/CHANGELOG.md": "x\n",
+            "t__scripts/install": "#!/bin/sh\necho\n", "t__scripts/x.sh": "echo\n",
+            "t__scripts/notes.md": "text\n", "t__scripts/bad.md": b"\xff",
+            "t__last/b.rs": "fn b() {}\n",
+        })
+        return manifest, accepted, dest
+
+    def test_files_in_accepted_order_code_before_docs(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest, accepted, dest = self.make(root)
+            out = os.path.join(root, "f.tsv")
+            code, _o, err = self.run_main(["files", "--manifest", manifest, "--accepted", accepted,
+                                           "--dest", dest, "--out", out])
+            self.assertEqual(code, 0, err)
+            with open(out, encoding="utf-8") as handle:
+                rows = [line.split("\t") for line in handle.read().splitlines()]
+            rel = [(r[0], r[1], r[2], os.path.relpath(r[3], dest)) for r in rows]
+            self.assertEqual(rel, [
+                ("shell", "code", "t/scripts", "t__scripts/install"),
+                ("shell", "code", "t/scripts", "t__scripts/x.sh"),
+                ("shell", "docs", "t/scripts", "t__scripts/notes.md"),
+                ("rust", "code", "t/code", "t__code/a.rs"),
+                ("rust", "docs", "t/code", "t__code/README.md"),
+                ("rust", "code", "t/last", "t__last/b.rs"),
+            ])
+            # The counts are listed sorted by category and then kind.
+            self.assertEqual(
+                [l for l in err.splitlines() if l.startswith("files:")],
+                ["files: rust code: 2", "files: rust docs: 1", "files: shell code: 2",
+                 "files: shell docs: 1"],
+            )
+
+    def test_one_kind_and_errors(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest, accepted, dest = self.make(root)
+            out = os.path.join(root, "f.tsv")
+            base = ["files", "--manifest", manifest, "--accepted", accepted, "--dest", dest, "--out", out]
+            code, _o, err = self.run_main(base + ["--kind", "docs"])
+            self.assertEqual(code, 0, err)
+            with open(out, encoding="utf-8") as handle:
+                kinds = {line.split("\t")[1] for line in handle.read().splitlines()}
+            self.assertEqual(kinds, {"docs"})
+            code, _o, err = self.run_main(base + ["--kind", "code"])
+            with open(out, encoding="utf-8") as handle:
+                kinds = {line.split("\t")[1] for line in handle.read().splitlines()}
+            self.assertEqual(kinds, {"code"})
+            os.rename(os.path.join(dest, "t__last"), os.path.join(dest, "elsewhere"))
+            code, _o, err = self.run_main(base)
+            self.assertEqual(code, 1)
+            self.assertIn("has not been fetched", err)
+            with open(accepted, "w", encoding="utf-8") as handle:
+                handle.write("t/unknown\n")
+            code, _o, err = self.run_main(base)
+            self.assertEqual(code, 1)
+            self.assertIn("t/unknown", err)
+
+    def test_list_takes_a_kind(self):
+        with tempfile.TemporaryDirectory() as root:
+            write_files(root, {"a.rs": "x", "README.md": "x"})
+            code, out, _e = self.run_main(["list", "--dest", root, "--category", "rust", "--kind", "docs"])
+            self.assertEqual(code, 0)
+            self.assertEqual([os.path.basename(p) for p in out.split()], ["README.md"])
+            code, out, _e = self.run_main(["list", "--dest", root, "--category", "rust"])
+            self.assertEqual([os.path.basename(p) for p in out.split()], ["a.rs"])
+
+
+class CargoLicenseTests(unittest.TestCase):
+    # The Cargo.toml files are real, fetched from the default branches on 2026-10-26.
+    def test_license_in_the_package_table(self):
+        self.assertEqual(ingest.cargo_license(fixture("ingest-cargo-ripgrep.toml")), "Unlicense OR MIT")
+
+    def test_license_in_the_workspace_package_table(self):
+        self.assertEqual(ingest.cargo_license(fixture("ingest-cargo-ruff.toml")), "MIT")
+
+    def test_a_workspace_root_without_a_license_gives_none(self):
+        self.assertIsNone(ingest.cargo_license(fixture("ingest-cargo-tokio.toml")))
+
+    def test_an_error_page_is_not_toml(self):
+        # A real reply of raw.githubusercontent.com when it rate-limited the request.
+        self.assertIsNone(ingest.cargo_license(fixture("ingest-cargo-http-429.txt")))
+        self.assertIsNone(ingest.cargo_license(""))
+
+    def test_the_other_shapes(self):
+        self.assertEqual(
+            ingest.cargo_license('[package]\nname = "a"\nlicense = "MIT/Apache-2.0"\n'),
+            "MIT OR Apache-2.0",
+        )
+        # license.workspace = true takes the workspace table.
+        self.assertEqual(
+            ingest.cargo_license(
+                '[package]\nname = "a"\nlicense.workspace = true\n'
+                '[workspace.package]\nlicense = "Apache-2.0"\n'
+            ),
+            "Apache-2.0",
+        )
+        # The package table wins over the workspace table.
+        self.assertEqual(
+            ingest.cargo_license('[package]\nlicense = "MIT"\n[workspace.package]\nlicense = "GPL-3.0"\n'),
+            "MIT",
+        )
+        # A license file is not a license id.
+        self.assertIsNone(ingest.cargo_license('[package]\nlicense-file = "LICENSE"\n'))
+        self.assertIsNone(ingest.cargo_license('[package]\nlicense = 5\n'))
+        self.assertIsNone(ingest.cargo_license("[workspace]\nmembers = []\n"))
+        self.assertIsNone(ingest.cargo_license("workspace = 3\n"))
+
+    def candidates(self):
+        def one(ident, license_text):
+            return {"id": ident, "license": license_text, "category": "rust"}
+
+        return [one("a/none", "NONE"), one("b/dual", "NOASSERTION"), one("c/mit", "MIT"),
+                one("d/gone", "NOASSERTION"), one("e/nolicense", "NONE"), one("f/gpl", "GPL-3.0")]
+
+    def test_only_the_unidentified_are_looked_up_and_changed(self):
+        replies = {
+            "a/none": '[package]\nlicense = "MIT"\n',
+            "b/dual": '[workspace.package]\nlicense = "MIT OR Apache-2.0"\n',
+            "d/gone": None,
+            "e/nolicense": '[package]\nname = "x"\n',
+        }
+        asked = []
+
+        def fake_fetch(url):
+            asked.append(url)
+            ident = url.split("raw.githubusercontent.com/")[1].split("/HEAD/")[0]
+            return replies[ident]
+
+        items = self.candidates()
+        err = io.StringIO()
+        with mock.patch.object(ingest, "fetch_text", fake_fetch), \
+                mock.patch.object(ingest.time, "sleep"), redirect_stderr(err):
+            ingest.apply_cargo_licenses(items, "rust")
+        by_id = {c["id"]: c for c in items}
+        self.assertEqual(by_id["a/none"]["license"], "MIT")
+        self.assertEqual(by_id["a/none"]["license_origin"], "Cargo.toml")
+        self.assertEqual(by_id["b/dual"]["license"], "MIT OR Apache-2.0")
+        self.assertEqual(by_id["c/mit"]["license"], "MIT")
+        self.assertNotIn("license_origin", by_id["c/mit"])
+        self.assertEqual(by_id["d/gone"]["license"], "NOASSERTION")
+        self.assertEqual(by_id["e/nolicense"]["license"], "NONE")
+        self.assertEqual(by_id["f/gpl"]["license"], "GPL-3.0")
+        self.assertEqual(len(asked), 4)
+        self.assertTrue(all(u.endswith("/HEAD/Cargo.toml") for u in asked))
+        self.assertIn("2 replaced from Cargo.toml, 1 Cargo.toml files could not be read", err.getvalue())
+
+    def test_other_categories_are_left_alone(self):
+        items = self.candidates()
+        err = io.StringIO()
+        with mock.patch.object(ingest, "fetch_text", side_effect=AssertionError("asked")), \
+                redirect_stderr(err):
+            ingest.apply_cargo_licenses(items, "shell")
+        self.assertEqual(items, self.candidates())
+        self.assertIn("only used for the category `rust`", err.getvalue())
+
+    def test_the_github_command_uses_it_when_asked(self):
+        doc = {"items": [
+            {"full_name": "o/dual", "fork": False, "stargazers_count": 9, "license": {"spdx_id": "NOASSERTION"}},
+            {"full_name": "o/mit", "fork": False, "stargazers_count": 8, "license": {"spdx_id": "MIT"}},
+        ]}
+        with tempfile.TemporaryDirectory() as root:
+            for flag, expected in (([], "NOASSERTION"), (["--cargo-license"], "MIT OR Apache-2.0")):
+                out = os.path.join(root, "c.json")
+                with mock.patch.object(ingest, "get_json", return_value=doc), \
+                        mock.patch.object(ingest, "fetch_text", return_value='[package]\nlicense = "MIT OR Apache-2.0"\n'), \
+                        mock.patch.object(ingest.time, "sleep"), \
+                        redirect_stderr(io.StringIO()):
+                    code = ingest.main(["github", "--query", "q", "--category", "rust", "--count", "2",
+                                        "--out", out] + flag)
+                self.assertEqual(code, 0)
+                with open(out, encoding="utf-8") as handle:
+                    got = {c["id"]: c["license"] for c in json.load(handle)["candidates"]}
+                self.assertEqual(got, {"o/dual": expected, "o/mit": "MIT"})
 
 
 class NoticeScanTests(unittest.TestCase):
