@@ -1,0 +1,334 @@
+# .github/workflows/train.yml
+#
+# midman-ai train: the whole path from the manifest to a trained model, on GitHub's machines.
+#
+# What it does, in order:
+#   1. applies the license policy to the manifest (data/manifest.txt) and fetches the accepted
+#      sources at their pinned commits;
+#   2. looks in the files of unlicensed sources for a statement against use (such a source is
+#      left out);
+#   3. takes a reproducible sample of the code and the documentation (code_mb and docs_mb
+#      megabytes, at most max_source_share of it from one source) and holds out a share of
+#      whole sources (holdout_percent) to measure the loss on repositories the model never saw;
+#   4. trains the byte-level BPE vocabulary on the sample, with the eight special tokens;
+#   5. packs the sample into token shards (training and held-out);
+#   6. trains the model for `steps` steps or `minutes` minutes, whichever ends first, writing
+#      the training and held-out loss to the job summary;
+#   7. uploads the state of the run (weights, optimizer, place in the data), the weights alone,
+#      the logs and the vocabulary as an artifact.
+#
+# A run that stopped on its time budget can be continued: start this workflow again with the
+# same settings and give resume_run_id the id of the earlier run (the number at the end of its
+# address; the summary of every run says it). The data is rebuilt identically from the same
+# manifest and settings, and the run is refused, with the reason, if anything differs.
+#
+# The step that trains has no GPU and one thread. Notes: docs/ci-and-workflows.md.
+
+name: midman-ai Train
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_note:
+        description: 'Free-text label for this run, shown in the summary'
+        type: string
+        default: ''
+      manifest:
+        description: 'Path of the source manifest in the repository'
+        type: string
+        default: data/manifest.txt
+      preset:
+        description: 'Model size: smoke, tiny, small, base, medium or large (only the first three can be trained on a CPU)'
+        type: string
+        default: tiny
+      vocab:
+        description: 'Vocabulary size (the 8 special tokens included)'
+        type: string
+        default: '4096'
+      minutes:
+        description: 'Time budget for the training step, in minutes'
+        type: string
+        default: '60'
+      steps:
+        description: 'Steps the learning-rate schedule is made for'
+        type: string
+        default: '2000'
+      batch:
+        description: 'Sequences in a batch'
+        type: string
+        default: '8'
+      seq:
+        description: 'Tokens in a sequence'
+        type: string
+        default: '256'
+      max_lr:
+        description: 'Learning rate at the end of warmup'
+        type: string
+        default: '2e-3'
+      seed:
+        description: 'Seed of the model initialisation, the sample and the order of the data'
+        type: string
+        default: '1'
+      code_mb:
+        description: 'Megabytes of code in the sample'
+        type: string
+        default: '200'
+      docs_mb:
+        description: 'Megabytes of documentation in the sample'
+        type: string
+        default: '30'
+      max_source_share:
+        description: 'The largest share of a sample that one source may give (0 to 1)'
+        type: string
+        default: '0.05'
+      holdout_percent:
+        description: 'Percent of the sources held out for the held-out loss (0 to 50)'
+        type: string
+        default: '5'
+      resume_run_id:
+        description: 'Id of an earlier run of this workflow to continue (empty starts a new run)'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  train:
+    name: build the corpus and train
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      BASELINE_NOTE: ${{ inputs.baseline_note }}
+      MANIFEST: ${{ inputs.manifest }}
+      PRESET: ${{ inputs.preset }}
+      VOCAB: ${{ inputs.vocab }}
+      MINUTES: ${{ inputs.minutes }}
+      STEPS: ${{ inputs.steps }}
+      BATCH: ${{ inputs.batch }}
+      SEQ: ${{ inputs.seq }}
+      MAX_LR: ${{ inputs.max_lr }}
+      SEED: ${{ inputs.seed }}
+      CODE_MB: ${{ inputs.code_mb }}
+      DOCS_MB: ${{ inputs.docs_mb }}
+      MAX_SOURCE_SHARE: ${{ inputs.max_source_share }}
+      HOLDOUT_PERCENT: ${{ inputs.holdout_percent }}
+      RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Script self-tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Toolchain info
+        id: toolchain
+        run: |
+          set -eu
+          rustc --version
+          cargo --version
+          echo "version=$(rustc --version)" >> "$GITHUB_OUTPUT"
+          grep -m1 'model name' /proc/cpuinfo || true
+          nproc
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry-midman-train-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-midman-train-${{ runner.os }}-${{ runner.arch }}-
+
+      # The license policy of the project, with the Rust code that reads the manifest.
+      - name: Apply the license policy
+        id: policy
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== policy ===" | tee ingest-raw.txt
+          status=0
+          cargo run -q --release --locked -p midman-data --example check_manifest -- \
+            "$MANIFEST" --accepted accepted.txt > policy-report.tsv 2> policy-totals.txt || status=$?
+          tee -a ingest-raw.txt < policy-totals.txt
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          note="Run ${{ github.run_id }} (number ${{ github.run_number }}), commit ${GITHUB_SHA}, ${{ steps.toolchain.outputs.version }}. Manifest ${MANIFEST}. ${BASELINE_NOTE}"
+          python3 scripts/ingest.py report --report policy-report.tsv \
+            --markdown "$GITHUB_STEP_SUMMARY" --note "$note" 2>&1 | tee -a ingest-raw.txt
+
+      - name: Fetch the accepted sources
+        id: fetch
+        if: steps.policy.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== fetch ===" | tee -a ingest-raw.txt
+          df -h . | tee -a ingest-raw.txt
+          python3 scripts/ingest.py fetch --manifest "$MANIFEST" --accepted accepted.txt \
+            --dest data-src --drop-git 2>&1 | tee -a ingest-raw.txt
+          df -h . | tee -a ingest-raw.txt
+
+      - name: Look for notices in unlicensed sources
+        id: notices
+        if: steps.fetch.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== notices ===" | tee -a ingest-raw.txt
+          python3 scripts/ingest.py notices --manifest "$MANIFEST" --accepted accepted.txt \
+            --dest data-src --out usable.txt --report notices.tsv \
+            --reviewed data/notices-reviewed.txt \
+            --markdown "$GITHUB_STEP_SUMMARY" 2>&1 | tee -a ingest-raw.txt
+
+      # A reproducible sample: the same manifest, settings and seed give the same files.
+      - name: Choose the corpus
+        id: corpus
+        if: steps.notices.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== corpus ===" | tee -a ingest-raw.txt
+          for kind in code docs; do
+            if [ "$kind" = code ]; then mb="$CODE_MB"; else mb="$DOCS_MB"; fi
+            python3 scripts/ingest.py files --manifest "$MANIFEST" --accepted usable.txt \
+              --dest data-src --kind "$kind" --sample-mb "$mb" --sample-seed "$SEED" \
+              --max-source-share "$MAX_SOURCE_SHARE" \
+              --holdout-percent "$HOLDOUT_PERCENT" --holdout-out "held-$kind.tsv" \
+              --out "train-$kind.tsv" 2>&1 | tee -a ingest-raw.txt
+          done
+          cat train-code.tsv train-docs.tsv | cut -f4 > train-files.txt
+          cat held-code.tsv held-docs.tsv | cut -f4 > held-files.txt
+          wc -l train-files.txt held-files.txt | tee -a ingest-raw.txt
+
+      - name: Train the vocabulary
+        id: tokenizer
+        if: steps.corpus.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== tokenizer ===" | tee -a ingest-raw.txt
+          cargo run -q --release --locked -p midman-tokenizer --example train -- \
+            --vocab "$VOCAB" --out tokenizer.txt \
+            --special '<|endoftext|>' --special '<|pad|>' --special '<|fim_prefix|>' \
+            --special '<|fim_middle|>' --special '<|fim_suffix|>' --special '<|command|>' \
+            --special '<|output|>' --special '<|exit_status|>' \
+            --list train-files.txt --eval-list held-files.txt 2>&1 | tee -a ingest-raw.txt
+
+      - name: Build the token shards
+        id: shards
+        if: steps.tokenizer.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== shards ===" | tee -a ingest-raw.txt
+          mkdir -p shards/train shards/held
+          cargo run -q --release --locked -p midman-data --example build_shards -- \
+            --tokenizer tokenizer.txt --out shards/train --seq-len "$SEQ" --shard-tokens 4000000 \
+            < train-files.txt 2>&1 | tee -a ingest-raw.txt
+          cargo run -q --release --locked -p midman-data --example build_shards -- \
+            --tokenizer tokenizer.txt --out shards/held --seq-len "$SEQ" --shard-tokens 4000000 \
+            < held-files.txt 2>&1 | tee -a ingest-raw.txt
+          du -sh shards | tee -a ingest-raw.txt
+
+      - name: Fetch the state of the run to continue
+        id: previous
+        if: steps.shards.outcome == 'success' && inputs.resume_run_id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: train-run-${{ inputs.resume_run_id }}
+          run-id: ${{ inputs.resume_run_id }}
+          github-token: ${{ github.token }}
+          path: run-out
+
+      - name: Train
+        id: train
+        if: steps.shards.outcome == 'success' && (inputs.resume_run_id == '' || steps.previous.outcome == 'success')
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          echo "=== train ===" | tee -a ingest-raw.txt
+          mkdir -p run-out
+          set -- --shards shards/train --eval-shards shards/held --out run-out \
+            --preset "$PRESET" --steps "$STEPS" --batch "$BATCH" --seq "$SEQ" --seed "$SEED" \
+            --max-lr "$MAX_LR" --minutes "$MINUTES" \
+            --log-every 10 --eval-every 250 --eval-batches 16 --save-every 250
+          if [ -n "$RESUME_RUN_ID" ]; then
+            set -- "$@" --resume
+          fi
+          cargo run -q --release --locked --features avx -p midman-training --example train -- "$@" \
+            2>&1 | tee -a ingest-raw.txt
+
+      - name: Write the summary
+        id: summary
+        if: steps.train.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          note="Preset ${PRESET}, vocabulary ${VOCAB}, batch ${BATCH} x ${SEQ} tokens, learning rate ${MAX_LR}, seed ${SEED}; sample of ${CODE_MB} MB code and ${DOCS_MB} MB docs, ${HOLDOUT_PERCENT} percent of the sources held out. To continue a run that stopped on its time budget, start this workflow again with the same settings and resume_run_id ${{ github.run_id }}."
+          python3 scripts/train_summary.py --run-dir run-out --vocab "$VOCAB" \
+            --markdown "$GITHUB_STEP_SUMMARY" --note "$note" 2>&1 | tee -a ingest-raw.txt
+
+      - name: Say what happened
+        if: always()
+        env:
+          STEP_OUTCOMES: policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},notices=${{ steps.notices.outcome }},corpus=${{ steps.corpus.outcome }},tokenizer=${{ steps.tokenizer.outcome }},shards=${{ steps.shards.outcome }},previous=${{ steps.previous.outcome }},train=${{ steps.train.outcome }},summary=${{ steps.summary.outcome }}
+        run: |
+          {
+            echo "### Steps"
+            echo ""
+            echo "$STEP_OUTCOMES" | tr ',' '\n' | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the run
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: train-run-${{ github.run_id }}
+          path: |
+            run-out/state.safetensors
+            run-out/weights.safetensors
+            run-out/train.tsv
+            run-out/eval.tsv
+            run-out/summary.txt
+            tokenizer.txt
+            ingest-raw.txt
+            policy-report.tsv
+            notices.tsv
+          retention-days: 14
+          if-no-files-found: warn
+
+      # A step that was skipped because the run had nothing to continue from is a failure
+      # too, except the step that fetches the previous state when there was none to fetch.
+      - name: Fail if a step failed
+        if: always()
+        env:
+          STEP_OUTCOMES: policy=${{ steps.policy.outcome }},fetch=${{ steps.fetch.outcome }},notices=${{ steps.notices.outcome }},corpus=${{ steps.corpus.outcome }},tokenizer=${{ steps.tokenizer.outcome }},shards=${{ steps.shards.outcome }},train=${{ steps.train.outcome }},summary=${{ steps.summary.outcome }}
+          PREVIOUS: ${{ steps.previous.outcome }}
+        run: |
+          set -eu
+          case "$STEP_OUTCOMES" in
+            *failure*|*cancelled*|*skipped*)
+              echo "::error title=midman-ai Train::a step did not succeed (step outcomes: $STEP_OUTCOMES)"
+              exit 1
+              ;;
+          esac
+          if [ "$PREVIOUS" = failure ] || [ "$PREVIOUS" = cancelled ]; then
+            echo "::error title=midman-ai Train::the state of run ${RESUME_RUN_ID} could not be fetched (is the run id right, and has the artifact expired?)"
+            exit 1
+          fi
