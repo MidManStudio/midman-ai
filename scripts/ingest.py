@@ -14,7 +14,8 @@ Standard library only (plus the `git` program). Four commands:
     ingest.py fetch    --manifest manifest.txt --accepted ids.txt --dest DIR [--drop-git]
     ingest.py list     --dest DIR --category C [--kind code|docs] [--max-bytes N]
     ingest.py files    --manifest manifest.txt --accepted ids.txt --dest DIR --out files.tsv
-                       [--kind all|code|docs] [--max-bytes N]
+                       [--kind all|code|docs] [--max-bytes N] [--sample-mb N] [--sample-seed N]
+                       [--max-source-share F] [--holdout-percent P --holdout-out FILE]
     ingest.py measure  --manifest manifest.txt --accepted ids.txt --dest DIR --out results.json
                        [--markdown FILE] [--report check_manifest.tsv] [--note TEXT]
     ingest.py report   --report check_manifest.tsv --markdown FILE [--note TEXT]
@@ -28,6 +29,7 @@ what `fetch` takes. That keeps one copy of the policy, in `midman-data`.
 """
 import argparse
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -419,6 +421,46 @@ def select_files(dest, category, max_bytes, kind="code"):
                 continue
             found.append(path)
     return sorted(found)
+
+
+def sample_rows(rows, budget_bytes, seed, max_share=1.0):
+    """A reproducible sample of file rows: about `budget_bytes` of them, in a shuffled order.
+
+    `rows` is a list of `(key, source, size, row)` where `key` is a stable name for the file
+    (the source and the path inside it, not the place it was fetched to). The order is that
+    of a hash of the seed and the key, so the same files and seed always give the same
+    sample, whatever else is in the list. Files are taken in that order until the budget is
+    reached. With `max_share` below 1 a source that already holds that share of the budget
+    gives no more files, so that a few large repositories cannot make up the sample (it can
+    be exceeded by at most the last file taken).
+    """
+    ordered = sorted(
+        rows,
+        key=lambda row: hashlib.sha256((str(seed) + "\0" + row[0]).encode("utf-8")).digest(),
+    )
+    cap = budget_bytes * max_share
+    per_source = {}
+    taken = []
+    total = 0
+    for key, source, size, row in ordered:
+        if total >= budget_bytes:
+            break
+        if max_share < 1.0 and per_source.get(source, 0) >= cap:
+            continue
+        per_source[source] = per_source.get(source, 0) + size
+        total += size
+        taken.append(row)
+    return taken
+
+
+def is_holdout(ident, percent, seed):
+    """Whether a source belongs to the held-out part: `percent` of the sources, by a hash.
+
+    Whole sources are held out, not files of sources that are also trained on, so that the
+    held-out loss says how the model does on repositories it has never seen.
+    """
+    digest = hashlib.sha256((str(seed) + "\0" + ident).encode("utf-8")).digest()
+    return int.from_bytes(digest[:4], "big") % 100 < percent
 
 
 def source_dir(dest, ident):
@@ -1210,32 +1252,68 @@ def cmd_list(args):
 
 def cmd_files(args):
     """Writes `category<TAB>kind<TAB>source<TAB>path` for every usable file of the sources."""
+    if args.sample_mb < 0:
+        raise IngestError("--sample-mb cannot be negative")
+    if not 0 < args.max_source_share <= 1:
+        raise IngestError("--max-source-share must be above 0 and at most 1")
+    if not 0 <= args.holdout_percent <= 50:
+        raise IngestError("--holdout-percent must be between 0 and 50")
+    if args.holdout_percent > 0 and not args.holdout_out:
+        raise IngestError("--holdout-percent needs --holdout-out")
     with open(args.manifest, encoding="utf-8") as handle:
         records = {r["id"]: r for r in read_manifest(handle.read())}
     with open(args.accepted, encoding="utf-8") as handle:
         wanted = [line.strip() for line in handle if line.strip()]
     kinds = ("code", "docs") if args.kind == "all" else (args.kind,)
+    by_kind = {kind: [] for kind in kinds}
+    for ident in wanted:
+        record = records.get(ident)
+        if record is None:
+            raise IngestError("`" + ident + "` is not in the manifest")
+        root = source_dir(args.dest, ident)
+        if not os.path.isdir(root):
+            raise IngestError("`" + ident + "` has not been fetched into " + args.dest)
+        for kind in kinds:
+            for path in select_files(root, record["category"], args.max_bytes, kind):
+                stats = file_stats(path)
+                if stats is None or not stats[1]:
+                    continue
+                line = "\t".join([record["category"], kind, ident, path]) + "\n"
+                key = ident + "\0" + os.path.relpath(path, root)
+                by_kind[kind].append((key, ident, stats[0], (record["category"], line, stats[0])))
     counts = {}
-    tmp = args.out + ".tmp"
-    with open(tmp, "w", encoding="utf-8", newline="\n") as out:
-        for ident in wanted:
-            record = records.get(ident)
-            if record is None:
-                raise IngestError("`" + ident + "` is not in the manifest")
-            root = source_dir(args.dest, ident)
-            if not os.path.isdir(root):
-                raise IngestError("`" + ident + "` has not been fetched into " + args.dest)
+    sizes = {}
+    outputs = [("", args.out, 100 - args.holdout_percent)]
+    if args.holdout_percent > 0:
+        outputs.append(("held-out ", args.holdout_out, args.holdout_percent))
+    for label, path, _share in outputs:
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8", newline="\n") as out:
             for kind in kinds:
-                for path in select_files(root, record["category"], args.max_bytes, kind):
-                    stats = file_stats(path)
-                    if stats is None or not stats[1]:
-                        continue
-                    out.write("\t".join([record["category"], kind, ident, path]) + "\n")
-                    key = (record["category"], kind)
+                rows = by_kind[kind]
+                if args.holdout_percent > 0:
+                    held = label != ""
+                    rows = [r for r in rows if is_holdout(r[1], args.holdout_percent, args.sample_seed) == held]
+                if args.sample_mb > 0:
+                    # The held-out part gets its share of the budget, the rest what is left.
+                    share = args.holdout_percent / 100 if label else 1 - args.holdout_percent / 100
+                    chosen = sample_rows(
+                        rows, int(args.sample_mb * 1_000_000 * share), args.sample_seed,
+                        args.max_source_share,
+                    )
+                else:
+                    chosen = [row[3] for row in rows]
+                for category, line, size in chosen:
+                    out.write(line)
+                    key = (label, category, kind)
                     counts[key] = counts.get(key, 0) + 1
-    os.replace(tmp, args.out)
-    for (category, kind), count in sorted(counts.items()):
-        sys.stderr.write("files: %s %s: %d\n" % (category, kind, count))
+                    sizes[key] = sizes.get(key, 0) + size
+        os.replace(tmp, path)
+    for (label, category, kind), count in sorted(counts.items()):
+        sys.stderr.write(
+            "files: %s%s %s: %d (%s MB)\n"
+            % (label, category, kind, count, megabytes(sizes[(label, category, kind)]))
+        )
 
 
 def build_parser():
@@ -1321,6 +1399,20 @@ def build_parser():
     files.add_argument("--out", required=True, help="tab separated: category, kind, source, path")
     files.add_argument("--kind", choices=("all", "code", "docs"), default="all")
     files.add_argument("--max-bytes", type=int, default=1024 * 1024)
+    files.add_argument(
+        "--sample-mb", type=float, default=0,
+        help="take a reproducible sample of about this many MB of each kind (0 takes all)",
+    )
+    files.add_argument("--sample-seed", type=int, default=1)
+    files.add_argument(
+        "--holdout-percent", type=float, default=0,
+        help="hold out this percent of the sources (by hash), to --holdout-out",
+    )
+    files.add_argument("--holdout-out", help="where the held-out sources' files are written")
+    files.add_argument(
+        "--max-source-share", type=float, default=1.0,
+        help="with a sample: no source gives more than this share of it (0 to 1)",
+    )
     files.set_defaults(run=cmd_files)
     return parser
 

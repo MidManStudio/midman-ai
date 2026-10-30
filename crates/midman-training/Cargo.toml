@@ -11,5 +11,16 @@ workspace = true
 name       = "midman_training"
 crate-type = ["lib"]
 
+[features]
+# Use the AVX matrix kernels of midman-tensor on a CPU that has them (results are the same).
+avx = ["midman-tensor/avx"]
+
 [dependencies]
-# Intentionally empty. The crate dependency graph is not settled yet.
+midman-foundation   = { path = "../midman-foundation" }
+midman-tensor       = { path = "../midman-tensor" }
+midman-nn           = { path = "../midman-nn" }
+midman-model        = { path = "../midman-model" }
+midman-model-config = { path = "../midman-model-config" }
+midman-optim        = { path = "../midman-optim" }
+midman-checkpoint   = { path = "../midman-checkpoint" }
+midman-data         = { path = "../midman-data" }

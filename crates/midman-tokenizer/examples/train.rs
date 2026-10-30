@@ -10,6 +10,10 @@
 //!     --special '<|endoftext|>' --eval held-out-dir  training-dir another-file
 //! ```
 //!
+//! `--list FILE` adds the paths written in FILE, one to a line (blank lines are skipped), to
+//! the training paths, and `--eval-list FILE` does the same for the evaluation paths: for
+//! a corpus of many thousands of files, which do not fit on a command line.
+//!
 //! Every file under the training paths is one document. Directories are walked in sorted
 //! order, and names starting with a dot are skipped. The evaluation also checks that
 //! every file encodes and decodes back to exactly its own bytes.
@@ -20,7 +24,8 @@ use std::path::{Path, PathBuf};
 use midman_tokenizer::{PreTokenizerConfig, SpecialMode, Tokenizer, Trainer, TrainerConfig};
 
 const USAGE: &str = "usage: train --vocab N --out FILE [--special TEXT]... [--min-frequency N]
-             [--pretokenizer default|gpt2|cl100k] [--eval PATH]... PATH...";
+             [--pretokenizer default|gpt2|cl100k] [--eval PATH]... [--list FILE]...
+             [--eval-list FILE]... PATH...";
 
 struct Args {
     vocab: usize,
@@ -30,6 +35,12 @@ struct Args {
     pretokenizer: PreTokenizerConfig,
     eval: Vec<PathBuf>,
     inputs: Vec<PathBuf>,
+}
+
+/// The paths in a list file, one to a line.
+fn read_list(path: &str) -> Result<Vec<PathBuf>, String> {
+    let text = fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    Ok(text.lines().filter(|line| !line.trim().is_empty()).map(PathBuf::from).collect())
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -51,6 +62,8 @@ fn parse_args() -> Result<Args, String> {
                     Some(text.parse().map_err(|_| format!("`{text}` is not a vocabulary size"))?);
             }
             "--out" => out = Some(PathBuf::from(value("--out")?)),
+            "--list" => inputs.extend(read_list(&value("--list")?)?),
+            "--eval-list" => eval.extend(read_list(&value("--eval-list")?)?),
             "--special" => specials.push(value("--special")?),
             "--min-frequency" => {
                 let text = value("--min-frequency")?;

@@ -69,6 +69,64 @@ impl AdamW {
         self.steps
     }
 
+    /// The settings the optimizer was made with: `(beta1, beta2, eps, weight_decay)`.
+    pub fn hyperparameters(&self) -> (f32, f32, f32, f32) {
+        (self.beta1, self.beta2, self.eps, self.weight_decay)
+    }
+
+    /// The moment estimates held so far, as `(parameter name, m, v)`, in name order.
+    ///
+    /// Nothing is held before the first step. This is what has to be saved, together with
+    /// [`AdamW::step_count`], to continue a run exactly; see [`AdamW::restore`].
+    pub fn moments(&self) -> impl Iterator<Item = (&str, &[f32], &[f32])> + '_ {
+        self.state.iter().map(|(name, moments)| (name.as_str(), &moments.m[..], &moments.v[..]))
+    }
+
+    /// Replaces the step count and the moment estimates, as saved from [`AdamW::moments`].
+    ///
+    /// The settings (betas, `eps`, weight decay) are not part of the state and stay as they
+    /// are. Nothing changes unless every entry is acceptable.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if two entries share a name, if an entry's `m` and `v` differ in
+    /// length, if a value is not finite, or if a second moment is negative (it is a running
+    /// mean of squares, so it never is).
+    pub fn restore(
+        &mut self,
+        steps: u64,
+        moments: Vec<(String, Vec<f32>, Vec<f32>)>,
+    ) -> Result<()> {
+        let mut state = BTreeMap::new();
+        for (name, m, v) in moments {
+            if m.len() != v.len() {
+                return Err(Error::invalid(format!(
+                    "adamw: '{name}' has {} first moments but {} second moments",
+                    m.len(),
+                    v.len()
+                )));
+            }
+            if !m.iter().fold(true, |ok, x| ok & x.is_finite()) {
+                return Err(Error::invalid(format!(
+                    "adamw: first moment of '{name}' is not finite"
+                )));
+            }
+            if !v.iter().fold(true, |ok, x| ok & (x.is_finite() & (*x >= 0.0))) {
+                return Err(Error::invalid(format!(
+                    "adamw: second moment of '{name}' is negative or not finite"
+                )));
+            }
+            if state.insert(name.clone(), Moments { m, v }).is_some() {
+                return Err(Error::invalid(format!(
+                    "adamw: two moment entries are named '{name}'"
+                )));
+            }
+        }
+        self.steps = steps;
+        self.state = state;
+        Ok(())
+    }
+
     /// Applies one update. `grads[i]` is the gradient of `params[i]`, and `lr`
     /// is the learning rate for this step (take it from a schedule).
     ///
@@ -242,6 +300,108 @@ mod tests {
         assert_eq!(w.data(), &w_before[..]);
         assert_eq!(b.data(), &b_before[..]);
         assert_eq!(opt.step_count(), 1);
+    }
+
+    fn trained(steps: usize) -> (Parameter, Parameter, AdamW) {
+        let (mut w, mut b) = params();
+        let mut opt = AdamW::new(0.9, 0.99, 1e-8, 0.1).unwrap();
+        for i in 0..steps {
+            let x = i as f32 + 1.0;
+            let gw = vec![0.1 * x, -0.2 * x, 0.3, -0.4 / x];
+            let gb = vec![1.0 / x, -1.0, 0.5 * x];
+            opt.step(&mut [&mut w, &mut b], &[gw, gb], 0.05).unwrap();
+        }
+        (w, b, opt)
+    }
+
+    fn saved(opt: &AdamW) -> Vec<(String, Vec<f32>, Vec<f32>)> {
+        opt.moments().map(|(n, m, v)| (n.to_string(), m.to_vec(), v.to_vec())).collect()
+    }
+
+    #[test]
+    fn nothing_is_held_before_the_first_step_and_the_settings_can_be_read() {
+        let opt = AdamW::new(0.9, 0.99, 1e-7, 0.25).unwrap();
+        assert_eq!(opt.moments().count(), 0);
+        assert_eq!(opt.hyperparameters(), (0.9, 0.99, 1e-7, 0.25));
+        assert_eq!(opt.step_count(), 0);
+    }
+
+    #[test]
+    fn moments_are_listed_by_name_with_their_values() {
+        let (_w, _b, opt) = trained(2);
+        let names: Vec<&str> = opt.moments().map(|(n, _, _)| n).collect();
+        assert_eq!(names, ["b", "w"]);
+        for (_, m, v) in opt.moments() {
+            assert_eq!(m.len(), v.len());
+            assert!(v.iter().all(|x| *x > 0.0));
+        }
+        let sizes: Vec<usize> = opt.moments().map(|(_, m, _)| m.len()).collect();
+        assert_eq!(sizes, [3, 4]);
+    }
+
+    #[test]
+    fn a_restored_optimizer_continues_bit_for_bit() {
+        let (mut w1, mut b1, mut straight) = trained(3);
+        let mut w2 = Parameter::new("w", Tensor::from_vec(w1.data().to_vec(), &[2, 2]).unwrap());
+        let mut b2 = Parameter::new("b", Tensor::from_vec(b1.data().to_vec(), &[3]).unwrap());
+        let mut resumed = AdamW::new(0.9, 0.99, 1e-8, 0.1).unwrap();
+        resumed.restore(straight.step_count(), saved(&straight)).unwrap();
+        assert_eq!(resumed.step_count(), 3);
+        for i in 0..4 {
+            let x = i as f32 + 7.0;
+            let grads = [vec![0.3 / x, 0.1, -0.2 * x, 0.05], vec![0.7, -0.1 * x, 0.2]];
+            straight.step(&mut [&mut w1, &mut b1], &grads, 0.03).unwrap();
+            resumed.step(&mut [&mut w2, &mut b2], &grads, 0.03).unwrap();
+            let bits = |p: &Parameter| p.data().iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+            assert_eq!(bits(&w1), bits(&w2), "w after step {i}");
+            assert_eq!(bits(&b1), bits(&b2), "b after step {i}");
+        }
+        assert_eq!(saved(&straight), saved(&resumed));
+    }
+
+    #[test]
+    fn a_restore_that_is_refused_changes_nothing() {
+        let (_w, _b, mut opt) = trained(2);
+        let before = saved(&opt);
+        let steps = opt.step_count();
+        let good = |name: &str| (name.to_string(), vec![0.5; 2], vec![0.25; 2]);
+        type Entries = Vec<(String, Vec<f32>, Vec<f32>)>;
+        let bad: Vec<Entries> = vec![
+            vec![good("a"), good("a")],
+            vec![good("a"), ("b".to_string(), vec![0.0; 2], vec![0.0; 3])],
+            vec![good("a"), ("b".to_string(), vec![f32::NAN, 0.0], vec![0.0; 2])],
+            vec![good("a"), ("b".to_string(), vec![0.0; 2], vec![f32::INFINITY, 0.0])],
+            vec![good("a"), ("b".to_string(), vec![0.0; 2], vec![-1.0, 0.0])],
+            vec![good("a"), ("b".to_string(), vec![f32::INFINITY, 0.0], vec![0.0; 2])],
+        ];
+        for list in bad {
+            assert!(opt.restore(99, list).is_err());
+            assert_eq!(opt.step_count(), steps);
+            assert_eq!(saved(&opt), before);
+        }
+        // Zero is a fine second moment, and an empty list a fine state.
+        opt.restore(0, vec![("a".to_string(), vec![0.0], vec![0.0])]).unwrap();
+        opt.restore(0, Vec::new()).unwrap();
+        assert_eq!(opt.moments().count(), 0);
+        assert_eq!(opt.step_count(), 0);
+    }
+
+    #[test]
+    fn a_restore_names_the_entry_it_refuses() {
+        let (_w, _b, mut opt) = trained(1);
+        let err =
+            opt.restore(1, vec![("layer.q".to_string(), vec![0.0; 2], vec![0.0; 3])]).unwrap_err();
+        assert!(err.to_string().contains("layer.q"), "{err}");
+        let err = opt
+            .restore(
+                1,
+                vec![
+                    ("x".to_string(), vec![0.0], vec![0.0]),
+                    ("x".to_string(), vec![0.0], vec![0.0]),
+                ],
+            )
+            .unwrap_err();
+        assert!(err.to_string().contains("'x'"), "{err}");
     }
 
     #[test]

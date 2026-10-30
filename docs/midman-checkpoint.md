@@ -3,7 +3,7 @@
 ## Overview
 Saving and loading model weights as standard safetensors files, with a reader and writer written in this crate and helpers that save and load a model's parameters by name.
 
-Status: weights only. A checkpoint holds one `f32` tensor per model parameter plus string metadata, and loading is strict and all or nothing. Not built yet: optimizer state, training progress (step, tokens seen, random generator state), version migrations, the `F16` and `BF16` dtypes, and reading without loading the whole file into memory.
+Status: weights only. A checkpoint holds one `f32` tensor per model parameter plus string metadata, and loading is strict and all or nothing. The optimizer state and the training progress (the step and the place in the data) are not in this checkpoint; they are in the training state file of `midman-training`, which holds the weights too and is what a run is resumed from (see `midman-training.md`). Not built yet: version migrations, the `F16` and `BF16` dtypes, and reading without loading the whole file into memory.
 
 Dependencies: `midman-foundation` and `midman-tensor`. The tests also use `midman-model`, `midman-model-config` and `midman-nn`. The crate has no external dependencies, including for the JSON in the file header.
 

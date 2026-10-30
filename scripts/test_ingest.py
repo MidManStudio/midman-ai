@@ -10,6 +10,7 @@ Run with `python3 -m unittest discover -s scripts -p 'test_*.py'`.
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -964,7 +965,7 @@ class FilesCommandTests(unittest.TestCase):
         })
         return manifest, accepted, dest
 
-    def test_files_in_accepted_order_code_before_docs(self):
+    def test_files_in_accepted_order_all_code_before_docs(self):
         with tempfile.TemporaryDirectory() as root:
             manifest, accepted, dest = self.make(root)
             out = os.path.join(root, "f.tsv")
@@ -977,16 +978,16 @@ class FilesCommandTests(unittest.TestCase):
             self.assertEqual(rel, [
                 ("shell", "code", "t/scripts", "t__scripts/install"),
                 ("shell", "code", "t/scripts", "t__scripts/x.sh"),
-                ("shell", "docs", "t/scripts", "t__scripts/notes.md"),
                 ("rust", "code", "t/code", "t__code/a.rs"),
-                ("rust", "docs", "t/code", "t__code/README.md"),
                 ("rust", "code", "t/last", "t__last/b.rs"),
+                ("shell", "docs", "t/scripts", "t__scripts/notes.md"),
+                ("rust", "docs", "t/code", "t__code/README.md"),
             ])
             # The counts are listed sorted by category and then kind.
             self.assertEqual(
                 [l for l in err.splitlines() if l.startswith("files:")],
-                ["files: rust code: 2", "files: rust docs: 1", "files: shell code: 2",
-                 "files: shell docs: 1"],
+                ["files: rust code: 2 (0.0 MB)", "files: rust docs: 1 (0.0 MB)",
+                 "files: shell code: 2 (0.0 MB)", "files: shell docs: 1 (0.0 MB)"],
             )
 
     def test_one_kind_and_errors(self):
@@ -1021,6 +1022,277 @@ class FilesCommandTests(unittest.TestCase):
             self.assertEqual([os.path.basename(p) for p in out.split()], ["README.md"])
             code, out, _e = self.run_main(["list", "--dest", root, "--category", "rust"])
             self.assertEqual([os.path.basename(p) for p in out.split()], ["a.rs"])
+
+
+class SampleTests(unittest.TestCase):
+    def rows(self):
+        # (key, source, size, payload): three sources of different sizes.
+        out = []
+        for source, count, size in (("a/big", 40, 100), ("b/mid", 20, 100), ("c/small", 5, 100)):
+            for i in range(count):
+                out.append(("%s\0f%d.rs" % (source, i), source, size, "%s:%d" % (source, i)))
+        return out
+
+    def test_the_same_files_and_seed_give_the_same_sample(self):
+        first = ingest.sample_rows(self.rows(), 1000, 1)
+        again = ingest.sample_rows(list(reversed(self.rows())), 1000, 1)
+        self.assertEqual(first, again)
+        self.assertNotEqual(first, ingest.sample_rows(self.rows(), 1000, 2))
+        self.assertEqual(len(first), 10)
+        self.assertEqual(len(set(first)), 10)
+
+    def test_the_budget_is_reached_and_not_exceeded_by_more_than_a_file(self):
+        for budget in (1, 99, 100, 101, 1000, 1049):
+            taken = ingest.sample_rows(self.rows(), budget, 7)
+            total = 100 * len(taken)
+            self.assertGreaterEqual(total, budget)
+            self.assertLess(total - 100, budget)
+        # More than there is gives everything.
+        self.assertEqual(len(ingest.sample_rows(self.rows(), 10**9, 7)), 65)
+        self.assertEqual(ingest.sample_rows([], 100, 1), [])
+
+    def test_without_a_cap_the_big_source_dominates(self):
+        taken = ingest.sample_rows(self.rows(), 3000, 3)
+        shares = {s: sum(1 for r in taken if r.startswith(s)) for s in ("a/big", "b/mid", "c/small")}
+        self.assertEqual(sum(shares.values()), 30)
+        self.assertGreater(shares["a/big"], shares["c/small"])
+
+    def test_a_cap_stops_one_source_from_filling_the_sample(self):
+        taken = ingest.sample_rows(self.rows(), 3000, 3, max_share=0.2)
+        shares = {s: sum(1 for r in taken if r.startswith(s)) for s in ("a/big", "b/mid", "c/small")}
+        # 20 percent of 3000 is 600 bytes: six files, and no more once it is reached.
+        self.assertLessEqual(shares["a/big"], 6)
+        self.assertLessEqual(shares["b/mid"], 6)
+        self.assertEqual(shares["c/small"], 5)
+        # The cap can leave the budget unreached, when there are too few sources.
+        self.assertLess(100 * len(taken), 3000)
+
+    def test_a_file_larger_than_the_cap_is_still_taken_once(self):
+        rows = [("a\0big", "a", 5000, "A"), ("b\0small", "b", 10, "B")]
+        taken = ingest.sample_rows(rows, 1000, 1, max_share=0.1)
+        self.assertEqual(sorted(taken), ["A", "B"])
+
+
+class SampledFilesCommandTests(unittest.TestCase):
+    def make(self, root):
+        records = []
+        files = {}
+        for ident, count in (("t/aaa", 30), ("t/bbb", 10)):
+            records.append({"id": ident, "url": "https://github.com/" + ident, "revision": "a" * 40,
+                            "license": "MIT", "fetched": "2026-10-27", "category": "rust"})
+            for i in range(count):
+                files["src/%s/f%02d.rs" % (ident.replace("/", "__"), i)] = "x" * 100
+                files["src/%s/d%02d.md" % (ident.replace("/", "__"), i)] = "y" * 50
+        write_files(root, files)
+        manifest = os.path.join(root, "m.txt")
+        with open(manifest, "w", encoding="utf-8") as handle:
+            handle.write(ingest.manifest_text(records))
+        accepted = os.path.join(root, "a.txt")
+        with open(accepted, "w", encoding="utf-8") as handle:
+            handle.write("t/aaa\nt/bbb\n")
+        return manifest, accepted, os.path.join(root, "src")
+
+    def run_files(self, root, extra):
+        manifest, accepted, dest = self.make(root) if not os.path.exists(os.path.join(root, "m.txt")) else (
+            os.path.join(root, "m.txt"), os.path.join(root, "a.txt"), os.path.join(root, "src"))
+        out = os.path.join(root, "f.tsv")
+        err = io.StringIO()
+        with redirect_stdout(io.StringIO()), redirect_stderr(err):
+            code = ingest.main(["files", "--manifest", manifest, "--accepted", accepted,
+                                "--dest", dest, "--out", out] + extra)
+        rows = []
+        if os.path.exists(out):
+            with open(out, encoding="utf-8") as handle:
+                rows = [line.rstrip("\n").split("\t") for line in handle]
+        return code, rows, err.getvalue()
+
+    def test_a_sample_is_per_kind_reproducible_and_shuffled(self):
+        with tempfile.TemporaryDirectory() as root:
+            code, everything, _e = self.run_files(root, [])
+            self.assertEqual(code, 0)
+            self.assertEqual(len(everything), 80)
+            # 0.002 MB is 2000 bytes: twenty code files of 100 bytes, and 2000 bytes of docs.
+            code, rows, err = self.run_files(root, ["--sample-mb", "0.002", "--sample-seed", "4"])
+            self.assertEqual(code, 0, err)
+            code_rows = [r for r in rows if r[1] == "code"]
+            docs_rows = [r for r in rows if r[1] == "docs"]
+            self.assertEqual(len(code_rows), 20)
+            self.assertEqual(len(docs_rows), 40)
+            self.assertEqual(rows, code_rows + docs_rows)
+            self.assertIn("files: rust code: 20 (0.0 MB)", err)
+            code, again, _e = self.run_files(root, ["--sample-mb", "0.002", "--sample-seed", "4"])
+            self.assertEqual(rows, again)
+            code, other, _e = self.run_files(root, ["--sample-mb", "0.002", "--sample-seed", "5"])
+            self.assertNotEqual(rows, other)
+            # Not in the order of the files on disk: the sources are mixed.
+            self.assertNotEqual([r[3] for r in code_rows], sorted(r[3] for r in code_rows))
+            # One kind only, with a larger budget than the kind holds: all of it.
+            code, rows, err = self.run_files(root, ["--kind", "docs", "--sample-mb", "5"])
+            self.assertEqual(len(rows), 40)
+
+    def test_the_sample_does_not_depend_on_where_the_sources_were_fetched(self):
+        with tempfile.TemporaryDirectory() as root:
+            code, rows, err = self.run_files(root, ["--sample-mb", "0.002", "--sample-seed", "9"])
+            self.assertEqual(code, 0, err)
+            # The same sources fetched somewhere else give the same files, in the same order.
+            other = os.path.join(root, "elsewhere")
+            shutil.copytree(os.path.join(root, "src"), os.path.join(other, "deeper", "src"))
+            out = os.path.join(root, "g.tsv")
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                self.assertEqual(ingest.main([
+                    "files", "--manifest", os.path.join(root, "m.txt"),
+                    "--accepted", os.path.join(root, "a.txt"),
+                    "--dest", os.path.join(other, "deeper", "src"), "--out", out,
+                    "--sample-mb", "0.002", "--sample-seed", "9"]), 0)
+            with open(out, encoding="utf-8") as handle:
+                moved = [line.rstrip("\n").split("\t") for line in handle]
+            self.assertEqual([r[:3] + [os.path.basename(r[3])] for r in rows],
+                             [r[:3] + [os.path.basename(r[3])] for r in moved])
+
+    def test_the_report_gives_the_size_of_what_was_taken(self):
+        with tempfile.TemporaryDirectory() as root:
+            records = [{"id": "t/big", "url": "https://github.com/t/big", "revision": "a" * 40,
+                        "license": "MIT", "fetched": "2026-10-27", "category": "rust"}]
+            write_files(os.path.join(root, "src"), {
+                "t__big/a.rs": "x" * 600_000, "t__big/b.rs": "x" * 600_000, "t__big/c.rs": "x" * 600_000})
+            with open(os.path.join(root, "m.txt"), "w", encoding="utf-8") as handle:
+                handle.write(ingest.manifest_text(records))
+            with open(os.path.join(root, "a.txt"), "w", encoding="utf-8") as handle:
+                handle.write("t/big\n")
+            code, rows, err = self.run_files(root, ["--kind", "code"])
+            self.assertEqual((code, len(rows)), (0, 3), err)
+            self.assertIn("files: rust code: 3 (1.8 MB)", err)
+            code, rows, err = self.run_files(root, ["--kind", "code", "--sample-mb", "1"])
+            self.assertEqual(len(rows), 2)
+            self.assertIn("files: rust code: 2 (1.2 MB)", err)
+
+    def test_the_share_cap_and_its_checks(self):
+        with tempfile.TemporaryDirectory() as root:
+            code, rows, err = self.run_files(
+                root, ["--kind", "code", "--sample-mb", "0.003", "--max-source-share", "0.5"])
+            self.assertEqual(code, 0, err)
+            by_source = {}
+            for r in rows:
+                by_source[r[2]] = by_source.get(r[2], 0) + 1
+            # 3000 bytes with half for one source: 1500 bytes, fifteen files at most each.
+            self.assertLessEqual(by_source["t/aaa"], 15)
+            self.assertEqual(by_source["t/bbb"], 10)
+            for bad in (["--max-source-share", "0"], ["--max-source-share", "1.5"],
+                        ["--sample-mb", "-1"]):
+                code, _rows, err = self.run_files(root, bad)
+                self.assertEqual(code, 1, bad)
+
+
+class HoldoutTests(unittest.TestCase):
+    def test_a_source_is_held_out_by_a_hash_of_its_name(self):
+        ids = ["owner%d/repo%d" % (i, i) for i in range(1000)]
+        held = [i for i in ids if ingest.is_holdout(i, 25, 1)]
+        self.assertTrue(200 < len(held) < 300, len(held))
+        self.assertEqual(held, [i for i in ids if ingest.is_holdout(i, 25, 1)])
+        self.assertNotEqual(held, [i for i in ids if ingest.is_holdout(i, 25, 2)])
+        self.assertFalse(any(ingest.is_holdout(i, 0, 1) for i in ids))
+        self.assertTrue(all(ingest.is_holdout(i, 100, 1) for i in ids))
+        # A larger share holds out everything a smaller one does.
+        self.assertTrue(set(held) <= {i for i in ids if ingest.is_holdout(i, 40, 1)})
+
+    def test_the_rule_is_pinned_by_known_buckets(self):
+        # The bucket (0 to 99) of a source is a number from the first four bytes, big
+        # endian, of the SHA-256 of `seed NUL name`; these were computed with hashlib
+        # (seed 1). A source is held out when its bucket is below the percentage.
+        for ident, bucket in (("rust-lang/regex", 13), ("ohmyzsh/ohmyzsh", 23), ("t/s09", 28),
+                              ("t/s02", 62), ("t/s07", 96)):
+            self.assertFalse(ingest.is_holdout(ident, bucket, 1), ident)
+            self.assertTrue(ingest.is_holdout(ident, bucket + 1, 1), ident)
+
+    def setup(self, root):
+        records, files, ids = [], {}, []
+        for n in range(12):
+            ident = "t/s%02d" % n
+            ids.append(ident)
+            records.append({"id": ident, "url": "https://github.com/" + ident, "revision": "a" * 40,
+                            "license": "MIT", "fetched": "2026-10-27", "category": "rust"})
+            for i in range(10):
+                files["src/t__s%02d/f%d.rs" % (n, i)] = "x" * 100
+        write_files(root, files)
+        with open(os.path.join(root, "m.txt"), "w", encoding="utf-8") as handle:
+            handle.write(ingest.manifest_text(records))
+        with open(os.path.join(root, "a.txt"), "w", encoding="utf-8") as handle:
+            handle.write("\n".join(ids) + "\n")
+        return ids
+
+    def run_files(self, root, extra):
+        err = io.StringIO()
+        with redirect_stdout(io.StringIO()), redirect_stderr(err):
+            code = ingest.main(["files", "--manifest", os.path.join(root, "m.txt"),
+                                "--accepted", os.path.join(root, "a.txt"),
+                                "--dest", os.path.join(root, "src"), "--kind", "code",
+                                "--out", os.path.join(root, "train.tsv")] + extra)
+        def rows(name):
+            path = os.path.join(root, name)
+            if not os.path.exists(path):
+                return None
+            with open(path, encoding="utf-8") as handle:
+                return [line.rstrip("\n").split("\t") for line in handle]
+        return code, rows("train.tsv"), rows("held.tsv"), err.getvalue()
+
+    def test_whole_sources_go_to_one_side(self):
+        with tempfile.TemporaryDirectory() as root:
+            ids = self.setup(root)
+            code, train, held, err = self.run_files(
+                root, ["--holdout-percent", "30", "--holdout-out", os.path.join(root, "held.tsv")])
+            self.assertEqual(code, 0, err)
+            train_sources = {r[2] for r in train}
+            held_sources = {r[2] for r in held}
+            self.assertTrue(train_sources and held_sources)
+            self.assertEqual(train_sources & held_sources, set())
+            self.assertEqual(train_sources | held_sources, set(ids))
+            self.assertEqual(len(train) + len(held), 120)
+            self.assertEqual(held_sources, {i for i in ids if ingest.is_holdout(i, 30, 1)})
+            self.assertIn("files: held-out rust code:", err)
+            self.assertIn("files: rust code:", err)
+            # Another seed holds out other sources, and says so in the same way.
+            code, train2, held2, err = self.run_files(
+                root, ["--holdout-percent", "30", "--holdout-out", os.path.join(root, "held.tsv"),
+                       "--sample-seed", "2"])
+            self.assertEqual(code, 0, err)
+            held_again = {r[2] for r in held2}
+            self.assertEqual(held_again, {i for i in ids if ingest.is_holdout(i, 30, 2)})
+            self.assertNotEqual(held_again, held_sources)
+
+    def test_the_budget_is_shared_between_the_two_sides(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.setup(root)
+            # 0.004 MB is 4000 bytes, 40 files: 30 percent of it is for the held-out side. At
+            # that share two sources are held out (t/s00 and t/s09: twenty files), so the
+            # held-out side takes twelve files (1200 bytes) and the other side 28 of its 100.
+            code, train, held, err = self.run_files(
+                root, ["--holdout-percent", "30", "--holdout-out", os.path.join(root, "held.tsv"),
+                       "--sample-mb", "0.004"])
+            self.assertEqual(code, 0, err)
+            self.assertEqual({r[2] for r in held} - {"t/s00", "t/s09"}, set())
+            self.assertEqual(len(held), 12)
+            self.assertEqual(len(train), 28)
+            self.assertEqual({r[2] for r in train} & {"t/s00", "t/s09"}, set())
+
+    def test_without_a_percent_there_is_no_held_out_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.setup(root)
+            code, train, held, err = self.run_files(root, ["--holdout-out", os.path.join(root, "held.tsv")])
+            self.assertEqual(code, 0, err)
+            self.assertEqual(len(train), 120)
+            self.assertIsNone(held)
+
+    def test_the_checks(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.setup(root)
+            for extra in (["--holdout-percent", "10"],
+                          ["--holdout-percent", "51", "--holdout-out", os.path.join(root, "held.tsv")],
+                          ["--holdout-percent", "-1", "--holdout-out", os.path.join(root, "held.tsv")]):
+                code, _t, _h, err = self.run_files(root, extra)
+                self.assertEqual(code, 1, extra)
+            code, _t, _h, err = self.run_files(
+                root, ["--holdout-percent", "50", "--holdout-out", os.path.join(root, "held.tsv")])
+            self.assertEqual(code, 0, err)
 
 
 class CargoLicenseTests(unittest.TestCase):
