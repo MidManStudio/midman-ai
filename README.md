@@ -4,13 +4,13 @@
 
 MidMan AI is a Rust workspace for a coding and game-development model, the pipeline that trains it, and an agent runtime around it. Nothing here starts from pretrained weights or a machine-learning framework: the tensors, the automatic differentiation, the kernels, the tokenizer and the data pipeline are written in this repository. Rust and [Ubel Stratum](https://github.com/MidManStudio/ubel_stratum) are the core code domains, shell and terminal material is in scope, and the model is meant to be useful for [Mid Engine](https://github.com/Mid-D-Man/mid-engine) work.
 
-It is early. The model and its training step work and are tested on small sizes; no model has been trained on a real corpus yet. The table below says what exists.
+It is early. A first small model (the Tiny preset, 1,315,968 parameters) has been trained on a sample of the real corpus on GitHub's machines: 4.1 million tokens, with a held-out loss of 3.914 against 8.318 for a model that knows nothing. It is a test of the path, not a useful model yet. The table below says what exists.
 
 ---
 
 ## Crates
 
-Status as of 2026-10-25. Working means it has code, tests and a document in `docs/`. In progress means it works but has known gaps listed in its document. Planned means the crate is an empty stub.
+Status as of 2026-10-31. Working means it has code, tests and a document in `docs/`. In progress means it works but has known gaps listed in its document. Planned means the crate is an empty stub.
 
 | Crate | Role | Status |
 |---|---|---|
@@ -19,13 +19,14 @@ Status as of 2026-10-25. Working means it has code, tests and a document in `doc
 | `midman-tensor` | CPU `f32` tensors, reverse-mode autograd, matrix products (with AVX kernels behind a Cargo feature) | 🟢 Working |
 | `midman-nn` | Linear, embedding, RMSNorm, rotary embeddings, causal attention, SwiGLU, decoder block | 🟢 Working |
 | `midman-model` | The decoder-only model: forward pass and loss | 🟢 Working |
-| `midman-optim` | AdamW, warmup-and-cosine schedule, gradient clipping | 🟡 In progress (optimizer state cannot be saved yet) |
-| `midman-checkpoint` | Weights in the standard safetensors format | 🟡 In progress (no optimizer state or training progress yet) |
+| `midman-optim` | AdamW (its state can be saved and restored), warmup-and-cosine schedule, gradient clipping | 🟢 Working |
+| `midman-checkpoint` | Weights in the standard safetensors format; the state of a training run is stored in the same format | 🟢 Working |
 | `midman-tokenizer` | Byte-level BPE with a trainer, special tokens and a code-and-shell pre-tokenizer | 🟢 Working |
-| `midman-data` | License policy, source manifest, secret scrubber, exact deduplication, token shards, batcher | 🟡 In progress (ingestion has a first cut; no quality filters yet) |
+| `midman-data` | License policy, source manifest, secret scrubber, exact deduplication, token shards, batcher | 🟡 In progress (ingestion works on 480 sources; no quality filters or near-duplicate detection yet) |
 | `midman-api` | Safe Rust API and a C ABI, also compiled to WebAssembly for the website | 🟢 Working |
 | `benches/midman-bench` | Benchmarks with plain C twins as baselines | 🟢 Working |
-| `midman-quant`, `midman-training`, `midman-inference` | Quantization, the training loop, inference | 🔵 Planned |
+| `midman-training` | The training loop: steps, held-out loss, a state that can be saved and resumed | 🟡 In progress (one thread; no gradient accumulation) |
+| `midman-quant`, `midman-inference` | Quantization, inference | 🔵 Planned |
 | `midman-agent`, `midman-tools`, `midman-sandbox` | Agent runtime, tools, restricted execution | 🔵 Planned |
 | `midman-ubel`, `midman-game` | Ubel Stratum and game-engine integration | 🔵 Planned |
 | `apps/midman-cli`, `apps/midman-server`, `apps/midman-trainer` | Command line, server, trainer | 🔵 Planned |
@@ -44,6 +45,7 @@ midman-optim         (uses foundation, tensor)
 midman-checkpoint    (uses foundation, tensor)
 midman-model         (uses foundation, model-config, nn, tensor)
 midman-data          (uses foundation, tokenizer)
+midman-training      (uses foundation, tensor, nn, model, model-config, optim, checkpoint, data)
 midman-api           (uses foundation, model, model-config, nn, optim, tensor)
 ```
 
@@ -79,6 +81,14 @@ cargo run --release -p midman-data --example check_manifest -- \
     data/manifest.txt --accepted accepted.txt
 ```
 
+Train a model on those shards (the state is saved every `--save-every` steps, `--minutes` stops on a time budget, `--resume` continues a stopped run):
+
+```bash
+cargo run --release --features avx -p midman-training --example train -- \
+    --shards shards/train --eval-shards shards/held --out run-out \
+    --preset tiny --steps 2000 --batch 8 --seq 256
+```
+
 The commands of the ingestion script are listed at the top of `scripts/ingest.py`.
 
 ## The training corpus
@@ -90,11 +100,17 @@ The corpus is built from public repositories listed in [`data/manifest.txt`](dat
 - A source whose license exists but could not be identified is refused.
 - Secrets are replaced before anything is tokenized, and documents that are identical are kept once.
 
+Documentation (Markdown and reStructuredText) is a separate kind from code and is sampled on its own. The manifest has 545 sources, of which 480 pass the policy (377 Rust and 103 shell).
+
 No license has been chosen for this repository itself yet.
+
+## Training so far
+
+One model, the Tiny preset, has been trained: 2,000 steps of 8 x 256 tokens (4.1 million tokens) on a sample of the corpus, on one CPU thread with the AVX kernels on a GitHub runner, at about 2,000 to 2,300 tokens a second. The loss on repositories that were held out of training went from 8.318 (a model that knows nothing) to 5.296 at step 250 and 3.914 at step 2,000, and it was still falling. A run that is stopped and resumed from its saved state gives the same held-out loss at every evaluation as one that is not stopped, to the three decimals shown (Train runs 1 and 4, the second continuing run 2 from step 438). None of the settings is tuned.
 
 ## Continuous integration
 
-Nine GitHub Actions workflows, all started by hand (`workflow_dispatch`):
+Ten GitHub Actions workflows, all started by hand (`workflow_dispatch`):
 
 | Workflow | What it does |
 |---|---|
@@ -105,6 +121,7 @@ Nine GitHub Actions workflows, all started by hand (`workflow_dispatch`):
 | `train-smoke.yml` | A tiny model must learn a fixed batch, on several platforms |
 | `data-smoke.yml` | The data pipeline must give byte-identical shards and batches on every platform |
 | `ingest.yml` | Check the manifest against the license policy, fetch the sources and measure them, or propose a new manifest |
+| `train.yml` | Build a corpus sample, train the vocabulary and the model within a time budget, write the losses to the summary, and continue a stopped run |
 | `midman-api-ffi.yml` | Test the C ABI from C and C++ |
 | `deploy-site.yml` | Build the website and deploy it to Cloudflare Pages |
 
