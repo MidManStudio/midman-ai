@@ -85,6 +85,10 @@ on:
         description: 'Percent of the sources held out for the held-out loss (0 to 50)'
         type: string
         default: '5'
+      eval_batches:
+        description: 'Batches of held-out data per evaluation (16 is 32,768 tokens at batch 8 x 256; more gives a steadier number)'
+        type: string
+        default: '16'
       resume_run_id:
         description: 'Id of an earlier run of this workflow to continue (empty starts a new run)'
         type: string
@@ -119,6 +123,7 @@ jobs:
       MAX_SOURCE_SHARE: ${{ inputs.max_source_share }}
       HOLDOUT_PERCENT: ${{ inputs.holdout_percent }}
       RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+      EVAL_BATCHES: ${{ inputs.eval_batches }}
 
     steps:
       - name: Checkout
@@ -285,7 +290,7 @@ jobs:
           set -- --shards shards/train --eval-shards shards/held --out run-out \
             --preset "$PRESET" --steps "$STEPS" --batch "$BATCH" --seq "$SEQ" --seed "$SEED" \
             --max-lr "$MAX_LR" --minutes "$MINUTES" \
-            --log-every 10 --eval-every 250 --eval-batches 16 --save-every 250
+            --log-every 10 --eval-every 250 --eval-batches "$EVAL_BATCHES" --save-every 250
           if [ -n "$RESUME_RUN_ID" ]; then
             set -- "$@" --resume
           fi
