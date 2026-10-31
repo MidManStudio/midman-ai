@@ -254,7 +254,7 @@ jobs:
           name: train-run-${{ inputs.resume_run_id }}
           run-id: ${{ inputs.resume_run_id }}
           github-token: ${{ github.token }}
-          path: run-out
+          path: previous-run
 
       - name: Train
         id: train
@@ -264,6 +264,24 @@ jobs:
           set -o pipefail
           echo "=== train ===" | tee -a ingest-raw.txt
           mkdir -p run-out
+          if [ -n "$RESUME_RUN_ID" ]; then
+            # The artifact of the earlier run mixes files of run-out/ with files of the top
+            # level, so it keeps the folder name: the state is at previous-run/run-out/. Look
+            # for it instead of trusting a path, and say what the artifact holds if it is missing.
+            state=$(find previous-run -name state.safetensors | head -n 1)
+            if [ -z "$state" ]; then
+              echo "train: the artifact of run $RESUME_RUN_ID has no state.safetensors; it holds:" | tee -a ingest-raw.txt
+              find previous-run -type f | tee -a ingest-raw.txt
+              exit 1
+            fi
+            from=$(dirname "$state")
+            for name in state.safetensors train.tsv eval.tsv; do
+              if [ -f "$from/$name" ]; then
+                cp "$from/$name" "run-out/$name"
+              fi
+            done
+            echo "train: continuing from $from" | tee -a ingest-raw.txt
+          fi
           set -- --shards shards/train --eval-shards shards/held --out run-out \
             --preset "$PRESET" --steps "$STEPS" --batch "$BATCH" --seq "$SEQ" --seed "$SEED" \
             --max-lr "$MAX_LR" --minutes "$MINUTES" \
